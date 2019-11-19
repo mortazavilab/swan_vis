@@ -366,35 +366,21 @@ class SpliceGraph:
 class PlottedGraph:
 	def __init__(self, sg, args):
 
-		G = sg.G.copy()
-		loc_df = sg.loc_df.copy(deep=True)
-		edge_df = sg.edge_df.copy(deep=True)
-		t_df = sg.t_df.copy(deep=True)
+		self.G = sg.G.copy()
+		self.loc_df = sg.loc_df.copy(deep=True)
+		self.edge_df = sg.edge_df.copy(deep=True)
+		self.t_df = sg.t_df.copy(deep=True)
 
 		if args['combine']:
-			nbp, t_df = self.find_nb_paths(sg, t_df)
-			G, loc_df, edge_df = self.agg_nb_nodes(sg, loc_df, edge_df, nbp, args)
+			nbps = self.find_nb_paths()
+			self.agg_nb_nodes(nbps, args)
 
 		# get positions/sizes of nodes, edges, and labels
-		pos, ordered_nodes, node_size, rad, label_size, edge_width = self.calc_pos_sizes(G)
+		self.calc_pos_sizes()
 
 		# determine edge plotting settings
-		e_style_dict = self.get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args)
-		n_style_dict, sub_n_style_dict = self.get_node_plt_settings(G, pos, node_size, args)
-
-		# graph-related fields (updated to have combined nodes etc.)
-		self.G = G
-		self.loc_df = loc_df 
-		self.edge_df = edge_df
-		self.t_df = t_df
-
-		# plotting-related fields
-		self.pos = pos
-		self.ordered_nodes = ordered_nodes
-		self.label_size = label_size
-		self.e_style_dict = e_style_dict
-		self.n_style_dict = n_style_dict
-		self.sub_n_style_dict = sub_n_style_dict
+		self.get_edge_plt_settings(args)
+		self.get_node_plt_settings(args)
 
 	# starting nodes:
 	# 1. have only one outgoing edge AND
@@ -435,9 +421,10 @@ class PlottedGraph:
 	# http://rosalind.info/problems/ba3m/ ty pavel 
 	# modified to not group up TES/TSSs 
 	# see is_nbp_start/end to see complete set of conditions
-	def find_nb_paths(self, sg, t_df):
+	def find_nb_paths(self):
 
-		G = sg.G
+		G = self.G
+		t_df = self.t_df
 
 		nbps = []
 		for v in G.nodes:
@@ -474,14 +461,18 @@ class PlottedGraph:
 				# add aggregate node tuple instead
 				if insertion_index != -1:
 					path.insert(insertion_index, tuple(nbp))
-		return nbps, t_df
+
+		self.t_df = t_df
+		return nbps
 
 	# aggregate nonbranching nodes and add to graph. remove old nodes
 	# update loc_df and edge_df to reflect these changes
-	def agg_nb_nodes(self, sg, loc_df, edge_df, paths, args):
+	def agg_nb_nodes(self, paths, args):
 
-		G = sg.G
-		mod_G = nx.DiGraph(sg.G)
+		G = self.G
+		mod_G = nx.DiGraph(self.G)
+		loc_df = self.loc_df
+		edge_df = self.edge_df
 
 		combined_index = 0
 		loc_df['agg_path'] = np.nan
@@ -596,11 +587,15 @@ class PlottedGraph:
 		mod_G = label_nodes(mod_G, loc_df, 'combined_types', 'combined_types')
 		mod_G = label_nodes(mod_G, loc_df, 'agg_path', 'agg_path')
 
-		return mod_G, loc_df, edge_df
-
+		self.G = mod_G
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		
 	# calculates the positions and sizes of edges/nodes based on the 
 	# number of nodes in the graph
-	def calc_pos_sizes(self, G):
+	def calc_pos_sizes(self):
+
+		G = self.G
 
 		pos = defaultdict()
 
@@ -629,7 +624,12 @@ class PlottedGraph:
 		rad = ((11/540)*x)+(73/540)
 		edge_width = -x/18 + (121/18)
 
-		return pos, ordered_nodes, node_size, rad, label_size, edge_width
+		self.pos = pos
+		self.ordered_nodes = ordered_nodes
+		self.node_size = node_size 
+		self.rad = rad
+		self.label_size = label_size
+		self.edge_width = edge_width
 
 	# plots the whole graph
 	def plot_graph(self, oname):
@@ -652,11 +652,22 @@ class PlottedGraph:
 		plt.tight_layout()
 		plt.savefig(oname, format='png', dpi=200)
 
+	# plots a transcript path through a preexisiting 
+	# PlottedGraph graph
+	def plot_transcript_path(self, tid):
+		1
+
+	# plots a subgraph from a PlottedGraph object
+	def plot_subgraph(self, nodelist, args):
+
+		self.G = self.G.subgraph(nodelist)
+		self.plot_graph()
+
 	# plot nodes according to style dicts
 	def plot_nodes(self):
 
-		style_dict = self.n_style_dict
-		sub_style_dict = self.sub_n_style_dict
+		style_dict = self.node_style
+		sub_style_dict = self.sub_node_style
 
 		for n in self.G.nodes():
 			nx.draw_networkx_nodes(self.G, self.pos,
@@ -672,9 +683,14 @@ class PlottedGraph:
 					node_shape=sub_style_dict[n]['shape'])
 
 	# returns a dictionary indexed by node ids of plotting styles
-	def get_node_plt_settings(self, G, pos, node_size, args):
+	def get_node_plt_settings(self, args):
+
+		G = self.G
+		pos = self.pos
+		node_size = self.node_size
 
 		# plotting styles
+		gray = '#999999'
 		yellow = '#F0E442'
 		blue = '#0072B2'
 		light_blue = '#56B4E9'
@@ -732,16 +748,20 @@ class PlottedGraph:
 						n_style_dict.update({'color': color_dict['TES']})
 					if node['alt_TES'] and args['color_alt_nodes']:
 						n_style_dict.update({'color': color_dict['alt_TES']})
+				else: 
+					n_style_dict.update({'color': gray})
 
 			# add normal node 
 			style_dict.update({n: n_style_dict})
 
-		return style_dict, sub_style_dict
+
+		self.node_style = style_dict
+		self.sub_node_style = sub_style_dict
 
 	# plot edges according to settings in style_dict
 	def plot_edges(self):
 
-		style_dict = self.e_style_dict
+		style_dict = self.edge_style
 
 		for e in self.G.edges():
 			nx.draw_networkx_edges(self.G, self.pos,
@@ -751,7 +771,12 @@ class PlottedGraph:
 				connectionstyle=style_dict[e]['connectionstyle'])
 
 	# returns a dictionary indexed by edge ids of plotting styles 
-	def get_edge_plt_settings(self, G, ordered_nodes, rad, edge_width, args):
+	def get_edge_plt_settings(self, args):
+
+		G = self.G
+		ordered_nodes = self.ordered_nodes
+		rad = self.rad
+		edge_width = self.edge_width
 
 		# plotting styles
 		pink = '#CC79A7'
@@ -802,7 +827,8 @@ class PlottedGraph:
 					e_style_dict.update({'color': gray})
 
 			style_dict.update({e: e_style_dict})
-		return style_dict
+
+		self.edge_style = style_dict
 
 # creates the duplicate index
 def create_dupe_index(df, ind_name):
