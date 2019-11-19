@@ -87,6 +87,7 @@ def main():
 	temp['ann'] = False
 
 	pg = utils.PlottedGraph(sg, temp)
-	pg.plot_graph(oname)
+	pg.plot_graph(temp)
+	pg.save_fig(oname)
 
 if __name__ == '__main__': main()

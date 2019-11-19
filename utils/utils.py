@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import copy
 from collections import defaultdict
 import sqlite3
 
@@ -165,7 +166,8 @@ class SpliceGraph:
 		edge_df['annotated'] = True # we can assume that since we're working from a gtf, it's an annotation?? (maybe)
 		loc_df['annotated'] = True
 
-		t_df.set_index('tid', inplace=True)
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
 		edge_df.set_index('edge_id', inplace=True)
 
 		return loc_df, edge_df, t_df
@@ -382,6 +384,21 @@ class PlottedGraph:
 		self.get_edge_plt_settings(args)
 		self.get_node_plt_settings(args)
 
+		# accessible fields:
+		# G
+		# loc_df
+		# edge_df
+		# t_df
+		# edge_style
+		# node_style
+		# sub_node_style
+		# pos
+		# ordered_nodes
+		# node_size
+		# rad
+		# label_size
+		# edge_width
+
 	# starting nodes:
 	# 1. have only one outgoing edge AND
 	# 2. have more than one incoming edge | is a TSS | parent is TES AND
@@ -444,7 +461,7 @@ class PlottedGraph:
 		paths = t_df.path.tolist() # apparently this gives me a reference to the paths
 								   # so when updating I'm directly modifying the t_df
 		for path in paths: 
-			for nbp in nbps:
+			for combined_index, nbp in enumerate(nbps):
 
 				# get the nodes that need to be deleted from the path
 				# in the order they need to be deleted 
@@ -460,7 +477,7 @@ class PlottedGraph:
 
 				# add aggregate node tuple instead
 				if insertion_index != -1:
-					path.insert(insertion_index, tuple(nbp))
+					path.insert(insertion_index, 'c{}'.format(combined_index))
 
 		self.t_df = t_df
 		return nbps
@@ -631,13 +648,22 @@ class PlottedGraph:
 		self.label_size = label_size
 		self.edge_width = edge_width
 
+	def save_fig(self, oname):
+		plt.tight_layout()
+		plt.savefig(oname, format='png', dpi=200)
+		plt.clf()
+
 	# plots the whole graph
-	def plot_graph(self, oname):
+	def plot_graph(self, args):
 
 		# plotting stuff
 		plt.figure(1, figsize=(14,10), frameon=False)
 		plt.xlim(-1.05, 1.05)
 		plt.ylim(-1.05, 1.05) 
+
+		# get node/edge colors based on arguments
+		self.get_node_colors(args)
+		self.get_edge_colors(args)
 
 		# plot edges, nodes, and labels
 		self.plot_edges()
@@ -649,13 +675,38 @@ class PlottedGraph:
 
 		self.plot_nodes()
 
-		plt.tight_layout()
-		plt.savefig(oname, format='png', dpi=200)
-
 	# plots a transcript path through a preexisiting 
 	# PlottedGraph graph
-	def plot_transcript_path(self, tid):
-		1
+	def plot_overlaid_path(self, path, args, oname):
+
+		# first plot the preexisting graph in gray
+		args['color_edges'] = args['color_nodes'] = args['color_alt_nodes'] = False
+		self.plot_graph(args)
+
+		# get fields from object
+		G = self.G
+		
+		# get nodes and edges from the input path
+		path_nodes = path
+		path_edges = [(path[i], path[i+1]) for i in range(len(path)-1)]
+
+		# create a subgraph based on the nodes and edges in this path
+		path_pg = copy.deepcopy(self)
+		nodes = [(n,d) for n,d in G.nodes(data=True)
+	    		 if n in path_nodes]
+		edges = [(v1,v2,d) for v1,v2,d in G.edges(data=True)
+				 if (v1,v2) in path_edges]
+	    
+		G = nx.DiGraph()
+		G.add_nodes_from(nodes)
+		G.add_edges_from(edges)
+		path_pg.G = G
+
+		# plot the subgraph of this transcript path on top of 
+		# preexisting graph
+		args['color_edges'] = args['color_nodes'] = args['color_alt_nodes'] = True
+		path_pg.plot_graph(args)
+		path_pg.save_fig(oname)
 
 	# plots a subgraph from a PlottedGraph object
 	def plot_subgraph(self, nodelist, args):
@@ -682,12 +733,11 @@ class PlottedGraph:
 					node_size=sub_style_dict[n]['size'],
 					node_shape=sub_style_dict[n]['shape'])
 
-	# returns a dictionary indexed by node ids of plotting styles
-	def get_node_plt_settings(self, args):
+	# updates the style dict with colors during actual plotting calls
+	def get_node_colors(self, args):
 
+		# get fields from obj that we care about
 		G = self.G
-		pos = self.pos
-		node_size = self.node_size
 
 		# plotting styles
 		gray = '#999999'
@@ -699,6 +749,58 @@ class PlottedGraph:
 		color_dict = {'internal': yellow, 'TSS': blue,
 					  'alt_TSS': light_blue, 'TES': red,
 					  'alt_TES': orange}
+
+		# assign nodes colors based on plotting settings
+		for n in self.G.nodes():
+			node_colors = defaultdict()
+			sub_node_colors = defaultdict()
+			node = G.nodes[n]
+
+			# gray nodes
+			if args['color_nodes'] == False:
+				node_colors.update({'color': gray})
+
+			# combined nodes
+			elif args['combine'] and node['combined']:
+
+				# all makeup of combined node is same type
+				if len(node['combined_types']) == 1:
+					color = color_dict[node['combined_types'][0]]
+					node_colors.update({'color': color})
+
+				# we need to plot more than one thing for combined node
+				else:
+					# color
+					sub_color = color_dict[node['combined_types'][0]]
+					color = color_dict[node['combined_types'][1]]
+					node_colors.update({'color': color})
+					sub_node_colors.update({'color': sub_color})
+
+					# add combined sub-node color
+					self.sub_node_style[n].update(sub_node_colors)
+
+			# non-combined node
+			else:
+				node_colors.update({'color': color_dict['internal']})
+				if node['TSS']: 
+					node_colors.update({'color': color_dict['TSS']})
+				if node['alt_TSS'] and args['color_alt_nodes']:
+					node_colors.update({'color': color_dict['alt_TSS']})
+				if node['TES']:
+					node_colors.update({'color': color_dict['TES']})
+				if node['alt_TES'] and args['color_alt_nodes']:
+					node_colors.update({'color': color_dict['alt_TES']})
+
+			# add color to normal node style
+			self.node_style[n].update(node_colors)
+
+	# returns a dictionary indexed by node ids of plotting styles
+	def get_node_plt_settings(self, args):
+
+		# get fields from object that we care about
+		G = self.G
+		pos = self.pos
+		node_size = self.node_size
 
 		# create a plotting settings dictionary for each node
 		style_dict = defaultdict()
@@ -714,21 +816,10 @@ class PlottedGraph:
 			if args['combine'] and node['combined']:
 				n_style_dict.update({'shape': 'H'})
 
-				# all makeup of combined node is same type
-				if len(node['combined_types']) == 1:
-					color = color_dict[node['combined_types'][0]]
-					n_style_dict.update({'color':color})
-
-				# we need to plot more than one thing for combined node
-				else:
+				if len(node['combined_types']) > 1:
 					# size
 					sub_n_style_dict = defaultdict()
 					sub_n_style_dict.update({'size': node_size/2})
-					# color
-					sub_color = color_dict[node['combined_types'][0]]
-					color = color_dict[node['combined_types'][1]]
-					n_style_dict.update({'color': color})
-					sub_n_style_dict.update({'color': sub_color})
 					# shape
 					sub_n_style_dict.update({'shape': 'H'})
 
@@ -738,18 +829,6 @@ class PlottedGraph:
 			# non-combined node
 			else:
 				n_style_dict.update({'shape': None})
-				n_style_dict.update({'color': color_dict['internal']})
-				if args['color_nodes']:
-					if node['TSS']: 
-						n_style_dict.update({'color': color_dict['TSS']})
-					if node['alt_TSS'] and args['color_alt_nodes']:
-						n_style_dict.update({'color': color_dict['alt_TSS']})
-					if node['TES']:
-						n_style_dict.update({'color': color_dict['TES']})
-					if node['alt_TES'] and args['color_alt_nodes']:
-						n_style_dict.update({'color': color_dict['alt_TES']})
-				else: 
-					n_style_dict.update({'color': gray})
 
 			# add normal node 
 			style_dict.update({n: n_style_dict})
@@ -771,6 +850,31 @@ class PlottedGraph:
 				connectionstyle=style_dict[e]['connectionstyle'])
 
 	# returns a dictionary indexed by edge ids of plotting styles 
+	def get_edge_colors(self, args):
+
+		G = self.G
+
+		# colors
+		pink = '#CC79A7'
+		green = '#009E73'
+		gray = '#999999'
+		color_dict = {'intron': pink, 'exon': green}
+
+		# assign a color for each edge
+		edges = list(G.edges)
+		for e in edges:
+			e_style_dict = {}
+			if args['color_edges']:
+				if G.edges[e]['edge_type'] == 'intron': 
+					e_style_dict.update({'color': color_dict['intron']})
+				elif G.edges[e]['edge_type'] == 'exon':
+					e_style_dict.update({'color': color_dict['exon']})
+			else: 
+				e_style_dict.update({'color': gray})
+
+			self.edge_style[e].update(e_style_dict)
+
+	# returns a dictionary indexed by edge ids of plotting styles 
 	def get_edge_plt_settings(self, args):
 
 		G = self.G
@@ -779,10 +883,6 @@ class PlottedGraph:
 		edge_width = self.edge_width
 
 		# plotting styles
-		pink = '#CC79A7'
-		green = '#009E73'
-		gray = '#999999'
-		color_dict = {'intron': pink, 'exon': green}
 		pos_style = 'arc3,rad={}'.format(rad)
 		neg_style = 'arc3,rad=-{}'.format(rad)
 		straight = None
@@ -816,16 +916,6 @@ class PlottedGraph:
 					e_style_dict.update({'connectionstyle': neg_style})
 					pos *= -1 
 					neg *= -1
-
-			# color
-			if args['color_edges']:
-				if G.edges[e]['edge_type'] == 'intron': 
-					e_style_dict.update({'color': color_dict['intron']})
-				elif G.edges[e]['edge_type'] == 'exon':
-					e_style_dict.update({'color': color_dict['exon']})
-				else: 
-					e_style_dict.update({'color': gray})
-
 			style_dict.update({e: e_style_dict})
 
 		self.edge_style = style_dict
