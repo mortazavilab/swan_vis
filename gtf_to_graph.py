@@ -3,6 +3,8 @@ import argparse
 import pandas as pd
 import pickle
 import os
+# from SpliceGraph import SpliceGraph
+import SpliceGraph as sg
 from utils import *
 
 def get_args():
@@ -31,10 +33,10 @@ def main():
 	gtffile = args.gtf
 	oname = make_oname(args.oname)
 
-	sg = utils.SpliceGraph(gtf=gtffile)
-
+	graph = sg.SpliceGraph(gtf=gtffile)
+	
 	# save to output file
 	with open(oname, 'wb') as ofile:
-		pickle.dump(sg, ofile)
+		pickle.dump(graph, ofile)
 
 if __name__ == '__main__': main()

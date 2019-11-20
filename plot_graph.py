@@ -6,7 +6,11 @@ import matplotlib.pyplot as plt
 import pickle
 import os
 from collections import defaultdict
+import SpliceGraph as sg
+import PlottedGraph as pg
 from utils import *
+from plotting_tools import *
+
 
 def get_args():
 
@@ -77,7 +81,7 @@ def main():
 
 	# load in pickled data
 	with open(args.graph_file, 'rb') as pfile:
-		sg = pickle.load(pfile)
+		splice_graph = pickle.load(pfile)
 
 	temp = defaultdict()
 	temp['color_edges'] = args.color_introns
@@ -86,8 +90,10 @@ def main():
 	temp['combine'] = args.agg_nodes
 	temp['ann'] = False
 
-	pg = utils.PlottedGraph(sg, temp)
-	pg.plot_graph(temp)
-	pg.save_fig(oname)
+	plotted_graph = pg.PlottedGraph(splice_graph, temp)
+	plot_graph(plotted_graph, temp)
+	plotted_graph.save_fig(oname)
+
+	plotted_graph.loc_df.to_csv('test.csv')
 
 if __name__ == '__main__': main()

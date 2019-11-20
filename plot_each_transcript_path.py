@@ -6,7 +6,10 @@ import matplotlib.pyplot as plt
 import pickle
 import os
 from collections import defaultdict
+import SpliceGraph as sg
+import PlottedGraph as pg
 from utils import *
+from plotting_tools import * 
 
 def get_args():
 
@@ -47,7 +50,7 @@ def main():
 
 	# load in pickled data
 	with open(args.graph_file, 'rb') as pfile:
-		sg = pickle.load(pfile)
+		splice_graph = pickle.load(pfile)
 
 	temp = defaultdict()
 	temp['color_edges'] = False
@@ -57,12 +60,12 @@ def main():
 	temp['ann'] = False
 
 	# plot gene graph first
-	pg = utils.PlottedGraph(sg, temp)
+	plotted_graph = pg.PlottedGraph(splice_graph, temp)
 
 	# loop through each transcript path in the graph 
-	for tid in pg.t_df.tid.tolist():
+	for tid in plotted_graph.t_df.tid.tolist():
 		oname = make_oname(args, tid)
-		path = pg.t_df.loc[tid, 'path']
-		pg.plot_overlaid_path(path, temp, oname)
+		path = plotted_graph.t_df.loc[tid, 'path']
+		plot_overlaid_path(plotted_graph, path, temp, oname)
 
 if __name__ == '__main__': main()
