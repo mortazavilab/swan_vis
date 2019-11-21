@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import math
 import copy
 from collections import defaultdict
 import sqlite3
@@ -28,6 +29,7 @@ class SpliceGraph:
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
+		self.merged = False
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def gtf_create_dfs(self, gtffile):
@@ -364,3 +366,111 @@ class SpliceGraph:
 		G = utils.label_edges(G, edge_df, 'edge_type', 'edge_type')
 
 		return G
+
+# merges two splice graph objects and creates a third
+def merge_graphs(a, b):
+
+	# merge loc_dfs based on chrom, coord, strand
+	loc_df = merge_loc_dfs(a.loc_df, b.loc_df)
+
+	# merge edge_df based on new vertex ids 
+	edge_df = merge_edge_dfs(loc_df, a.edge_df, b.edge_df)
+
+	# convert back to ind vertex ids when all NaNs are gone
+
+# merge the edge dfs
+def merge_edge_dfs(loc_df, a, b):
+	b = assign_new_edge_ids(loc_df, b)
+	print('b after remapping')
+	print(b)
+	edge_df = a.merge(b,
+			how='outer',
+			on=['edge_id','v1','v2','edge_type','strand'])
+	return edge_df
+
+# replace vertex ids according to new values in loc_df 
+def assign_new_edge_ids(loc_df, b):
+	id_map = loc_df.apply(lambda x: (x.vertex_id_b, x.vertex_id)
+						if not math.isnan(x.vertex_id_b)
+						else np.nan, axis=1)
+	id_map = dict([i for i in id_map if type(i) == tuple])
+	b.v1 = b.apply(lambda x: id_map[x.v1]
+								if x.v1 in id_map.keys()
+								else x.v1, axis=1)
+	b.v2 = b.apply(lambda x: id_map[x.v2]
+								if x.v2 in id_map.keys()
+								else x.v2, axis=1)
+	b.edge_id = b.apply(lambda x: (x.v1, x.v2), axis=1)
+	return b
+
+# merge loc_dfs
+def merge_loc_dfs(a, b):
+
+	# merge on location info
+	loc_df = a.merge(b,
+			how='outer',
+			on=['chrom', 'coord', 'strand'],
+			suffixes=['_a', '_b'])
+
+	# indicate which dfs each location was already in 
+	loc_df['present_in'] = loc_df.apply(lambda x: loc_present_in(x), axis=1)
+
+	# get and assign new vertex ids to loc_df
+	id_map = get_vertex_id_map(loc_df)
+	loc_df = assign_new_vertex_ids(loc_df, id_map)
+
+
+	return loc_df
+
+def assign_new_vertex_ids(df, id_map):
+	id_map = get_vertex_id_map(df)
+	df['vertex_id'] = df.apply(lambda x: x.vertex_id_a
+						 if x.vertex_id_b not in id_map.keys()
+						 else id_map[x.vertex_id_b], axis=1)
+	return df
+
+# indicates which graphs each location was in before
+def loc_present_in(x):
+	# # a merge has been done before
+	# if 'present_in' in x.columns:
+	# 	datasets = x.present_in
+	# else:
+	# 	datasets = []
+	datasets = []
+	if not math.isnan(x.vertex_id_a) and not math.isnan(x.vertex_id_b):
+		datasets.append('a')
+		datasets.append('b')
+	elif math.isnan(x.vertex_id_a):
+		datasets.append('b')
+	else:
+		datasets.append('a')
+
+	return datasets
+
+# returns the mapping of vertices from b to their new ids
+def get_vertex_id_map(df):
+
+	# # vertices in both graph a and b 
+	# ab_ids = df.apply(lambda x: (x.vertex_id_b, x.vertex_id_a)
+	# 					if 'a' in x.present_in and 'b' in x.present_in
+	# 					else np.nan, axis=1)
+	# ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
+	# vertex_id_map = dict(ab_ids)
+
+	# vertices only in graph b
+	b_ids = df.apply(lambda x: x.vertex_id_b
+						if x.present_in == ['b']
+						else np.nan, axis=1)
+	b_ids = [b_id for b_id in b_ids if not math.isnan(b_id)]
+
+	# new ids for these guys
+	start_b_id = int(df.vertex_id_a.max()+1)
+	new_b_ids = [i for i in range(start_b_id, len(b_ids)+start_b_id)]
+	# vertex_id_map.update(dict(zip(b_ids, new_b_ids)))
+	vertex_id_map = dict(zip(b_ids, new_b_ids))
+
+
+	return vertex_id_map
+
+
+
