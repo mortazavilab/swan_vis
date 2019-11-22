@@ -164,7 +164,7 @@ class SpliceGraph:
 		loc_df.reset_index(inplace=True)
 		loc_df = utils.create_dupe_index(loc_df, 'vertex_id')
 		loc_df = utils.set_dupe_index(loc_df, 'vertex_id')
-		loc_df = self.get_loc_types(loc_df, t_df)
+		loc_df = get_loc_types(loc_df, t_df)
 
 		edge_df['annotated'] = True # we can assume that since we're working from a gtf, it's an annotation?? (maybe)
 		loc_df['annotated'] = True
@@ -262,7 +262,7 @@ class SpliceGraph:
 		loc_df['TES'] = False
 		loc_df['alt_TES'] = False
 		loc_df['annotated'] = True
-		loc_df = self.get_loc_types(loc_df, t_df)
+		loc_df = get_loc_types(loc_df, t_df)
 
 		edge_df['annotated'] = True
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
@@ -304,43 +304,43 @@ class SpliceGraph:
 			strand = edge_df.loc[edge_df.v2 == x.vertex_id, 'strand'].values[0]
 		return strand
 
-	# add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
-	def get_loc_types(self, loc_df, t_df):
+	# # add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
+	# def get_loc_types(self, loc_df, t_df):
 
-		# label each location as internal off the bat, and not as TSS/TES
-		loc_df['internal'] = False
-		loc_df['TSS'] = False
-		loc_df['TES'] = False
-		loc_df['alt_TSS'] = False
-		loc_df['alt_TES'] = False
+	# 	# label each location as internal off the bat, and not as TSS/TES
+	# 	loc_df['internal'] = False
+	# 	loc_df['TSS'] = False
+	# 	loc_df['TES'] = False
+	# 	loc_df['alt_TSS'] = False
+	# 	loc_df['alt_TES'] = False
 
-		# label each TSS and TES
-		paths = t_df.path.tolist()
-		tss = np.unique([path[0] for path in paths])
-		loc_df.loc[tss, 'TSS'] = True
-		tes = np.unique([path[-1] for path in paths])
-		loc_df.loc[tes, 'TES'] = True
-		internal = np.unique([n for path in paths for n in path[1:-1]])
-		loc_df.loc[internal, 'internal'] = True
+	# 	# label each TSS and TES
+	# 	paths = t_df.path.tolist()
+	# 	tss = np.unique([path[0] for path in paths])
+	# 	loc_df.loc[tss, 'TSS'] = True
+	# 	tes = np.unique([path[-1] for path in paths])
+	# 	loc_df.loc[tes, 'TES'] = True
+	# 	internal = np.unique([n for path in paths for n in path[1:-1]])
+	# 	loc_df.loc[internal, 'internal'] = True
 
-		# label each alt TSS and alt TES for each gene
-		for g in t_df.gid.unique().tolist():
-			gene_entries = t_df.loc[t_df.gid == g]
+	# 	# label each alt TSS and alt TES for each gene
+	# 	for g in t_df.gid.unique().tolist():
+	# 		gene_entries = t_df.loc[t_df.gid == g]
 
-			# genes that have more than one transcript are alt TSS/TES candidates
-			if len(gene_entries.index) != 1: 
+	# 		# genes that have more than one transcript are alt TSS/TES candidates
+	# 		if len(gene_entries.index) != 1: 
 
-				paths = gene_entries.path.tolist()
-				tss = [path[0] for path in paths]
-				tes = [path[-1] for path in paths]
+	# 			paths = gene_entries.path.tolist()
+	# 			tss = [path[0] for path in paths]
+	# 			tes = [path[-1] for path in paths]
 
-				# alt TSS/TES
-				if len(set(tss)) > 1: 
-					loc_df.loc[tss, 'alt_TSS'] = True
-				if len(set(tes)) > 1: 
-					loc_df.loc[tes, 'alt_TES'] = True
+	# 			# alt TSS/TES
+	# 			if len(set(tss)) > 1: 
+	# 				loc_df.loc[tss, 'alt_TSS'] = True
+	# 			if len(set(tes)) > 1: 
+	# 				loc_df.loc[tes, 'alt_TES'] = True
 
-		return loc_df
+	# 	return loc_df
 
 	# create the graph object from the dataframes
 	def create_graph_from_dfs(self, loc_df, edge_df, t_df):
@@ -370,36 +370,82 @@ class SpliceGraph:
 # merges two splice graph objects and creates a third
 def merge_graphs(a, b):
 
-	# merge loc_dfs based on chrom, coord, strand
+	# merge loc_dfs based on chrom, coord, strand and update vertex ids
 	loc_df = merge_loc_dfs(a.loc_df, b.loc_df)
+	id_map = get_vertex_id_map(loc_df)
+	loc_df = assign_new_vertex_ids(loc_df, id_map)
 
 	# merge edge_df based on new vertex ids 
-	edge_df = merge_edge_dfs(loc_df, a.edge_df, b.edge_df)
+	b.edge_df = assign_new_edge_ids(b.edge_df, id_map)
+	edge_df = merge_edge_dfs(a.edge_df, b.edge_df)
+	
+	# merge t_df based on new vertex ids
+	b.t_df= assign_new_paths(b.t_df, id_map)
+	t_df = merge_t_dfs(a.t_df, b.t_df)
 
-	# convert back to ind vertex ids when all NaNs are gone
+	# final df formatting
+	loc_df.drop(['vertex_id_a', 'vertex_id_b'], inplace=True, axis=1)
+	loc_df.astype({'vertex_id', 'int'})
+	loc_df = create_dupe_index(loc_df, 'vertex_id')
+	loc_df = set_dupe_index(loc_df, 'vertex_id')
+	loc_df = get_loc_types(loc_df, t_df)
+
+# merge transcript dfs on tid, gid, gname, and path
+def merge_t_dfs(a,b):
+
+	# first convert paths to tuples so we can merge on them
+	a.path = a.apply(lambda x: tuple(x.path), axis=1)
+	b.path = b.apply(lambda x: tuple(x.path), axis=1)
+
+	# add column that allows us to track which dataset this comes from 
+	a['present_in'] = True
+	b['present_in'] = True
+
+	# merge on path ids as well as transcript-associated names and ids
+	t_df = a.merge(b, 
+			how='outer',
+			on=['tid', 'gid', 'gname', 'path'], 
+			suffixes=['_a', '_b'])
+
+	# convert back to lists for path
+	t_df.path = t_df.apply(lambda x: list(x.path), axis=1)
+
+	# assign final dataset column from which each transcript comes from 
+	present_cols = ['present_in_a', 'present_in_b']
+	t_df['present_in'] = t_df.apply(lambda x: present_in(x), axis=1)
+	t_df.drop(present_cols, inplace=True, axis=1)
+
+	return t_df
+
+#
+def assign_new_paths(b, id_map):
+	b.path = b.apply(lambda x: [id_map[n] for n in x.path], axis=1)
+	return b
 
 # merge the edge dfs
-def merge_edge_dfs(loc_df, a, b):
-	b = assign_new_edge_ids(loc_df, b)
-	print('b after remapping')
-	print(b)
+def merge_edge_dfs(a, b):
+
+	# add column that we can track dataset this comes from 
+	a['present_in'] = True
+	b['present_in'] = True
+
+	# merge on edge_id as these have already been updated in merge_graphs
 	edge_df = a.merge(b,
 			how='outer',
-			on=['edge_id','v1','v2','edge_type','strand'])
+			on=['edge_id','v1','v2','edge_type','strand'],
+			suffixes=['_a', '_b'])
+
+	# assign final dataset column from which each edge comes from
+	present_cols = ['present_in_a', 'present_in_b']
+	edge_df['present_in'] = edge_df.apply(lambda x: present_in(x), axis=1)
+	edge_df.drop(present_cols, axis=1, inplace=True)
+
 	return edge_df
 
 # replace vertex ids according to new values in loc_df 
-def assign_new_edge_ids(loc_df, b):
-	id_map = loc_df.apply(lambda x: (x.vertex_id_b, x.vertex_id)
-						if not math.isnan(x.vertex_id_b)
-						else np.nan, axis=1)
-	id_map = dict([i for i in id_map if type(i) == tuple])
-	b.v1 = b.apply(lambda x: id_map[x.v1]
-								if x.v1 in id_map.keys()
-								else x.v1, axis=1)
-	b.v2 = b.apply(lambda x: id_map[x.v2]
-								if x.v2 in id_map.keys()
-								else x.v2, axis=1)
+def assign_new_edge_ids(b, id_map):
+	b.v1 = b.apply(lambda x: id_map[x.v1], axis=1)
+	b.v2 = b.apply(lambda x: id_map[x.v2], axis=1)
 	b.edge_id = b.apply(lambda x: (x.v1, x.v2), axis=1)
 	return b
 
@@ -407,18 +453,23 @@ def assign_new_edge_ids(loc_df, b):
 def merge_loc_dfs(a, b):
 
 	# merge on location info
+	# TODO if I want to do more than one merge, will need to add check here
+	# to see if present_in already exists
+	a['present_in'] = True
+	b['present_in'] = True
+
+	# merge on location info
 	loc_df = a.merge(b,
 			how='outer',
 			on=['chrom', 'coord', 'strand'],
 			suffixes=['_a', '_b'])
+	print(loc_df)
+	present_cols = ['present_in_a', 'present_in_b']
+	loc_df['present_in'] = loc_df.apply(lambda x: present_in(x), axis=1)
+	loc_df.drop(present_cols, axis=1, inplace=True)
 
-	# indicate which dfs each location was already in 
-	loc_df['present_in'] = loc_df.apply(lambda x: loc_present_in(x), axis=1)
-
-	# get and assign new vertex ids to loc_df
-	id_map = get_vertex_id_map(loc_df)
-	loc_df = assign_new_vertex_ids(loc_df, id_map)
-
+	# # indicate which dfs each location was already in 
+	# loc_df['present_in'] = loc_df.apply(lambda x: loc_present_in(x), axis=1)
 
 	return loc_df
 
@@ -429,33 +480,29 @@ def assign_new_vertex_ids(df, id_map):
 						 else id_map[x.vertex_id_b], axis=1)
 	return df
 
-# indicates which graphs each location was in before
-def loc_present_in(x):
+# determines which dfs this entry was present in before the merge
+def present_in(x):
 	# # a merge has been done before
 	# if 'present_in' in x.columns:
 	# 	datasets = x.present_in
 	# else:
 	# 	datasets = []
 	datasets = []
-	if not math.isnan(x.vertex_id_a) and not math.isnan(x.vertex_id_b):
+	if x.present_in_a == True:
 		datasets.append('a')
+	if x.present_in_b == True:
 		datasets.append('b')
-	elif math.isnan(x.vertex_id_a):
-		datasets.append('b')
-	else:
-		datasets.append('a')
-
 	return datasets
 
 # returns the mapping of vertices from b to their new ids
 def get_vertex_id_map(df):
 
-	# # vertices in both graph a and b 
-	# ab_ids = df.apply(lambda x: (x.vertex_id_b, x.vertex_id_a)
-	# 					if 'a' in x.present_in and 'b' in x.present_in
-	# 					else np.nan, axis=1)
-	# ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
-	# vertex_id_map = dict(ab_ids)
+	# vertices in both graph a and b 
+	ab_ids = df.apply(lambda x: (x.vertex_id_b, x.vertex_id_a)
+						if 'a' in x.present_in and 'b' in x.present_in
+						else np.nan, axis=1)
+	ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
+	vertex_id_map = dict(ab_ids)
 
 	# vertices only in graph b
 	b_ids = df.apply(lambda x: x.vertex_id_b
@@ -466,11 +513,47 @@ def get_vertex_id_map(df):
 	# new ids for these guys
 	start_b_id = int(df.vertex_id_a.max()+1)
 	new_b_ids = [i for i in range(start_b_id, len(b_ids)+start_b_id)]
-	# vertex_id_map.update(dict(zip(b_ids, new_b_ids)))
-	vertex_id_map = dict(zip(b_ids, new_b_ids))
-
+	vertex_id_map.update(dict(zip(b_ids, new_b_ids)))
 
 	return vertex_id_map
+
+# add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
+def get_loc_types(loc_df, t_df):
+
+	# label each location as internal off the bat, and not as TSS/TES
+	loc_df['internal'] = False
+	loc_df['TSS'] = False
+	loc_df['TES'] = False
+	loc_df['alt_TSS'] = False
+	loc_df['alt_TES'] = False
+
+	# label each TSS and TES
+	paths = t_df.path.tolist()
+	tss = np.unique([path[0] for path in paths])
+	loc_df.loc[tss, 'TSS'] = True
+	tes = np.unique([path[-1] for path in paths])
+	loc_df.loc[tes, 'TES'] = True
+	internal = np.unique([n for path in paths for n in path[1:-1]])
+	loc_df.loc[internal, 'internal'] = True
+
+	# label each alt TSS and alt TES for each gene
+	for g in t_df.gid.unique().tolist():
+		gene_entries = t_df.loc[t_df.gid == g]
+
+		# genes that have more than one transcript are alt TSS/TES candidates
+		if len(gene_entries.index) != 1: 
+
+			paths = gene_entries.path.tolist()
+			tss = [path[0] for path in paths]
+			tes = [path[-1] for path in paths]
+
+			# alt TSS/TES
+			if len(set(tss)) > 1: 
+				loc_df.loc[tss, 'alt_TSS'] = True
+			if len(set(tes)) > 1: 
+				loc_df.loc[tes, 'alt_TES'] = True
+
+	return loc_df
 
 
 
