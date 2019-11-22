@@ -56,10 +56,10 @@ class PlottedGraph:
 	def update_sub_node_style(self, n, field, value):
 		self.sub_node_style[n].update({field: value})
 
-	def save_fig(self, oname):
-		plt.tight_layout()
-		plt.savefig(oname, format='png', dpi=200)
-		plt.clf()
+	# def save_fig(self, oname):
+	# 	plt.tight_layout()
+	# 	plt.savefig(oname, format='png', dpi=200)
+	# 	plt.clf()
 
 	# plots a subgraph from a PlottedGraph object
 	def plot_subgraph(self, nodelist, args):
@@ -155,7 +155,7 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 	loc_df['agg_path'] = np.nan
 	loc_df['combined'] = False
 	loc_df['combined_types'] = np.nan
-	edge_df.reset_index(inplace=True)
+	edge_df = reset_dupe_index(edge_df, 'edge_id')
 
 	# loop through each nonbranching path
 	for path in nbps: 
@@ -215,20 +215,20 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 		chrom = loc_df.loc[loc_df.vertex_id == start, 'chrom'].tolist()[0]
 		strand = loc_df.loc[loc_df.vertex_id == start, 'strand'].tolist()[0]
 		tss = alt_tss = tes = alt_tes = internal = False
-		annotated = True
+		# annotated = True
 		for n in path:
 			if mod_G.nodes[n]['TSS']: tss = True
 			if mod_G.nodes[n]['TES']: tes = True
 			if mod_G.nodes[n]['alt_TSS']: alt_tss = True
 			if mod_G.nodes[n]['alt_TES']: alt_tes = True
 			if mod_G.nodes[n]['internal']: internal = True
-			if not mod_G.nodes[n]['annotated']: annotated = False
+			# if not mod_G.nodes[n]['annotated']: annotated = False
 
 		# add the aggregate node and all associated edges to modified graph
 		node_attrs = {'TSS': tss, 'TES': tes,
 					  'alt_TSS': alt_tss, 'alt_TES': alt_tes,
-					  'internal': internal, 'coord': coord,
-					  'annotated': annotated}
+					  'internal': internal, 'coord': coord}
+					  # 'annotated': annotated}
 		mod_G.add_node(combined_node)
 		nx.set_node_attributes(mod_G, {combined_node: node_attrs})
 
@@ -256,13 +256,13 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 		# increment combined node index
 		combined_index += 1
 
-	edge_df.set_index('edge_ID', inplace=True)
+	edge_df = set_dupe_index(edge_df, 'edge_id')
 
 	# finally, label all nodes that are now in the graph with their "combined" 
 	# status
-	mod_G = utils.label_nodes(mod_G, loc_df, 'combined', 'combined')
-	mod_G = utils.label_nodes(mod_G, loc_df, 'combined_types', 'combined_types')
-	mod_G = utils.label_nodes(mod_G, loc_df, 'agg_path', 'agg_path')
+	mod_G = label_nodes(mod_G, loc_df, 'combined', 'combined')
+	mod_G = label_nodes(mod_G, loc_df, 'combined_types', 'combined_types')
+	mod_G = label_nodes(mod_G, loc_df, 'agg_path', 'agg_path')
 
 	return mod_G, loc_df, edge_df, t_df
 
@@ -366,6 +366,19 @@ def get_node_plt_settings(G, pos, node_size, args):
 
 				# add combined sub-node
 				sub_node_style.update({n: sub_curr_style})
+
+		# if this node is only in the indicate_dataset dataset
+		# if args['indicate_dataset'] is not None:
+
+		# 	# get dataset column we want to highlight as well as all
+		# 	# dataset columns from node
+		# 	d_field = 'dataset_'+args['indicate_dataset']
+		# 	d_fields = [k for k in d.keys() if 'dataset_' in k]
+
+		# 	# is this node only seen in the query dataset?
+		# 	unique_to_dataset = True if sum(d[i] for i in d_cols == 1) else False
+		# 	if unique_to_dataset:
+		# 		1
 
 		# non-combined node
 		else:

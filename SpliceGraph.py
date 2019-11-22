@@ -69,12 +69,14 @@ class SpliceGraph:
 
 				# gene entry 
 				if line[2] == 'gene':
-					curr_gid = utils.get_field_value('gene_id', line[-1])
-					curr_gname = utils.get_field_value('gene_name', line[-1])
+					print('hello1')
+					curr_gid = get_field_value('gene_id', line[-1])
+					print('hello world')
+					curr_gname = get_field_value('gene_name', line[-1])
 
 				# transcript entry
 				elif line[2] == 'transcript':
-					curr_tid = utils.get_field_value('transcript_id', line[-1])
+					curr_tid = get_field_value('transcript_id', line[-1])
 					
 					# start a new transcript path
 					if transcript_path != []:
@@ -169,16 +171,18 @@ class SpliceGraph:
 
 		# label node/edge types and finish formatting dfs correctly
 		loc_df.reset_index(inplace=True)
-		loc_df = utils.create_dupe_index(loc_df, 'vertex_id')
-		loc_df = utils.set_dupe_index(loc_df, 'vertex_id')
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		loc_df = get_loc_types(loc_df, t_df)
 
-		edge_df['annotated'] = True # we can assume that since we're working from a gtf, it's an annotation?? (maybe)
-		loc_df['annotated'] = True
+		# edge_df['annotated'] = True # we can assume that since we're working from a gtf, it's an annotation?? (maybe)
+		# loc_df['annotated'] = True
 
-		t_df = utils.create_dupe_index(t_df, 'tid')
-		t_df = utils.set_dupe_index(t_df, 'tid')
-		edge_df.set_index('edge_id', inplace=True)
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
 
 		return loc_df, edge_df, t_df
 
@@ -253,28 +257,28 @@ class SpliceGraph:
 		t_df['gname'] = np.asarray(gnames)
 		t_df['path'] = np.asarray(paths)
 
-		t_df = utils.create_dupe_index(t_df, 'tid')
-		t_df = utils.set_dupe_index(t_df, 'tid')
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
 
 		# furnish the last bit of info in each df
 		t_df['path'] = [[int(n) for n in path]
 						 for path in self.get_vertex_paths(paths, edge_df)]
 		loc_df['strand'] = loc_df.apply(lambda x:
 				 self.get_strand(x, edge_df), axis=1)
-		loc_df = utils.create_dupe_index(loc_df, 'vertex_id')
-		loc_df = utils.set_dupe_index(loc_df, 'vertex_id')
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		loc_df['internal'] = False
 		loc_df['TSS'] = False
 		loc_df['alt_TSS'] = False
 		loc_df['TES'] = False
 		loc_df['alt_TES'] = False
-		loc_df['annotated'] = True
+		# loc_df['annotated'] = True
 		loc_df = get_loc_types(loc_df, t_df)
 
-		edge_df['annotated'] = True
+		# edge_df['annotated'] = True
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
-		edge_df = utils.create_dupe_index(edge_df, 'edge_id')
-		edge_df = utils.set_dupe_index(edge_df, 'edge_id')
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
 
 		return loc_df, edge_df, t_df
 
@@ -323,57 +327,80 @@ class SpliceGraph:
 			nx.add_path(G, path)
 
 		# add node attributes from dfs
-		G = utils.label_nodes(G, loc_df, 'internal', 'internal') 
-		G = utils.label_nodes(G, loc_df, 'TSS', 'TSS') 
-		G = utils.label_nodes(G, loc_df, 'alt_TSS', 'alt_TSS') 
-		G = utils.label_nodes(G, loc_df, 'TES', 'TES')
-		G = utils.label_nodes(G, loc_df, 'alt_TES', 'alt_TES')
-		G = utils.label_nodes(G, loc_df, 'coord', 'coord')
-		G = utils.label_nodes(G, loc_df, 'annotated', 'annotated')
-		G = utils.label_edges(G, edge_df, 'annotated', 'annotated')
-		G = utils.label_edges(G, edge_df, 'strand', 'strand')
-		G = utils.label_edges(G, edge_df, 'edge_type', 'edge_type')
+		G = label_nodes(G, loc_df, 'internal', 'internal') 
+		G = label_nodes(G, loc_df, 'TSS', 'TSS') 
+		G = label_nodes(G, loc_df, 'alt_TSS', 'alt_TSS') 
+		G = label_nodes(G, loc_df, 'TES', 'TES')
+		G = label_nodes(G, loc_df, 'alt_TES', 'alt_TES')
+		G = label_nodes(G, loc_df, 'coord', 'coord')
+		# G = label_nodes(G, loc_df, 'annotated', 'annotated')
+		# G = label_edges(G, edge_df, 'annotated', 'annotated')
+		G = label_edges(G, edge_df, 'strand', 'strand')
+		G = label_edges(G, edge_df, 'edge_type', 'edge_type')
 
 		return G
 
 # merges two splice graph objects and creates a third
-def merge_graphs(a, b):
+def merge_graphs(a, b, aname, bname):
+
+	# remove indices for each df
+	a.loc_df.reset_index(drop=True, inplace=True)
+	a.edge_df.reset_index(drop=True, inplace=True)
+	a.t_df.reset_index(drop=True, inplace=True)
+	b.loc_df.reset_index(drop=True, inplace=True)
+	b.edge_df.reset_index(drop=True, inplace=True)
+	b.t_df.reset_index(drop=True, inplace=True)
+
+	# dataset columns
+	a_col = 'dataset_'+aname
+	b_col = 'dataset_'+bname
 
 	# merge loc_dfs based on chrom, coord, strand and update vertex ids
-	loc_df = merge_loc_dfs(a.loc_df, b.loc_df)
-	id_map = get_vertex_id_map(loc_df)
+	loc_df = merge_loc_dfs(a.loc_df, b.loc_df, a_col, b_col)
+	id_map = get_vertex_id_map(loc_df, a_col, b_col)
 	loc_df = assign_new_vertex_ids(loc_df, id_map)
 
 	# merge edge_df based on new vertex ids 
 	b.edge_df = assign_new_edge_ids(b.edge_df, id_map)
-	edge_df = merge_edge_dfs(a.edge_df, b.edge_df)
+	edge_df = merge_edge_dfs(a.edge_df, b.edge_df, a_col, b_col)
 	
 	# merge t_df based on new vertex ids
 	b.t_df= assign_new_paths(b.t_df, id_map)
-	t_df = merge_t_dfs(a.t_df, b.t_df)
+	t_df = merge_t_dfs(a.t_df, b.t_df, a_col, b_col)
 
 	# final df formatting
 	loc_df.drop(['vertex_id_a', 'vertex_id_b'], inplace=True, axis=1)
-	loc_df.astype({'vertex_id', 'int'})
 	loc_df = create_dupe_index(loc_df, 'vertex_id')
 	loc_df = set_dupe_index(loc_df, 'vertex_id')
 	loc_df = get_loc_types(loc_df, t_df)
 
+	edge_df = create_dupe_index(edge_df, 'edge_id')
+	edge_df = set_dupe_index(edge_df, 'edge_id')
+
+	t_df = create_dupe_index(t_df, 'tid')
+	t_df = set_dupe_index(t_df, 'tid')
+
 	# finally, let's make the merged graph
 	sg = SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
 
-	# and make sure to indicate nodes/edges that come from dataset b in the graph
+	# assign labels to nodes and edges based on what dataset they came from
+	sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
+	sg.G = label_nodes(sg.G, loc_df, b_col, b_col)
+	sg.G = label_edges(sg.G, edge_df, a_col, a_col)
+	sg.G = label_edges(sg.G, edge_df, b_col, b_col)
+
+	return sg
 
 # merge transcript dfs on tid, gid, gname, and path
-def merge_t_dfs(a,b):
+def merge_t_dfs(a,b,a_col,b_col):
+
+	# track which datasets each transcript is in 
+	a[a_col] = True
+	b[b_col] = True
 
 	# first convert paths to tuples so we can merge on them
 	a.path = a.apply(lambda x: tuple(x.path), axis=1)
 	b.path = b.apply(lambda x: tuple(x.path), axis=1)
-
-	# add column that allows us to track which dataset this comes from 
-	a['present_in'] = True
-	b['present_in'] = True
 
 	# merge on path ids as well as transcript-associated names and ids
 	t_df = a.merge(b, 
@@ -384,10 +411,8 @@ def merge_t_dfs(a,b):
 	# convert back to lists for path
 	t_df.path = t_df.apply(lambda x: list(x.path), axis=1)
 
-	# assign final dataset column from which each transcript comes from 
-	present_cols = ['present_in_a', 'present_in_b']
-	t_df['present_in'] = t_df.apply(lambda x: present_in(x), axis=1)
-	t_df.drop(present_cols, inplace=True, axis=1)
+	# assign False to entries that are not in one dataset or another 
+	t_df[[a_col, b_col]] = t_df[[a_col, b_col]].fillna(value=False, axis=1)
 
 	return t_df
 
@@ -397,11 +422,11 @@ def assign_new_paths(b, id_map):
 	return b
 
 # merge the edge dfs
-def merge_edge_dfs(a, b):
+def merge_edge_dfs(a, b, a_col, b_col):
 
 	# add column that we can track dataset this comes from 
-	a['present_in'] = True
-	b['present_in'] = True
+	a[a_col] = True
+	b[b_col] = True
 
 	# merge on edge_id as these have already been updated in merge_graphs
 	edge_df = a.merge(b,
@@ -409,10 +434,8 @@ def merge_edge_dfs(a, b):
 			on=['edge_id','v1','v2','edge_type','strand'],
 			suffixes=['_a', '_b'])
 
-	# assign final dataset column from which each edge comes from
-	present_cols = ['present_in_a', 'present_in_b']
-	edge_df['present_in'] = edge_df.apply(lambda x: present_in(x), axis=1)
-	edge_df.drop(present_cols, axis=1, inplace=True)
+	# assign False to entries that are not in one dataset or another 
+	edge_df[[a_col, b_col]] = edge_df[[a_col, b_col]].fillna(value=False, axis=1)
 
 	return edge_df
 
@@ -424,29 +447,25 @@ def assign_new_edge_ids(b, id_map):
 	return b
 
 # merge loc_dfs
-def merge_loc_dfs(a, b):
+def merge_loc_dfs(a, b, a_col, b_col):
 
 	# merge on location info
-	# TODO if I want to do more than one merge, will need to add check here
-	# to see if present_in already exists
-	a['present_in'] = True
-	b['present_in'] = True
+	a[a_col] = True
+	b[b_col] = True
 
 	# merge on location info
 	loc_df = a.merge(b,
 			how='outer',
 			on=['chrom', 'coord', 'strand'],
-			suffixes=['_a', '_b'])
+			suffixes=['_a','_b'])
 
-	# assign final dataset column from which each vertex comes from
-	present_cols = ['present_in_a', 'present_in_b']
-	loc_df['present_in'] = loc_df.apply(lambda x: present_in(x), axis=1)
-	loc_df.drop(present_cols, axis=1, inplace=True)
+	# assign False to entries that are not in one dataset or another 
+	loc_df[[a_col, b_col]] = loc_df[[a_col, b_col]].fillna(value=False, axis=1)
 
 	return loc_df
 
 def assign_new_vertex_ids(df, id_map):
-	id_map = get_vertex_id_map(df)
+	# id_map = get_vertex_id_map(df)
 	df['vertex_id'] = df.apply(lambda x: x.vertex_id_a
 						 if x.vertex_id_b not in id_map.keys()
 						 else id_map[x.vertex_id_b], axis=1)
@@ -467,18 +486,18 @@ def present_in(x):
 	return datasets
 
 # returns the mapping of vertices from b to their new ids
-def get_vertex_id_map(df):
+def get_vertex_id_map(df, a_col, b_col):
 
 	# vertices in both graph a and b 
 	ab_ids = df.apply(lambda x: (x.vertex_id_b, x.vertex_id_a)
-						if 'a' in x.present_in and 'b' in x.present_in
+						if x[a_col] and x[b_col]
 						else np.nan, axis=1)
 	ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
 	vertex_id_map = dict(ab_ids)
 
 	# vertices only in graph b
 	b_ids = df.apply(lambda x: x.vertex_id_b
-						if x.present_in == ['b']
+						if not x[a_col] and x[b_col]
 						else np.nan, axis=1)
 	b_ids = [b_id for b_id in b_ids if not math.isnan(b_id)]
 
@@ -526,6 +545,28 @@ def get_loc_types(loc_df, t_df):
 				loc_df.loc[tes, 'alt_TES'] = True
 
 	return loc_df
+
+# partner function to label_edges
+def set_edge_attrs(x, G, f_df, f_e):
+	attr = {(x.v1, x.v2): {f_e: x[f_df]}}
+	nx.set_edge_attributes(G, attr)
+	return G
+
+# label edges in G based on fields of edge_df
+def label_edges(G, edge_df, f_df, f_e):
+	edge_df.apply(lambda x: set_edge_attrs(x, G, f_df, f_e), axis=1)
+	return G
+
+# parter function to label_nodes
+def set_node_attrs(x, G, f_df, f_n):
+	attr = {x.vertex_id: {f_n: x[f_df]}}
+	nx.set_node_attributes(G, attr)
+	return G
+
+# label nodes in G based on fields of loc_df
+def label_nodes(G, loc_df, f_df, f_n):
+	loc_df.apply(lambda x: set_node_attrs(x, G, f_df, f_n), axis=1)
+	return G
 
 
 

@@ -21,40 +21,27 @@ class TestMergeSGs(object):
 			'coord': [1,1,1],
 			'strand': ['+', '-', '+'],
 			'vertex_id': [0,1,2]})
-		merged = sg.merge_loc_dfs(a,b)
+		loc_df = sg.merge_loc_dfs(a,b,'dataset_a','dataset_b')
+		id_map = sg.get_vertex_id_map(loc_df, 'dataset_a', 'dataset_b')
+		loc_df = sg.assign_new_vertex_ids(loc_df, id_map)
 
-		print(merged)
-		# TODO this test case isn't good enough
-		assert len(merged.index) == 4
+		print(loc_df)
+		assert len(loc_df.index) == 4
 
-	def test_assign_locs_present(self):
-		df = pd.DataFrame({'chrom': [1,2,3,4],
-			'coord': [1,1,1,1],
-			'strand': ['+', '-', '+','+'],
-			'vertex_id_a': [0,1,2,np.nan],
-			'vertex_id_b': [0,1,np.nan,2],
-			'present_in_a':[True,True,True,False],
-			'present_in_b':[True,True,False,True]})
+		# make sure that locations are being assigned to correct datasets
+		loc_dataset_pair_a = [(loc_id,d_a)
+			for loc_id,d_a in zip(loc_df.vertex_id.tolist(),loc_df.dataset_a.tolist())]
+		print('loc dataset a pair')
+		print(loc_dataset_pair_a)
+		control = [(0,True), (1,True), (2,True), (3,False)]
+		check_pairs(control, loc_dataset_pair_a)
 
-		df['present_in'] = df.apply(lambda x: sg.present_in(x), axis=1)
-
-		print(df)
-
-		p = df.loc[df.vertex_id_a == 0, 'present_in'].tolist()[0]
-		print(p)
-		assert p == ['a', 'b']
-
-		p = df.loc[df.vertex_id_a == 1, 'present_in'].tolist()[0]
-		print(p)
-		assert p == ['a', 'b']
-
-		p = df.loc[df.vertex_id_a == 2, 'present_in'].tolist()[0]
-		print(p)
-		assert p == ['a']
-
-		p = df.loc[df.vertex_id_b == 2, 'present_in'].tolist()[0]
-		print(p)
-		assert p == ['b']
+		loc_dataset_pair_b = [(loc_id,d_b)
+			for loc_id,d_b in zip(loc_df.vertex_id.tolist(),loc_df.dataset_b.tolist())]
+		print('loc dataset b pair')
+		print(loc_dataset_pair_b)
+		control = [(0,True), (1,True), (2,False), (3,True)]
+		check_pairs(control, loc_dataset_pair_b)	
 
 	def test_get_vertex_id_map(self):
 		df = pd.DataFrame({'chrom': [1,2,3,4],
@@ -62,8 +49,9 @@ class TestMergeSGs(object):
 			'strand': ['+', '-', '+', '+'],
 			'vertex_id_a': [0,1,2,np.nan],
 			'vertex_id_b': [3,4,np.nan,5],
-			'present_in': [['a','b'],['a','b'],['a'],['b']]})
-		b_map = sg.get_vertex_id_map(df)
+			'dataset_a': [True,True,True,False],
+			'dataset_b': [True,True,False,True]})
+		b_map = sg.get_vertex_id_map(df, 'dataset_a', 'dataset_b')
 		print(b_map)
 		assert b_map == {3:0, 4:1, 5:3}
 
@@ -122,17 +110,29 @@ class TestMergeSGs(object):
 						  'v2': [3,1,3],
 						  'edge_type': ['exon', 'exon', 'intron'],
 						  'strand': ['+','+','+']})
-		edge_df = sg.merge_edge_dfs(a, b)
+		edge_df = sg.merge_edge_dfs(a, b, 'dataset_a', 'dataset_b')
 
 		# test that correct edge ids assigned
 		assert set(edge_df.edge_id.tolist()) == set([(0,2),(0,1),(1,2),(0,3),(1,3)])
 
 		# check that edge ids were indicated as present in the right dfs
-		id_present_pairs = [(e_id, tuple(p))
-				for e_id,p in zip(edge_df.edge_id.tolist(),edge_df.present_in.tolist())]
-		print(id_present_pairs)
-		control_pairs = [((0,2),('a',)),((0,1),('a','b')),((1,2),('a',)),((0,3),('b',)),((1,3),('b',))]
-		check_pairs(control_pairs, id_present_pairs)
+		id_dataset_a_pairs = [(e_id, d_a)
+				for e_id,d_a in zip(edge_df.edge_id.tolist(),edge_df.dataset_a.tolist())]
+		print('id dataset a pairs')
+		print(id_dataset_a_pairs)
+		control_pairs = [((0,2),True),((0,1),True),((1,2),True),((0,3),False),((1,3),False)]
+		check_pairs(control_pairs, id_dataset_a_pairs)
+
+		# check that edge ids were indicated as present in the right dfs
+		print(edge_df)
+		print(edge_df.edge_id.tolist())
+		print(edge_df.dataset_b.tolist())
+		id_dataset_b_pairs = [(e_id, d_b)
+				for e_id,d_b in zip(edge_df.edge_id.tolist(),edge_df.dataset_b.tolist())]
+		print('id dataset b pairs')
+		print(id_dataset_b_pairs)
+		control_pairs = [((0,2),False),((0,1),True),((1,2),False),((0,3),True),((1,3),True)]
+		check_pairs(control_pairs, id_dataset_b_pairs)
 
 	def test_assign_new_paths(self):
 		id_map = {3:0, 4:1, 5:3}
@@ -156,7 +156,7 @@ class TestMergeSGs(object):
 				  'gid':[0,0,0],
 				  'gname':['0','0','0'],
 				  'path':[[0,1,3],[0,3],[0,1]]})
-		t_df = sg.merge_t_dfs(a,b)
+		t_df = sg.merge_t_dfs(a,b,'dataset_a','dataset_b')
 
 		# this will make sure that tids have the same path?
 		paths = [tuple(path) for path in t_df.path.tolist()]
@@ -167,11 +167,19 @@ class TestMergeSGs(object):
 		check_pairs(control_pairs, tid_path_pairs)
 
 		# test that these were correctly identified as from each dataset
-		tid_present_pairs = [(tid,tuple(p))
-			for tid,p in zip(t_df.tid.tolist(),t_df.present_in.tolist())]
-		print(tid_present_pairs)
-		control_pairs = [(0,('a',)),(1,('a',)),(2,('b',)),(4,('b',)),(3,('a','b'))]
-		check_pairs(control_pairs, tid_present_pairs)
+		tid_dataset_a_pairs = [(tid,d_a)
+			for tid,d_a in zip(t_df.tid.tolist(),t_df.dataset_a.tolist())]
+		print('tid dataset a pairs')
+		print(tid_dataset_a_pairs)
+		control_pairs = [(0,True),(1,True),(2,False),(4,False),(3,True)]
+		check_pairs(control_pairs, tid_dataset_a_pairs)
+
+		tid_dataset_b_pairs = [(tid,d_b)
+			for tid,d_b in zip(t_df.tid.tolist(),t_df.dataset_b.tolist())]
+		print('tid dataset b pairs')
+		print(tid_dataset_b_pairs)
+		control_pairs = [(0,False),(1,False),(2,True),(4,True),(3,True)]
+		check_pairs(control_pairs, tid_dataset_b_pairs)
 
 def check_pairs(control, test):
 	print('control')

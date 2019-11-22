@@ -8,7 +8,6 @@ from collections import defaultdict
 import sqlite3
 import SpliceGraph as sg
 import PlottedGraph as pg
-from utils import *
 
 # updates the style dict with colors during actual plotting calls
 def get_node_colors(G, node_style, sub_node_style, args):
@@ -27,7 +26,7 @@ def get_node_colors(G, node_style, sub_node_style, args):
 				  'alt_TES': orange}
 
 	# assign nodes colors based on plotting settings
-	for n in G.nodes():
+	for n,d in G.nodes(data=True):
 		node_colors = defaultdict()
 		sub_node_colors = defaultdict()
 		node = G.nodes[n]
@@ -37,18 +36,18 @@ def get_node_colors(G, node_style, sub_node_style, args):
 			node_colors.update({'color': gray})
 
 		# combined nodes
-		elif args['combine'] and node['combined']:
+		elif args['combine'] and d['combined']:
 
 			# all makeup of combined node is same type
-			if len(node['combined_types']) == 1:
-				color = color_dict[node['combined_types'][0]]
+			if len(d['combined_types']) == 1:
+				color = color_dict[d['combined_types'][0]]
 				node_colors.update({'color': color})
 
 			# we need to plot more than one thing for combined node
 			else:
 				# color
-				sub_color = color_dict[node['combined_types'][0]]
-				color = color_dict[node['combined_types'][1]]
+				sub_color = color_dict[d['combined_types'][0]]
+				color = color_dict[d['combined_types'][1]]
 				node_colors.update({'color': color})
 				sub_node_colors.update({'color': sub_color})
 
@@ -58,13 +57,13 @@ def get_node_colors(G, node_style, sub_node_style, args):
 		# non-combined node
 		else:
 			node_colors.update({'color': color_dict['internal']})
-			if node['TSS']: 
+			if d['TSS']: 
 				node_colors.update({'color': color_dict['TSS']})
-			if node['alt_TSS'] and args['color_alt_nodes']:
+			if d['alt_TSS'] and args['color_alt_nodes']:
 				node_colors.update({'color': color_dict['alt_TSS']})
-			if node['TES']:
+			if d['TES']:
 				node_colors.update({'color': color_dict['TES']})
-			if node['alt_TES'] and args['color_alt_nodes']:
+			if d['alt_TES'] and args['color_alt_nodes']:
 				node_colors.update({'color': color_dict['alt_TES']})
 
 		# add color to normal node style
@@ -149,9 +148,8 @@ def plot_graph(pg, args):
 
 	plot_nodes(pg.G, pg.pos, node_style, sub_node_style)
 
-# plots a transcript path through a preexisiting 
-# PlottedGraph graph
-def plot_overlaid_path(pg, path, args, oname):
+# plots a transcript path through a preexisiting PlottedGraph graph
+def plot_overlaid_path(pg, path, args):
 
 	# first plot the preexisting graph in gray
 	args['color_edges'] = args['color_nodes'] = args['color_alt_nodes'] = False
@@ -177,4 +175,9 @@ def plot_overlaid_path(pg, path, args, oname):
 	# preexisting graph
 	args['color_edges'] = args['color_nodes'] = args['color_alt_nodes'] = True
 	plot_graph(path_pg, args)
-	path_pg.save_fig(oname)
+	# save_fig(oname)
+
+def save_fig(oname):
+	plt.tight_layout()
+	plt.savefig(oname, format='png', dpi=200)
+	plt.clf()
