@@ -10,26 +10,33 @@ import sqlite3
 from utils import *
 
 class SpliceGraph:
-	def __init__(self, gtf=None, talon_db=None):
+	def __init__(self, gtf=None, talon_db=None,
+				 loc_df=None, edge_df=None, t_df=None):
 
 		if not gtf and not talon_db:
-			raise Exception('No input to SpliceGraph given.')
+			if loc_df is None or edge_df is None or t_df is None:
+				raise Exception('No workable input to SpliceGraph given.')
 
-		# GTF
-		if gtf:
+		# loc_df, edge_df, and t_df as input
+		if loc_df is not None and edge_df is not None and t_df is not None:
+			1
+		# GTF as input
+		elif gtf:
 			if not os.path.exists(gtf):
 				raise Exception('GTF file not found. Check path.')
 			loc_df, edge_df, t_df = self.gtf_create_dfs(gtf)
-		if talon_db: 
+		# TALON DB as input
+		elif talon_db: 
 			if not os.path.exists(talon_db):
 				raise Exception('TALON db file not found. Check path.')
 			loc_df, edge_df, t_df = self.db_create_dfs(talon_db)
+		
 
 		self.G = self.create_graph_from_dfs(loc_df, edge_df, t_df)
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
-		self.merged = False
+		# self.merged = False
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def gtf_create_dfs(self, gtffile):
@@ -304,44 +311,6 @@ class SpliceGraph:
 			strand = edge_df.loc[edge_df.v2 == x.vertex_id, 'strand'].values[0]
 		return strand
 
-	# # add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
-	# def get_loc_types(self, loc_df, t_df):
-
-	# 	# label each location as internal off the bat, and not as TSS/TES
-	# 	loc_df['internal'] = False
-	# 	loc_df['TSS'] = False
-	# 	loc_df['TES'] = False
-	# 	loc_df['alt_TSS'] = False
-	# 	loc_df['alt_TES'] = False
-
-	# 	# label each TSS and TES
-	# 	paths = t_df.path.tolist()
-	# 	tss = np.unique([path[0] for path in paths])
-	# 	loc_df.loc[tss, 'TSS'] = True
-	# 	tes = np.unique([path[-1] for path in paths])
-	# 	loc_df.loc[tes, 'TES'] = True
-	# 	internal = np.unique([n for path in paths for n in path[1:-1]])
-	# 	loc_df.loc[internal, 'internal'] = True
-
-	# 	# label each alt TSS and alt TES for each gene
-	# 	for g in t_df.gid.unique().tolist():
-	# 		gene_entries = t_df.loc[t_df.gid == g]
-
-	# 		# genes that have more than one transcript are alt TSS/TES candidates
-	# 		if len(gene_entries.index) != 1: 
-
-	# 			paths = gene_entries.path.tolist()
-	# 			tss = [path[0] for path in paths]
-	# 			tes = [path[-1] for path in paths]
-
-	# 			# alt TSS/TES
-	# 			if len(set(tss)) > 1: 
-	# 				loc_df.loc[tss, 'alt_TSS'] = True
-	# 			if len(set(tes)) > 1: 
-	# 				loc_df.loc[tes, 'alt_TES'] = True
-
-	# 	return loc_df
-
 	# create the graph object from the dataframes
 	def create_graph_from_dfs(self, loc_df, edge_df, t_df):
 
@@ -389,6 +358,11 @@ def merge_graphs(a, b):
 	loc_df = create_dupe_index(loc_df, 'vertex_id')
 	loc_df = set_dupe_index(loc_df, 'vertex_id')
 	loc_df = get_loc_types(loc_df, t_df)
+
+	# finally, let's make the merged graph
+	sg = SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+
+	# and make sure to indicate nodes/edges that come from dataset b in the graph
 
 # merge transcript dfs on tid, gid, gname, and path
 def merge_t_dfs(a,b):
@@ -463,13 +437,11 @@ def merge_loc_dfs(a, b):
 			how='outer',
 			on=['chrom', 'coord', 'strand'],
 			suffixes=['_a', '_b'])
-	print(loc_df)
+
+	# assign final dataset column from which each vertex comes from
 	present_cols = ['present_in_a', 'present_in_b']
 	loc_df['present_in'] = loc_df.apply(lambda x: present_in(x), axis=1)
 	loc_df.drop(present_cols, axis=1, inplace=True)
-
-	# # indicate which dfs each location was already in 
-	# loc_df['present_in'] = loc_df.apply(lambda x: loc_present_in(x), axis=1)
 
 	return loc_df
 
