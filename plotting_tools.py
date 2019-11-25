@@ -108,7 +108,8 @@ def plot_edges(G, pos, edge_style):
 			edgelist=[e],
 			width=edge_style[e]['width'],
 			edge_color=edge_style[e]['color'],
-			connectionstyle=edge_style[e]['connectionstyle'])
+			connectionstyle=edge_style[e]['connectionstyle'],
+			linestyle=edge_style[e]['linestyle'])
 
 # plot nodes according to style dicts
 def plot_nodes(G, pos, node_style, sub_node_style):

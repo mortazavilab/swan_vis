@@ -7,6 +7,7 @@ import SpliceGraph as sg
 import PlottedGraph as pg
 from utils import *
 from plotting_tools import * 
+import networkx as nx
 
 class TestSpliceGraph(object):
 	def test_get_loc_types(self):
@@ -41,3 +42,18 @@ class TestSpliceGraph(object):
 		assert c_alt_tes == alt_tes
 		print(internal)
 		assert c_internal == internal
+
+	def test_get_dataset_fields(self):
+		G = nx.Graph()
+		G.add_node(0)
+		attrs = {0: {'coord': 3, 'internal': True, 'TES': False,
+				  'dataset_1': True, 'dataset_lizard': True,
+				  'dataset_-1': False}}
+		nx.set_node_attributes(G, attrs)
+		print(G.nodes(data=True))
+		fields = sg.get_dataset_fields(G)
+		print('fields: ')
+		print(fields)
+		c_fields = ['dataset_1', 'dataset_lizard', 'dataset_-1']
+
+		assert set(fields) == set(c_fields)

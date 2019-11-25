@@ -8,6 +8,7 @@ from collections import defaultdict
 import sqlite3
 from utils import *
 from plotting_tools import *
+import SpliceGraph as sg
 
 #
 class PlottedGraph:
@@ -307,6 +308,11 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 	neg_style = 'arc3,rad=-{}'.format(rad)
 	straight = None
 
+	# get fields if we're highlighting a certain dataset
+	if args['indicate_dataset']:
+		d_field = 'dataset_'+args['indicate_dataset']
+		d_fields = sg.get_dataset_fields(G)
+
 	edges = list(G.edges)
 	ordered_edges = [(n,m) for n,m in zip(ordered_nodes[:-1],ordered_nodes[1:])]
 	style_dict = defaultdict()
@@ -320,7 +326,7 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 	# create a plotting settings dictionary for each edge
 	pos = 1
 	neg = -1
-	for e in edges: 
+	for e, data in G.edges(data=True): 
 		e_style_dict = {}
 		e_style_dict.update({'width': edge_width})
 
@@ -336,12 +342,24 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 				e_style_dict.update({'connectionstyle': neg_style})
 				pos *= -1 
 				neg *= -1
+
+		# dashed edges if indicate_dataset
+		if args['indicate_dataset'] and is_unique_to_dataset(data, d_field, d_fields):
+		 	e_style_dict['linestyle'] = 'dashed'
+		else: 
+			e_style_dict['linestyle'] = None
+
 		style_dict.update({e: e_style_dict})
 
 	return style_dict
 
 # returns a dictionary indexed by node ids of plotting styles
 def get_node_plt_settings(G, pos, node_size, args):
+
+	# get fields if we're highlighting a certain dataset
+	if args['indicate_dataset']:
+		d_field = 'dataset_'+args['indicate_dataset']	
+		d_fields = sg.get_dataset_fields(G)
 
 	# create a plotting settings dictionary for each node
 	node_style = defaultdict()
@@ -362,10 +380,10 @@ def get_node_plt_settings(G, pos, node_size, args):
 
 		# node only in the query dataset
 		if args['indicate_dataset']:
-			d_field = 'dataset_'+args['indicate_dataset']
-			d_fields = [k for k in data.keys() if 'dataset_' in k]
+			# d_fields = [k for k in data.keys() if 'dataset_' in k]
 
-			unique_to_dataset = True if sum(data[i] for i in d_fields) == 1 and data[d_field] else False
+			# unique_to_dataset = True if sum(data[i] for i in d_fields) == 1 and data[d_field] else False
+			unique_to_dataset = is_unique_to_dataset(data, d_field, d_fields)
 
 			if unique_to_dataset:
 				curr_style.update({'shape': 'D', 'size': node_size-30})
@@ -378,43 +396,12 @@ def get_node_plt_settings(G, pos, node_size, args):
 		node_style.update({n: curr_style})
 		if sub_curr_style:
 			sub_node_style.update({n: sub_curr_style})
-		# # combined nodes 
-		# if args['combine'] and data['combined']:
-		# 	curr_style.update({'shape': 'H'})
-
-		# 	if len(data['combined_types']) > 1:
-		# 		# size
-		# 		sub_curr_style = defaultdict()
-		# 		sub_curr_style.update({'size': node_size/2})
-		# 		# shape
-		# 		sub_curr_style.update({'shape': 'H'})
-
-		# # if this node is only in the indicate_dataset dataset
-		# if args['indicate_dataset']:
-
-		# 	# get dataset column we want to highlight as well as all
-		# 	# dataset columns from node
-		# 	d_field = 'dataset_'+args['indicate_dataset']
-		# 	d_fields = [k for k in data.keys() if 'dataset_' in k]
-
-		# 	# is this node only seen in the query dataset?
-		# 	unique_to_dataset = True if sum(data[i] for i in d_fields) == 1 and data[d_field] else False
-		# 	if unique_to_dataset:
-		# 		curr_style.update({'shape': 'D', 'size': node_size-30})
-
-		# 		if args['combine'] and data['combined']:
-		# 			curr_style.update({'shape': 'h'})
-		# 			sub_curr_style.update({'shape':'h'})
-
-		# # non-combined node
-		# elif 'shape' not in curr_style.keys():
-		# 	curr_style.update({'shape': None})
-
-		# # add normal node 
-		# node_style.update({n: curr_style})
-
-		# # add combined sub-node
-		# if args['combine'] and data['combined']:
-		# 	sub_node_style.update({n: sub_curr_style})
 
 	return node_style, sub_node_style
+
+# returns true if this edge or node is unique to the input dataset
+def is_unique_to_dataset(data, d_field, d_fields):
+	if sum(data[i] for i in d_fields) == 1 and data[d_field]:
+		return True
+	else:
+		return False 

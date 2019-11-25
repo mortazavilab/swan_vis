@@ -544,27 +544,15 @@ def get_loc_types(loc_df, t_df):
 
 	return loc_df
 
-# # partner function to label_edges
-# def set_edge_attrs(x, G, f_df, f_e):
-# 	attr = {(x.v1, x.v2): {f_e: x[f_df]}}
-# 	nx.set_edge_attributes(G, attr)
-# 	return G
+# returns the fields in a graph that specify which dataset a node or
+# edge belongs to in a merged graph
+def get_dataset_fields(G):
+	# TODO has graph been merged? If not throw an error
 
-# # label edges in G based on fields of edge_df
-# def label_edges(G, edge_df, f_df, f_e):
-# 	edge_df.apply(lambda x: set_edge_attrs(x, G, f_df, f_e), axis=1)
-# 	return G
+	data = G.nodes(data=True)[0]
+	d_fields = [k for k in data.keys() if 'dataset_' in k]
+	return d_fields
 
-# # parter function to label_nodes
-# def set_node_attrs(x, G, f_df, f_n):
-# 	attr = {x.vertex_id: {f_n: x[f_df]}}
-# 	nx.set_node_attributes(G, attr)
-# 	return G
-
-# # label nodes in G based on fields of loc_df
-# def label_nodes(G, loc_df, f_df, f_n):
-# 	loc_df.apply(lambda x: set_node_attrs(x, G, f_df, f_n), axis=1)
-# 	return G
 
 
 
