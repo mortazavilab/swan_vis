@@ -15,6 +15,7 @@ args = defaultdict()
 args['color_edges'] = True
 args['color_nodes'] = True
 args['color_alt_nodes'] = True
+args['indicate_datasets'] = False
 args['combine'] = False
 
 plotted_graph = pg.PlottedGraph(splice_graph, args)

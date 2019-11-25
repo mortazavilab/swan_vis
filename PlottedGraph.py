@@ -346,45 +346,75 @@ def get_node_plt_settings(G, pos, node_size, args):
 	# create a plotting settings dictionary for each node
 	node_style = defaultdict()
 	sub_node_style = defaultdict()
-	for n in G.nodes():
-
-		node = G.nodes[n]
+	for n, data in G.nodes(data=True):
 
 		curr_style = defaultdict()
-		curr_style.update({'size': node_size})
+		sub_curr_style = defaultdict()
+		curr_style.update({'size': node_size, 'shape': None})
 
-		# combined nodes 
-		if args['combine'] and node['combined']:
+		# combined nodes
+		if args['combine'] and data['combined']:
 			curr_style.update({'shape': 'H'})
 
-			if len(node['combined_types']) > 1:
-				# size
-				sub_curr_style = defaultdict()
-				sub_curr_style.update({'size': node_size/2})
-				# shape
-				sub_curr_style.update({'shape': 'H'})
+			# sub node
+			if len(data['combined_types']) > 1: 
+				sub_curr_style = {'size': node_size/2, 'shape': 'H'}
 
-				# add combined sub-node
-				sub_node_style.update({n: sub_curr_style})
+		# node only in the query dataset
+		if args['indicate_dataset']:
+			d_field = 'dataset_'+args['indicate_dataset']
+			d_fields = [k for k in data.keys() if 'dataset_' in k]
 
-		# if this node is only in the indicate_dataset dataset
-		# if args['indicate_dataset'] is not None:
+			unique_to_dataset = True if sum(data[i] for i in d_fields) == 1 and data[d_field] else False
+
+			if unique_to_dataset:
+				curr_style.update({'shape': 'D', 'size': node_size-30})
+				if args['combine'] and data['combined']:
+					curr_style.update({'shape': 'h', 'size': node_size})
+
+					if len(data['combined_types']) > 1: 
+						sub_curr_style.update({'shape': 'h'})
+
+		node_style.update({n: curr_style})
+		if sub_curr_style:
+			sub_node_style.update({n: sub_curr_style})
+		# # combined nodes 
+		# if args['combine'] and data['combined']:
+		# 	curr_style.update({'shape': 'H'})
+
+		# 	if len(data['combined_types']) > 1:
+		# 		# size
+		# 		sub_curr_style = defaultdict()
+		# 		sub_curr_style.update({'size': node_size/2})
+		# 		# shape
+		# 		sub_curr_style.update({'shape': 'H'})
+
+		# # if this node is only in the indicate_dataset dataset
+		# if args['indicate_dataset']:
 
 		# 	# get dataset column we want to highlight as well as all
 		# 	# dataset columns from node
 		# 	d_field = 'dataset_'+args['indicate_dataset']
-		# 	d_fields = [k for k in d.keys() if 'dataset_' in k]
+		# 	d_fields = [k for k in data.keys() if 'dataset_' in k]
 
 		# 	# is this node only seen in the query dataset?
-		# 	unique_to_dataset = True if sum(d[i] for i in d_cols == 1) else False
+		# 	unique_to_dataset = True if sum(data[i] for i in d_fields) == 1 and data[d_field] else False
 		# 	if unique_to_dataset:
-		# 		1
+		# 		curr_style.update({'shape': 'D', 'size': node_size-30})
 
-		# non-combined node
-		else:
-			curr_style.update({'shape': None})
+		# 		if args['combine'] and data['combined']:
+		# 			curr_style.update({'shape': 'h'})
+		# 			sub_curr_style.update({'shape':'h'})
 
-		# add normal node 
-		node_style.update({n: curr_style})
+		# # non-combined node
+		# elif 'shape' not in curr_style.keys():
+		# 	curr_style.update({'shape': None})
+
+		# # add normal node 
+		# node_style.update({n: curr_style})
+
+		# # add combined sub-node
+		# if args['combine'] and data['combined']:
+		# 	sub_node_style.update({n: sub_curr_style})
 
 	return node_style, sub_node_style

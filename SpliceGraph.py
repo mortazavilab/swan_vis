@@ -69,9 +69,7 @@ class SpliceGraph:
 
 				# gene entry 
 				if line[2] == 'gene':
-					print('hello1')
 					curr_gid = get_field_value('gene_id', line[-1])
-					print('hello world')
 					curr_gname = get_field_value('gene_name', line[-1])
 
 				# transcript entry
@@ -546,27 +544,27 @@ def get_loc_types(loc_df, t_df):
 
 	return loc_df
 
-# partner function to label_edges
-def set_edge_attrs(x, G, f_df, f_e):
-	attr = {(x.v1, x.v2): {f_e: x[f_df]}}
-	nx.set_edge_attributes(G, attr)
-	return G
+# # partner function to label_edges
+# def set_edge_attrs(x, G, f_df, f_e):
+# 	attr = {(x.v1, x.v2): {f_e: x[f_df]}}
+# 	nx.set_edge_attributes(G, attr)
+# 	return G
 
-# label edges in G based on fields of edge_df
-def label_edges(G, edge_df, f_df, f_e):
-	edge_df.apply(lambda x: set_edge_attrs(x, G, f_df, f_e), axis=1)
-	return G
+# # label edges in G based on fields of edge_df
+# def label_edges(G, edge_df, f_df, f_e):
+# 	edge_df.apply(lambda x: set_edge_attrs(x, G, f_df, f_e), axis=1)
+# 	return G
 
-# parter function to label_nodes
-def set_node_attrs(x, G, f_df, f_n):
-	attr = {x.vertex_id: {f_n: x[f_df]}}
-	nx.set_node_attributes(G, attr)
-	return G
+# # parter function to label_nodes
+# def set_node_attrs(x, G, f_df, f_n):
+# 	attr = {x.vertex_id: {f_n: x[f_df]}}
+# 	nx.set_node_attributes(G, attr)
+# 	return G
 
-# label nodes in G based on fields of loc_df
-def label_nodes(G, loc_df, f_df, f_n):
-	loc_df.apply(lambda x: set_node_attrs(x, G, f_df, f_n), axis=1)
-	return G
+# # label nodes in G based on fields of loc_df
+# def label_nodes(G, loc_df, f_df, f_n):
+# 	loc_df.apply(lambda x: set_node_attrs(x, G, f_df, f_n), axis=1)
+# 	return G
 
 
 

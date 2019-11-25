@@ -1,5 +1,6 @@
 import sys
 import os
+from collections import defaultdict
 lib_path = '/'.join(os.path.abspath(__file__).split('/')[0:-2])
 sys.path.append(lib_path+'/utils/')
 sys.path.append(lib_path)
@@ -14,10 +15,17 @@ b = sg.SpliceGraph(gtf='input_files/obs_mapt.gtf')
 
 merged = sg.merge_graphs(a, b, 'annot', 'obs')
 
+args = defaultdict()
 args['color_edges'] = True
 args['color_nodes'] = True
 args['color_alt_nodes'] = True
-args['combine'] = False
+args['combine'] = True
 args['indicate_dataset'] = 'obs'
 
-pg.plot_graph()
+plotted_graph = pg.PlottedGraph(merged, args)
+print(plotted_graph.loc_df)
+# print(plotted_graph.node_style)
+# exit()
+
+plot_graph(plotted_graph, args)
+save_fig('figures/obs_annot_mapt.png')

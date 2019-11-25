@@ -26,7 +26,7 @@ def get_node_colors(G, node_style, sub_node_style, args):
 				  'alt_TES': orange}
 
 	# assign nodes colors based on plotting settings
-	for n,d in G.nodes(data=True):
+	for n,data in G.nodes(data=True):
 		node_colors = defaultdict()
 		sub_node_colors = defaultdict()
 		node = G.nodes[n]
@@ -36,18 +36,18 @@ def get_node_colors(G, node_style, sub_node_style, args):
 			node_colors.update({'color': gray})
 
 		# combined nodes
-		elif args['combine'] and d['combined']:
+		elif args['combine'] and data['combined']:
 
 			# all makeup of combined node is same type
-			if len(d['combined_types']) == 1:
-				color = color_dict[d['combined_types'][0]]
+			if len(data['combined_types']) == 1:
+				color = color_dict[data['combined_types'][0]]
 				node_colors.update({'color': color})
 
 			# we need to plot more than one thing for combined node
 			else:
 				# color
-				sub_color = color_dict[d['combined_types'][0]]
-				color = color_dict[d['combined_types'][1]]
+				sub_color = color_dict[data['combined_types'][0]]
+				color = color_dict[data['combined_types'][1]]
 				node_colors.update({'color': color})
 				sub_node_colors.update({'color': sub_color})
 
@@ -57,13 +57,13 @@ def get_node_colors(G, node_style, sub_node_style, args):
 		# non-combined node
 		else:
 			node_colors.update({'color': color_dict['internal']})
-			if d['TSS']: 
+			if data['TSS']: 
 				node_colors.update({'color': color_dict['TSS']})
-			if d['alt_TSS'] and args['color_alt_nodes']:
+			if data['alt_TSS'] and args['color_alt_nodes']:
 				node_colors.update({'color': color_dict['alt_TSS']})
-			if d['TES']:
+			if data['TES']:
 				node_colors.update({'color': color_dict['TES']})
-			if d['alt_TES'] and args['color_alt_nodes']:
+			if data['alt_TES'] and args['color_alt_nodes']:
 				node_colors.update({'color': color_dict['alt_TES']})
 
 		# add color to normal node style
