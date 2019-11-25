@@ -71,7 +71,9 @@ class PlottedGraph:
 # starting nodes:
 # 1. have only one outgoing edge AND
 # 2. have more than one incoming edge | is a TSS | parent is TES AND
-# 3. node is not already in a nbp
+# 3. node is not already in a nbp AND
+# 4. node is not a TES
+
 def is_nbp_start(G,n,nbps):
 	nbp_nodes = [n for p in nbps for n in p]
 	if G.out_degree(n) == 1: # 1
@@ -82,7 +84,7 @@ def is_nbp_start(G,n,nbps):
 				if G.nodes[parent]['TES']:
 					tes_parent = True
 		if G.in_degree(n) >= 1 or G.nodes[n]['TSS'] or tes_parent: # 2
-			if n not in nbp_nodes: # 3
+			if n not in nbp_nodes and not G.nodes[n]['TES']: # 3 & 4
 				return True
 	return False
 
@@ -230,6 +232,11 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 					  'alt_TSS': alt_tss, 'alt_TES': alt_tes,
 					  'internal': internal, 'coord': coord}
 					  # 'annotated': annotated}
+
+		# if we're indicating dataset, which datasets are these nodes present in?
+		if args['indicate_dataset']:
+			node_attrs = assign_combined_datasets(mod_G, path, node_attrs)
+
 		mod_G.add_node(combined_node)
 		nx.set_node_attributes(mod_G, {combined_node: node_attrs})
 
@@ -326,7 +333,10 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 	# create a plotting settings dictionary for each edge
 	pos = 1
 	neg = -1
-	for e, data in G.edges(data=True): 
+	for v1,v2,data in G.edges(data=True): 
+
+		e = (v1,v2)
+
 		e_style_dict = {}
 		e_style_dict.update({'width': edge_width})
 
@@ -344,8 +354,10 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 				neg *= -1
 
 		# dashed edges if indicate_dataset
-		if args['indicate_dataset'] and is_unique_to_dataset(data, d_field, d_fields):
-		 	e_style_dict['linestyle'] = 'dashed'
+		if args['indicate_dataset']:
+			if is_unique_to_dataset(data, d_field, d_fields):
+				e_style_dict['linestyle'] = 'dashed'
+			else: e_style_dict['linestyle'] = None
 		else: 
 			e_style_dict['linestyle'] = None
 
@@ -379,13 +391,8 @@ def get_node_plt_settings(G, pos, node_size, args):
 				sub_curr_style = {'size': node_size/2, 'shape': 'H'}
 
 		# node only in the query dataset
-		if args['indicate_dataset']:
-			# d_fields = [k for k in data.keys() if 'dataset_' in k]
-
-			# unique_to_dataset = True if sum(data[i] for i in d_fields) == 1 and data[d_field] else False
-			unique_to_dataset = is_unique_to_dataset(data, d_field, d_fields)
-
-			if unique_to_dataset:
+		if args['indicate_dataset']:			 
+			if is_unique_to_dataset(data, d_field, d_fields):
 				curr_style.update({'shape': 'D', 'size': node_size-30})
 				if args['combine'] and data['combined']:
 					curr_style.update({'shape': 'h', 'size': node_size})
@@ -405,3 +412,13 @@ def is_unique_to_dataset(data, d_field, d_fields):
 		return True
 	else:
 		return False 
+
+def assign_combined_datasets(G, path, node_attrs):
+	d_fields = sg.get_dataset_fields(G)
+	for field in d_fields:
+		data = [d for n,d in G.nodes(data=True) if n in path]
+		if all(d[field] == True for d in data):
+			node_attrs.update({field: True})
+		else:
+			node_attrs.update({field: False})
+	return node_attrs

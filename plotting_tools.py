@@ -178,6 +178,10 @@ def plot_overlaid_path(pg, path, args):
 	plot_graph(path_pg, args)
 	# save_fig(oname)
 
+# # plot a transcript path as we'd see on the genome browser
+# def plot_path_browser(sg, path):
+	
+
 def save_fig(oname):
 	plt.tight_layout()
 	plt.savefig(oname, format='png', dpi=200)

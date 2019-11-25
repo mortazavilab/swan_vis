@@ -422,7 +422,7 @@ def assign_new_paths(b, id_map):
 # merge the edge dfs
 def merge_edge_dfs(a, b, a_col, b_col):
 
-	# add column that we can track dataset this comes from 
+	# add column that we can track which dataset this comes from
 	a[a_col] = True
 	b[b_col] = True
 
@@ -447,9 +447,14 @@ def assign_new_edge_ids(b, id_map):
 # merge loc_dfs
 def merge_loc_dfs(a, b, a_col, b_col):
 
-	# merge on location info
+	# add column that we can track which dataset this comes from
 	a[a_col] = True
 	b[b_col] = True
+
+	# remove all node type columns as these will be recomputed
+	node_types = ['TSS', 'alt_TSS', 'TES', 'alt_TES', 'internal']
+	a.drop(node_types, axis=1, inplace=True)
+	b.drop(node_types, axis=1, inplace=True)
 
 	# merge on location info
 	loc_df = a.merge(b,
@@ -551,6 +556,7 @@ def get_dataset_fields(G):
 
 	data = G.nodes(data=True)[0]
 	d_fields = [k for k in data.keys() if 'dataset_' in k]
+	print(d_fields)
 	return d_fields
 
 

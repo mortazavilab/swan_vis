@@ -23,8 +23,7 @@ args['combine'] = True
 args['indicate_dataset'] = 'obs'
 
 plotted_graph = pg.PlottedGraph(merged, args)
-print(plotted_graph.loc_df)
-# print(plotted_graph.node_style)
+print(plotted_graph.loc_df.head())
 # exit()
 
 plot_graph(plotted_graph, args)
