@@ -224,9 +224,12 @@ def plot_path_browser(splice_graph, tid, oname):
 		x_coords = coord_map.loc[[v1,v2], 'plot_coord']
 		plt.plot(x_coords, [0,0], color=teal)
 	tick_coords = get_tick_coords(exons, coord_map)
-	for t in tick_coords: 
-		plt.plot([t],[0], color=teal, marker='4')
+	# for t in tick_coords: 
+	plt.plot(tick_coords,[0 for i in range(len(tick_coords))],
+			 color=teal, marker='4')
 
+	# remove the axes 
+	plt.axis('off')
 	save_fig(oname)
 
 # maps vertex id to a matplotlib-digestible coordinate

@@ -131,8 +131,10 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 
 	# loop through each transcript path and each non-branching path,
 	# replace nodes that will be aggregated 
-	paths = t_df.path.tolist() # apparently this gives me a reference to the paths
-							   # so when updating I'm directly modifying the t_df
+	# need to use this because pandas copy DOES NOT deepcopy lists!
+	t_df['new_path'] = t_df.apply(lambda x: copy.deepcopy(x.path), axis=1)
+	paths = t_df.new_path.tolist() # apparently this gives me a reference to the paths
+							       # so when updating I'm directly modifying the t_df
 	for path in paths: 
 		for combined_index, nbp in enumerate(nbps):
 
@@ -151,6 +153,10 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 			# add aggregate node tuple instead
 			if insertion_index != -1:
 				path.insert(insertion_index, 'c{}'.format(combined_index))
+
+	# shuffle around path columns in dataframe
+	t_df.drop('path', axis=1, inplace=True)
+	t_df.rename({'new_path': 'path'}, axis=1, inplace=True)
 
 	mod_G = nx.DiGraph(G)
 

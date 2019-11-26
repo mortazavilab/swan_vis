@@ -24,6 +24,13 @@ save_fig('mapt_exons_introns_alt_TSS_alt_TES.png')
 
 args['combine'] = True
 plotted_graph = pg.PlottedGraph(splice_graph, args)
+
+# # testing
+# print(splice_graph.t_df.tail())
+# print(splice_graph.loc_df.tail())
+# print(splice_graph.edge_df.tail())
+# exit()
+
 plot_graph(plotted_graph, args)
 save_fig('mapt_exons_introns_alt_TSS_alt_TES_combined.png')
 
@@ -36,7 +43,7 @@ for tid in plotted_graph.t_df.tid.tolist():
 	save_fig(oname)
 
 # also plot genome browser style!
-for tid in plotted_graph.t_df.tid.tolist():
+for tid in splice_graph.t_df.tid.tolist():
 	print(tid)
 	oname = 'figures/mapt_browser_{}.png'.format(tid)
 	plot_path_browser(splice_graph, tid, oname)
