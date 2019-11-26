@@ -243,6 +243,7 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 		if args['indicate_dataset']:
 			node_attrs = assign_combined_datasets(mod_G, path, node_attrs)
 
+		# add the new node and edges to graph
 		mod_G.add_node(combined_node)
 		nx.set_node_attributes(mod_G, {combined_node: node_attrs})
 
@@ -270,6 +271,7 @@ def agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args):
 		# increment combined node index
 		combined_index += 1
 
+	# make sure we put dfs back where we left them
 	edge_df = set_dupe_index(edge_df, 'edge_id')
 
 	# finally, label all nodes that are now in the graph with their "combined" 
@@ -324,7 +326,7 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 	# get fields if we're highlighting a certain dataset
 	if args['indicate_dataset']:
 		d_field = 'dataset_'+args['indicate_dataset']
-		d_fields = sg.get_dataset_fields(G)
+		d_fields = sg.get_dataset_fields(graph=G)
 
 	edges = list(G.edges)
 	ordered_edges = [(n,m) for n,m in zip(ordered_nodes[:-1],ordered_nodes[1:])]
@@ -349,6 +351,7 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 		# straight edge
 		if e in straight_edges:
 			e_style_dict.update({'connectionstyle': straight})
+		# curved edges, alternate between positive and negative
 		else:
 			if pos > 0:
 				e_style_dict.update({'connectionstyle': pos_style})
@@ -377,7 +380,7 @@ def get_node_plt_settings(G, pos, node_size, args):
 	# get fields if we're highlighting a certain dataset
 	if args['indicate_dataset']:
 		d_field = 'dataset_'+args['indicate_dataset']	
-		d_fields = sg.get_dataset_fields(G)
+		d_fields = sg.get_dataset_fields(graph=G)
 
 	# create a plotting settings dictionary for each node
 	node_style = defaultdict()
@@ -419,8 +422,9 @@ def is_unique_to_dataset(data, d_field, d_fields):
 	else:
 		return False 
 
+# what datasets does this combined node belong to?
 def assign_combined_datasets(G, path, node_attrs):
-	d_fields = sg.get_dataset_fields(G)
+	d_fields = sg.get_dataset_fields(graph=G)
 	for field in d_fields:
 		data = [d for n,d in G.nodes(data=True) if n in path]
 		if all(d[field] == True for d in data):

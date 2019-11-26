@@ -57,3 +57,83 @@ class TestSpliceGraph(object):
 		c_fields = ['dataset_1', 'dataset_lizard', 'dataset_-1']
 
 		assert set(fields) == set(c_fields)
+
+	def test_add_dataset(self):
+		loc_df = pd.DataFrame({'chrom': [1,2,3],
+			'coord': [1,1,1],
+			'strand': ['+', '-', '+'],
+			'vertex_id': [0,1,2]})
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+				  'v1': [0,0,1],
+				  'v2': [2,1,2],
+				  'edge_type': ['exon', 'exon', 'intron'], 
+				  'strand': ['+','+','+']})
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+
+		t_df = pd.DataFrame({'tid':[0,1,3],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		loc_df = sg.get_loc_types(loc_df, t_df)
+
+		splice_graph = sg.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+		splice_graph.add_dataset('annotation')
+		print(splice_graph.loc_df.head())
+		print(splice_graph.edge_df.head())
+		print(splice_graph.t_df.head())
+		print(splice_graph.G.nodes(data=True))
+		print(splice_graph.G.edges(data=True))
+		
+		# df cols added correctly
+		assert all(d == True for d in splice_graph.loc_df.dataset_annotation)
+		assert all(d == True for d in splice_graph.edge_df.dataset_annotation)
+		assert all(d == True for d in splice_graph.t_df.dataset_annotation)
+
+		# node/edge designations added correctly
+		assert all(i[1] == True for i in splice_graph.G.nodes(data='dataset_annotation'))
+		assert all(i[2] == True for i in splice_graph.G.edges(data='dataset_annotation'))
+
+	def test_remove_dataset(self):
+		loc_df = pd.DataFrame({'chrom': [1,2,3],
+			'coord': [1,1,1],
+			'strand': ['+', '-', '+'],
+			'vertex_id': [0,1,2]})
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+				  'v1': [0,0,1],
+				  'v2': [2,1,2],
+				  'edge_type': ['exon', 'exon', 'intron'], 
+				  'strand': ['+','+','+']})
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+
+		t_df = pd.DataFrame({'tid':[0,1,3],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		loc_df = sg.get_loc_types(loc_df, t_df)
+
+		splice_graph = sg.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+		splice_graph.add_dataset('annotation')
+
+		splice_graph.remove_dataset('annotation')
+
+		print(splice_graph.loc_df.head())
+		print(splice_graph.edge_df.head())
+		print(splice_graph.t_df.head())
+
+		assert 'dataset_annotation' not in splice_graph.loc_df.columns
+		assert 'dataset_annotation' not in splice_graph.edge_df.columns
+		assert 'dataset_annotation' not in splice_graph.t_df.columns

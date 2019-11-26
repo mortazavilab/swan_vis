@@ -21,6 +21,16 @@ class TestMergeSGs(object):
 			'coord': [1,1,1],
 			'strand': ['+', '-', '+'],
 			'vertex_id': [0,1,2]})
+		a_t_df = pd.DataFrame({'tid':[0,1,3],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		b_t_df = pd.DataFrame({'tid':[4,2,3],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		loc_df = sg.get_loc_types(a, a_t_df)
+		loc_df = sg.get_loc_types(b, b_t_df)
 		loc_df = sg.merge_loc_dfs(a,b,'dataset_a','dataset_b')
 		id_map = sg.get_vertex_id_map(loc_df, 'dataset_a', 'dataset_b')
 		loc_df = sg.assign_new_vertex_ids(loc_df, id_map)
@@ -180,6 +190,106 @@ class TestMergeSGs(object):
 		print(tid_dataset_b_pairs)
 		control_pairs = [(0,False),(1,False),(2,True),(4,True),(3,True)]
 		check_pairs(control_pairs, tid_dataset_b_pairs)
+
+	def test_3way_merge(self):
+		a_loc_df = pd.DataFrame({'chrom': [1,2,3],
+			'coord': [1,1,1],
+			'strand': ['+', '+', '+'],
+			'vertex_id': [0,1,2]})
+		b_loc_df = pd.DataFrame({'chrom': [1,2,4],
+			'coord': [1,1,1],
+			'strand': ['+', '+', '+'],
+			'vertex_id': [0,1,2]})
+		c_loc_df = pd.DataFrame({'chrom': [3,4,5,1],
+			'coord': [1,1,1,1],
+			'strand': ['+', '+', '+', '+'],
+			'vertex_id': [0,1,2,3]})
+		a_loc_df = create_dupe_index(a_loc_df, 'vertex_id')
+		b_loc_df = create_dupe_index(b_loc_df, 'vertex_id')
+		c_loc_df = create_dupe_index(c_loc_df, 'vertex_id')
+		a_loc_df = set_dupe_index(a_loc_df, 'vertex_id')
+		b_loc_df = set_dupe_index(b_loc_df, 'vertex_id')
+		c_loc_df = set_dupe_index(c_loc_df, 'vertex_id')
+
+		a_edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+			'v1': [0,0,1],
+			'v2': [2,1,2],
+			'edge_type': ['exon', 'exon', 'intron'], 
+			'strand': ['+','+','+']})
+		b_edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+			'v1': [0,0,1],
+			'v2': [2,1,2],
+			'edge_type': ['exon', 'exon', 'intron'],
+			'strand': ['+','+','+']})
+		c_edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2),(3,0)],
+			'v1': [0,0,1,3],
+			'v2': [2,1,2,0],
+			'edge_type': ['exon', 'exon', 'intron', 'exon'],
+			'strand': ['+', '+', '+', '+']})
+		a_edge_df = create_dupe_index(a_edge_df, 'edge_id')
+		b_edge_df = create_dupe_index(b_edge_df, 'edge_id')
+		c_edge_df = create_dupe_index(c_edge_df, 'edge_id')
+		a_edge_df = set_dupe_index(a_edge_df, 'edge_id')
+		b_edge_df = set_dupe_index(b_edge_df, 'edge_id')
+		c_edge_df = set_dupe_index(c_edge_df, 'edge_id')
+
+		a_t_df = pd.DataFrame({'tid':[0,1,3],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		b_t_df = pd.DataFrame({'tid':[4,2,3],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		c_t_df = pd.DataFrame({'tid': [1,5],
+					'gid': [0,0],
+					'gname': ['0','0'],
+					'path': [[3,0],[0,1,2]]})
+		a_t_df = create_dupe_index(a_t_df, 'tid')
+		b_t_df = create_dupe_index(b_t_df, 'tid')
+		c_t_df = create_dupe_index(c_t_df, 'tid')
+		a_t_df = set_dupe_index(a_t_df, 'tid')
+		b_t_df = set_dupe_index(b_t_df, 'tid')
+		c_t_df = set_dupe_index(c_t_df, 'tid')
+
+
+		a = sg.SpliceGraph(loc_df=a_loc_df, edge_df=a_edge_df, t_df=a_t_df)
+		b = sg.SpliceGraph(loc_df=b_loc_df, edge_df=b_edge_df, t_df=b_t_df)
+		c = sg.SpliceGraph(loc_df=c_loc_df, edge_df=c_edge_df, t_df=c_t_df)
+
+		merged = sg.merge_graphs(a,b,'a','b')
+		merged = sg.add_graph(merged,c,'c')
+		node_types = ['TSS', 'alt_TSS', 'TES', 'alt_TES', 'internal']
+		merged.loc_df.drop(node_types, axis=1, inplace=True)
+		merged.edge_df.drop(['v1','v2'], axis=1, inplace=True)
+
+		# merged.edge_df['edge_id'] = merged.edge_df.apply(lambda x: (int(x.edge_id[0], int(x.edge_id[1]))), axis=1)
+
+		print(merged.loc_df)
+		print(merged.edge_df)
+		print(merged.t_df)
+
+		# testing
+		loc_df_test = merged.loc_df.apply(lambda x: (x.vertex_id, int(x.dataset_a), int(x.dataset_b), int(x.dataset_c)), 
+											  axis=1)
+		print('loc_df')
+		print(merged.loc_df)
+		loc_df_control = [(0,1,1,1),(1,1,1,0),(2,1,0,1),(3,0,1,1),(4,0,0,1)]
+		check_pairs(loc_df_control, loc_df_test)
+
+		edge_df_test = merged.edge_df.apply(lambda x: (x.edge_id, int(x.dataset_a), int(x.dataset_b), int(x.dataset_c)), 
+											  axis=1)
+		print('edge_df')
+		print(merged.edge_df)
+		edge_df_control = [((0,2),1,0,1),((0,1),1,1,0),((1,2),1,0,0),((0,3),0,1,0),((2,4),0,0,1),((2,3),0,0,1),((3,4),0,0,1),((1,3),0,1,0)]
+		check_pairs(edge_df_control, edge_df_test)
+
+		t_df_test = merged.t_df.apply(lambda x: (x.tid, int(x.dataset_a), int(x.dataset_b), int(x.dataset_c)), 
+											  axis=1)
+		print('t_df')
+		print(merged.t_df)
+		t_df_control = [(0,1,0,0),(1,1,0,1),(2,0,1,0),(3,1,1,0),(4,0,1,0),(5,0,0,1)]
+		check_pairs(t_df_control, t_df_test)
 
 def check_pairs(control, test):
 	print('control')

@@ -11,7 +11,8 @@ from utils import *
 
 class SpliceGraph:
 	def __init__(self, gtf=None, talon_db=None,
-				 loc_df=None, edge_df=None, t_df=None):
+				 loc_df=None, edge_df=None, t_df=None,
+				 dataset=None):
 
 		if not gtf and not talon_db:
 			if loc_df is None or edge_df is None or t_df is None:
@@ -30,13 +31,18 @@ class SpliceGraph:
 			if not os.path.exists(talon_db):
 				raise Exception('TALON db file not found. Check path.')
 			loc_df, edge_df, t_df = self.db_create_dfs(talon_db)
-		
 
+		# get loc types
+		loc_df = get_loc_types(loc_df, t_df)
+		
 		self.G = self.create_graph_from_dfs(loc_df, edge_df, t_df)
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
-		# self.merged = False
+
+		# add dataset column if one was given
+		if dataset:
+			self.add_dataset(dataset)
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def gtf_create_dfs(self, gtffile):
@@ -171,7 +177,7 @@ class SpliceGraph:
 		loc_df.reset_index(inplace=True)
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		loc_df = get_loc_types(loc_df, t_df)
+		# loc_df = get_loc_types(loc_df, t_df)
 
 		# edge_df['annotated'] = True # we can assume that since we're working from a gtf, it's an annotation?? (maybe)
 		# loc_df['annotated'] = True
@@ -271,7 +277,7 @@ class SpliceGraph:
 		loc_df['TES'] = False
 		loc_df['alt_TES'] = False
 		# loc_df['annotated'] = True
-		loc_df = get_loc_types(loc_df, t_df)
+		# loc_df = get_loc_types(loc_df, t_df)
 
 		# edge_df['annotated'] = True
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
@@ -338,8 +344,53 @@ class SpliceGraph:
 
 		return G
 
+	# returns true if graph has been merged before, otherwise False
+	def is_merged(self):
+		return self.merged
+
+	# adds only dataset column to a preexisting SpliceGraph's
+	# dfs, nodes, and edges
+	def add_dataset(self, name):
+
+		d_col = 'dataset_'+name
+
+		# make sure we're not overwriting something
+		if d_col in get_dataset_fields(self.G):
+			raise Exception('Dataset {} already in the graph'.format(name))
+
+		# add this column to all of the dfs
+		self.loc_df[d_col] = True
+		self.edge_df[d_col] = True
+		self.t_df[d_col] = True
+
+		# and to the edges/nodes
+		self.G = label_nodes(self.G, self.loc_df, d_col, d_col)
+		self.G = label_edges(self.G, self.edge_df, d_col, d_col)
+
+	# removes the dataset columns from a preexisting SpliceGraph's
+	# dfs ONLY TODO do I want to add support for removing labels from nodes
+	# in the future?
+	def remove_dataset(self, name):
+
+		d_col = 'dataset_'+name
+		if d_col not in self.loc_df.columns or d_col not in self.edge_df.columns or d_col not in self.t_df.columns:
+			raise Exception('Dataset {} not in the graph'.format(name))
+
+		# remove this column from all of the dfs
+		self.loc_df.drop(d_col, axis=1, inplace=True)
+		self.edge_df.drop(d_col, axis=1, inplace=True)
+		self.t_df.drop(d_col, axis=1, inplace=True)
+
+# adds graph b with dataset name bname to graph a, which does not 
+# require a completely new column
+def add_graph(a, b, bname):
+	sg = merge_graphs(a,b,None,bname,store_a=False)
+	return sg
+
 # merges two splice graph objects and creates a third
-def merge_graphs(a, b, aname, bname):
+# store_a is to support just adding b to graph a via 
+# add_graph
+def merge_graphs(a, b, aname, bname, store_a=True):
 
 	# remove indices for each df
 	a.loc_df.reset_index(drop=True, inplace=True)
@@ -350,13 +401,17 @@ def merge_graphs(a, b, aname, bname):
 	b.t_df.reset_index(drop=True, inplace=True)
 
 	# dataset columns
-	a_col = 'dataset_'+aname
+	if not store_a:
+		a_col = 'dataset_TEMP'
+	else:
+		a_col = 'dataset_'+aname
 	b_col = 'dataset_'+bname
 
 	# merge loc_dfs based on chrom, coord, strand and update vertex ids
 	loc_df = merge_loc_dfs(a.loc_df, b.loc_df, a_col, b_col)
 	id_map = get_vertex_id_map(loc_df, a_col, b_col)
 	loc_df = assign_new_vertex_ids(loc_df, id_map)
+	loc_df['vertex_id'] = loc_df['vertex_id'].astype(int)
 
 	# merge edge_df based on new vertex ids 
 	b.edge_df = assign_new_edge_ids(b.edge_df, id_map)
@@ -381,11 +436,22 @@ def merge_graphs(a, b, aname, bname):
 	# finally, let's make the merged graph
 	sg = SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
 
+	# if we didn't want to make a new dataset column for a, 
+	# remove it here. 
+	# otherwise, we're free to label nodes/edges with new 
+	# dataset information
+	if not store_a:
+		sg.remove_dataset('TEMP')
+	else:
+		sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
+		sg.G = label_edges(sg.G, edge_df, a_col, a_col)
+
 	# assign labels to nodes and edges based on what dataset they came from
-	sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
 	sg.G = label_nodes(sg.G, loc_df, b_col, b_col)
-	sg.G = label_edges(sg.G, edge_df, a_col, a_col)
 	sg.G = label_edges(sg.G, edge_df, b_col, b_col)
+
+	# # 
+	# sg.merged = True
 
 	return sg
 
@@ -410,7 +476,8 @@ def merge_t_dfs(a,b,a_col,b_col):
 	t_df.path = t_df.apply(lambda x: list(x.path), axis=1)
 
 	# assign False to entries that are not in one dataset or another 
-	t_df[[a_col, b_col]] = t_df[[a_col, b_col]].fillna(value=False, axis=1)
+	d_fields = get_dataset_fields(df=t_df)
+	t_df[d_fields] = t_df[d_fields].fillna(value=False, axis=1)
 
 	return t_df
 
@@ -433,7 +500,8 @@ def merge_edge_dfs(a, b, a_col, b_col):
 			suffixes=['_a', '_b'])
 
 	# assign False to entries that are not in one dataset or another 
-	edge_df[[a_col, b_col]] = edge_df[[a_col, b_col]].fillna(value=False, axis=1)
+	d_fields = get_dataset_fields(df=edge_df)
+	edge_df[d_fields] = edge_df[d_fields].fillna(value=False, axis=1)
 
 	return edge_df
 
@@ -463,7 +531,8 @@ def merge_loc_dfs(a, b, a_col, b_col):
 			suffixes=['_a','_b'])
 
 	# assign False to entries that are not in one dataset or another 
-	loc_df[[a_col, b_col]] = loc_df[[a_col, b_col]].fillna(value=False, axis=1)
+	d_fields = get_dataset_fields(df=loc_df)
+	loc_df[d_fields] = loc_df[d_fields].fillna(value=False, axis=1)
 
 	return loc_df
 
@@ -492,7 +561,7 @@ def present_in(x):
 def get_vertex_id_map(df, a_col, b_col):
 
 	# vertices in both graph a and b 
-	ab_ids = df.apply(lambda x: (x.vertex_id_b, x.vertex_id_a)
+	ab_ids = df.apply(lambda x: (int(x.vertex_id_b), int(x.vertex_id_a))
 						if x[a_col] and x[b_col]
 						else np.nan, axis=1)
 	ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
@@ -502,11 +571,11 @@ def get_vertex_id_map(df, a_col, b_col):
 	b_ids = df.apply(lambda x: x.vertex_id_b
 						if not x[a_col] and x[b_col]
 						else np.nan, axis=1)
-	b_ids = [b_id for b_id in b_ids if not math.isnan(b_id)]
+	b_ids = [int(b_id) for b_id in b_ids if not math.isnan(b_id)]
 
 	# new ids for these guys
 	start_b_id = int(df.vertex_id_a.max()+1)
-	new_b_ids = [i for i in range(start_b_id, len(b_ids)+start_b_id)]
+	new_b_ids = [int(i) for i in range(start_b_id, len(b_ids)+start_b_id)]
 	vertex_id_map.update(dict(zip(b_ids, new_b_ids)))
 
 	return vertex_id_map
@@ -551,12 +620,15 @@ def get_loc_types(loc_df, t_df):
 
 # returns the fields in a graph that specify which dataset a node or
 # edge belongs to in a merged graph
-def get_dataset_fields(G):
+def get_dataset_fields(graph=None, df=None):
 	# TODO has graph been merged? If not throw an error
-
-	data = G.nodes(data=True)[0]
-	d_fields = [k for k in data.keys() if 'dataset_' in k]
+	if graph is not None:
+		data = graph.nodes(data=True)[0]
+		d_fields = [k for k in data.keys() if 'dataset_' in k]
+	if df is not None:
+		d_fields = [col for col in df.columns if 'dataset_' in col]
 	return d_fields
+
 
 # returns the (min, max) coordinates of an input gene
 def get_gene_min_max(loc_df, t_df, gid):
@@ -569,6 +641,6 @@ def get_gene_min_max(loc_df, t_df, gid):
 
 	return int(min(coords)), int(max(coords))
 
-# def get_():
+# def get_:
 
 
