@@ -52,6 +52,7 @@ def get_field_value(key, fields):
         return None
     else:
         return fields.split(key+' "')[1].split()[0].replace('";','')
+        
 
 
 
