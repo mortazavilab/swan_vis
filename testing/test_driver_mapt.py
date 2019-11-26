@@ -15,7 +15,7 @@ args = defaultdict()
 args['color_edges'] = True
 args['color_nodes'] = True
 args['color_alt_nodes'] = True
-args['indicate_datasets'] = False
+args['indicate_dataset'] = False
 args['combine'] = False
 
 plotted_graph = pg.PlottedGraph(splice_graph, args)
@@ -34,3 +34,9 @@ for tid in plotted_graph.t_df.tid.tolist():
 	path = plotted_graph.t_df.loc[tid, 'path']
 	plot_overlaid_path(plotted_graph, path, args)
 	save_fig(oname)
+
+# also plot genome browser style!
+for tid in plotted_graph.t_df.tid.tolist():
+	print(tid)
+	oname = 'figures/mapt_browser_{}.png'.format(tid)
+	plot_path_browser(splice_graph, tid, oname)

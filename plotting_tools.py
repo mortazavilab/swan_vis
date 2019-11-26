@@ -2,12 +2,14 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as pch
 import os
 import copy
 from collections import defaultdict
 import sqlite3
 import SpliceGraph as sg
 import PlottedGraph as pg
+from utils import *
 
 # updates the style dict with colors during actual plotting calls
 def get_node_colors(G, node_style, sub_node_style, args):
@@ -178,11 +180,113 @@ def plot_overlaid_path(pg, path, args):
 	plot_graph(path_pg, args)
 	# save_fig(oname)
 
-# # plot a transcript path as we'd see on the genome browser
-# def plot_path_browser(sg, path):
-	
+# plot a transcript path as we'd see on the genome browser
+def plot_path_browser(splice_graph, tid, oname):
 
+	# plotting init stuff
+	plt.figure(1, figsize=(14,10), frameon=False)
+	plt.xlim(-1.05, 1.05)
+	plt.ylim(-1.05, 1.05)
+	ax = plt.gca() 
+	teal = '#014753'
+
+	# fields we'll need
+	loc_df = splice_graph.loc_df
+	t_df = splice_graph.t_df
+
+	# which gene is this from?
+	gid = t_df.loc[tid, 'gid']
+
+	# what are the strand and chrom of the gene?
+	chrom = loc_df.loc[t_df.loc[tid, 'path'][0], 'chrom']
+	strand = loc_df.loc[t_df.loc[tid, 'path'][0], 'strand']
+
+	# what are the min and max of the gene? use these to define the coord space
+	g_min, g_max = sg.get_gene_min_max(loc_df, t_df, gid)
+	coord_map = get_coord_map(g_min, g_max, loc_df, chrom, strand)
+
+	# plot each exon as a rectangle
+	y_coord = -0.1
+	height = 0.2
+	path = t_df.loc[tid, 'path']
+	exons = [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])][::2]
+	introns = [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])][1::2]
+	for v1,v2 in exons:
+		x_coord = coord_map.loc[v1, 'plot_coord']
+		width = coord_map.loc[v2, 'plot_coord'] - x_coord
+		rect = pch.Rectangle((x_coord,y_coord),
+							  width, height,
+							  color=teal)
+		ax.add_patch(rect)
+
+	# plot each intron as a hashed line
+	for v1,v2 in introns: 
+		x_coords = coord_map.loc[[v1,v2], 'plot_coord']
+		plt.plot(x_coords, [0,0], color=teal)
+	tick_coords = get_tick_coords(exons, coord_map)
+	for t in tick_coords: 
+		plt.plot([t],[0], color=teal, marker='4')
+
+	save_fig(oname)
+
+# maps vertex id to a matplotlib-digestible coordinate
+def get_coord_map(g_min, g_max, loc_df, chrom, strand):
+
+	# reformat loc_df for indexing by coord, chrom, strand
+	loc_df = reset_dupe_index(loc_df, 'vertex_id')
+	loc_df.set_index(['chrom', 'coord', 'strand'], inplace=True)
+	inds = loc_df.index.tolist()
+
+	# plot coordinates for each genomic coordinate
+	# use .9 to allow for some room on the sides
+	plot_coords = list(np.linspace(-0.95, 0.95, g_max-g_min+1)) 
+
+	# reverse if on minus strand 
+	if strand == '-':
+		plot_coords.reverse()
+
+	# map the locations vertex id to the plotting coord
+	g_coords = range(g_min, g_max+1)
+	coord_map = pd.DataFrame({'plot_coord': plot_coords, 'g_coord': g_coords})
+	coord_map['vertex_id'] = coord_map.apply(lambda x:
+									 	     loc_df.loc[(chrom,x.g_coord,strand), 'vertex_id']
+									 		 if (chrom,x.g_coord,strand) in inds
+									 		 else np.nan, axis=1)
+
+	# reformat loc_df for future use
+	loc_df.reset_index(inplace=True)
+	loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+	# remove nan rows and set index
+	coord_map.dropna(inplace=True)
+	coord_map.set_index('vertex_id', inplace=True)
+
+	return coord_map
+
+# get locations of ticks to indicate strandedness
+def get_tick_coords(exons, coord_map):
+	tick_coords = list(np.linspace(-0.95, 0.95, 40))
+
+	# remove ticks that are before the start of the first exon
+	start = coord_map.loc[exons[0][1], 'plot_coord']
+	tick_coords = [t for t in tick_coords if t > start]
+
+	# remove ticks that are after the end of the last exon
+	stop = coord_map.loc[exons[-1][1], 'plot_coord']
+	tick_coords = [t for t in tick_coords if t < stop]
+
+	# remove ticks in and around the area of plotted exons
+	for v1,v2 in exons:
+		start = coord_map.loc[v1, 'plot_coord']
+		stop = coord_map.loc[v2, 'plot_coord']
+		tick_coords = [t for t in tick_coords 
+					   if t < start-0.002 or t > stop+0.002]
+	return tick_coords
+
+# saves current figure named oname. clears the figure space so additional
+# plotting can be done
 def save_fig(oname):
 	plt.tight_layout()
 	plt.savefig(oname, format='png', dpi=200)
 	plt.clf()
+	plt.close()

@@ -556,9 +556,19 @@ def get_dataset_fields(G):
 
 	data = G.nodes(data=True)[0]
 	d_fields = [k for k in data.keys() if 'dataset_' in k]
-	print(d_fields)
 	return d_fields
 
+# returns the (min, max) coordinates of an input gene
+def get_gene_min_max(loc_df, t_df, gid):
 
+	# all transcripts from this gene
+	paths = t_df.loc[t_df.gid == gid].path.tolist()
+	starts = np.unique([path[0] for path in paths]).tolist()
+	stops = np.unique([path[-1] for path in paths]).tolist()
+	coords = loc_df.loc[starts + stops, 'coord']
+
+	return int(min(coords)), int(max(coords))
+
+# def get_():
 
 
