@@ -52,7 +52,19 @@ def get_field_value(key, fields):
         return None
     else:
         return fields.split(key+' "')[1].split()[0].replace('";','')
-        
+
+# return a table indexed by transcript id with the appropriate 
+# abundance
+# currently only works with TALON abundance files but can easily 
+# be updated to work with more types of abundance files
+def process_abundance_file(file, cols):
+	df = pd.read_csv(file, sep='\t')
+	keep_cols = ['annot_transcript_id']+cols
+	df = df[keep_cols]
+	df['counts'] = df.apply(lambda x: sum(x[col] for col in cols), axis=1)
+	df.drop(cols, axis=1, inplace=True)
+	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
+	return df
 
 
 

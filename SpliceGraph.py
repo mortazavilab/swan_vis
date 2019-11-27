@@ -381,6 +381,22 @@ class SpliceGraph:
 		self.edge_df.drop(d_col, axis=1, inplace=True)
 		self.t_df.drop(d_col, axis=1, inplace=True)
 
+	# adds abundance information to the t_df from an input abundance file 
+	# where rows are transcript ids and columns are datasets
+	def add_abundance_dataset(self, file, count_cols, dataset_name):
+
+		# get the counts from the input abundance file
+		counts = process_abundance_file(file, count_cols)
+		counts.rename({'counts': 'dataset_{}_counts'.format(dataset_name)},
+					   axis=1, inplace=True)
+
+		# merge on tid and format t_df as necessary
+		self.t_df.reset_index(drop=True, inplace=True)
+		self.t_df = self.t_df.merge(counts, on='tid', how='left')
+		self.t_df.fillna(value=0, inplace=True)
+		self.t_df = create_dupe_index(self.t_df, 'tid')
+		self.t_df = set_dupe_index(self.t_df, 'tid')
+
 # adds graph b with dataset name bname to graph a, which does not 
 # require a completely new column
 def add_graph(a, b, bname):
