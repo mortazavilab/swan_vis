@@ -9,6 +9,7 @@ from collections import defaultdict
 import sqlite3
 import SpliceGraph as sg
 import PlottedGraph as pg
+from report_tools import *
 from utils import *
 
 # updates the style dict with colors during actual plotting calls
@@ -133,7 +134,7 @@ def plot_nodes(G, pos, node_style, sub_node_style):
 def plot_graph(pg, args):
 
 	# plotting stuff
-	plt.figure(1, figsize=(14,10), frameon=False)
+	plt.figure(1, figsize=(14,2.8), frameon=False)
 	plt.xlim(-1.05, 1.05)
 	plt.ylim(-1.05, 1.05) 
 
@@ -181,10 +182,10 @@ def plot_overlaid_path(pg, path, args):
 	# save_fig(oname)
 
 # plot a transcript path as we'd see on the genome browser
-def plot_path_browser(splice_graph, tid, oname):
+def plot_path_browser(splice_graph, tid):
 
 	# plotting init stuff
-	plt.figure(1, figsize=(14,10), frameon=False)
+	plt.figure(1, figsize=(14,2.8), frameon=False)
 	plt.xlim(-1.05, 1.05)
 	plt.ylim(-1.05, 1.05)
 	ax = plt.gca() 
@@ -227,10 +228,6 @@ def plot_path_browser(splice_graph, tid, oname):
 	# for t in tick_coords: 
 	plt.plot(tick_coords,[0 for i in range(len(tick_coords))],
 			 color=teal, marker='4')
-
-	# remove the axes 
-	plt.axis('off')
-	save_fig(oname)
 
 # maps vertex id to a matplotlib-digestible coordinate
 def get_coord_map(g_min, g_max, loc_df, chrom, strand):
@@ -286,9 +283,26 @@ def get_tick_coords(exons, coord_map):
 					   if t < start-0.002 or t > stop+0.002]
 	return tick_coords
 
+# plot each transcript in the splice graph overlaid on the full graph
+def plot_each_transcript(splice_graph, args, oprefix, browser=False, size=None):
+	if not browser:
+		plotted_graph = pg.PlottedGraph(splice_graph, args)
+		for tid in plotted_graph.t_df.tid.tolist():
+			oname = '{}_{}.png'.format(oprefix, tid)
+			entry = plotted_graph.t_df.loc[tid]
+			path = entry['path']
+			plot_overlaid_path(plotted_graph, path, args)
+			save_fig(oname)
+	else:
+		for tid in splice_graph.t_df.tid.tolist():
+			oname = '{}_{}_browser.png'.format(oprefix, tid)
+			plot_path_browser(splice_graph, tid)
+			save_fig(oname)
+
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
 def save_fig(oname):
+	plt.axis('off')
 	plt.tight_layout()
 	plt.savefig(oname, format='png', dpi=200)
 	plt.clf()

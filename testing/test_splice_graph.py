@@ -137,3 +137,59 @@ class TestSpliceGraph(object):
 		assert 'dataset_annotation' not in splice_graph.loc_df.columns
 		assert 'dataset_annotation' not in splice_graph.edge_df.columns
 		assert 'dataset_annotation' not in splice_graph.t_df.columns
+
+	def test_add_abundance_dataset(self):
+		loc_df = pd.DataFrame({'chrom': [1,2,3],
+			'coord': [1,1,1],
+			'strand': ['+', '-', '+'],
+			'vertex_id': [0,1,2]})
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+				  'v1': [0,0,1],
+				  'v2': [2,1,2],
+				  'edge_type': ['exon', 'exon', 'intron'], 
+				  'strand': ['+','+','+']})
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+
+		t_df = pd.DataFrame({'tid':[0,1,2],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[0,2],[0,1]]})
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		loc_df = sg.get_loc_types(loc_df, t_df)
+
+		splice_graph = sg.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+
+		# add dataset test
+		file = 'input_files/test_abundance.tsv'
+		splice_graph.add_abundance_dataset(file, ['count_1a', 'count_1b'], '1')
+		splice_graph.add_abundance_dataset(file, ['count_2a', 'count_2b'], '2')
+
+		print(splice_graph.t_df)
+
+		# dataset 1 pairs
+		dataset_1_pairs = splice_graph.t_df.apply(lambda x: (x.tid, x.counts_1), axis=1)
+		control_pairs = [(0,4),(1,8),(2,12)]
+		check_pairs(control_pairs, dataset_1_pairs)
+
+		# dataset 2 pairs
+		dataset_2_pairs = splice_graph.t_df.apply(lambda x: (x.tid, x.counts_2), axis=1)
+		control_pairs = [(0,6),(1,10),(2,14)]
+		check_pairs(control_pairs, dataset_2_pairs)
+
+def check_pairs(control, test):
+	print('control')
+	print(control)
+	for t in test:
+		print(t)
+		assert t in control
+
+
+
+
+

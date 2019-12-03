@@ -387,7 +387,7 @@ class SpliceGraph:
 
 		# get the counts from the input abundance file
 		counts = process_abundance_file(file, count_cols)
-		counts.rename({'counts': 'dataset_{}_counts'.format(dataset_name)},
+		counts.rename({'counts': 'counts_{}'.format(dataset_name)},
 					   axis=1, inplace=True)
 
 		# merge on tid and format t_df as necessary
@@ -497,7 +497,7 @@ def merge_t_dfs(a,b,a_col,b_col):
 
 	return t_df
 
-#
+# 
 def assign_new_paths(b, id_map):
 	b.path = b.apply(lambda x: [id_map[n] for n in x.path], axis=1)
 	return b
@@ -637,7 +637,7 @@ def get_loc_types(loc_df, t_df):
 # returns the fields in a graph that specify which dataset a node or
 # edge belongs to in a merged graph
 def get_dataset_fields(graph=None, df=None):
-	# TODO has graph been merged? If not throw an error
+	# TODO does graph have datasets? If not throw an error
 	if graph is not None:
 		data = graph.nodes(data=True)[0]
 		d_fields = [k for k in data.keys() if 'dataset_' in k]
@@ -645,6 +645,10 @@ def get_dataset_fields(graph=None, df=None):
 		d_fields = [col for col in df.columns if 'dataset_' in col]
 	return d_fields
 
+# returns the fields in the t_df that hold counts of datasets
+def get_count_fields(t_df):
+	c_fields = [col for col in t_df.columns if 'counts_' in col]
+	return c_fields
 
 # returns the (min, max) coordinates of an input gene
 def get_gene_min_max(loc_df, t_df, gid):
@@ -657,6 +661,5 @@ def get_gene_min_max(loc_df, t_df, gid):
 
 	return int(min(coords)), int(max(coords))
 
-# def get_:
 
 

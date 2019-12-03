@@ -310,7 +310,7 @@ def calc_pos_sizes(G):
 	label_size = 43.9*(x**-0.484)
 
 	# linearly-related sizes
-	rad = ((11/540)*x)+(73/540)
+	rad = ((11/540)*x)#+(73/540)
 	edge_width = -x/18 + (121/18)
 
 	return pos, ordered_nodes, node_size, label_size, rad, edge_width
