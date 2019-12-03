@@ -12,10 +12,10 @@ class PDF(FPDF):
 
 	def header(self):
 		self.set_font('Arial', 'B', 10)
-		self.cell(50, 10, 'Transcript ID', border='RB', align='C')
+		self.cell(50, 10, 'Transcript ID', border=True, align='C')
 		for d in self.datasets:
-			self.cell(25, 10, '{} Counts'.format(d), border='LRB', align='C')
-		self.cell(100, 10, 'Transcript Model', border='LB', align='C')
+			self.cell(25, 10, '{} Counts'.format(d), border=True, align='C')
+		self.cell(100, 10, 'Transcript Model', border=True, align='C')
 		self.ln()
 
 	def add_transcript(self, entry, oname):
@@ -36,7 +36,9 @@ class PDF(FPDF):
 			outfile.write(self.output(dest='S').encode('latin-1'))
 
 # generates a report for each transcript model in the graph
-def gen_report(splice_graph, args, oprefix, browser=False):
+def gen_report(splice_graph, args, oprefix, browser=False, order='expression'):
+
+	splice_graph.order_transcripts(order)
 
 	count_fields = sg.get_count_fields(splice_graph.t_df)
 	dataset_names = [c_f.split('counts_')[-1] for c_f in count_fields]

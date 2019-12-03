@@ -182,12 +182,141 @@ class TestSpliceGraph(object):
 		control_pairs = [(0,6),(1,10),(2,14)]
 		check_pairs(control_pairs, dataset_2_pairs)
 
+	def test_order_transcripts(self):
+		loc_df = pd.DataFrame({'chrom': [1,1,1],
+			'coord': [1,2,3],
+			'strand': ['+', '+', '+'],
+			'vertex_id': [0,1,2]})
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+				  'v1': [0,0,1],
+				  'v2': [2,1,2],
+				  'edge_type': ['exon', 'exon', 'intron'], 
+				  'strand': ['+','+','+']})
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+
+		t_df = pd.DataFrame({'tid':[2,1,0],
+				  'gid':[0,0,0],
+				  'gname':['0','0','0'],
+				  'path':[[0,1,2],[1,2],[0,1]],
+				  'counts_a': [0,0,12],
+				  'counts_b': [1,0,14]})
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		loc_df = sg.get_loc_types(loc_df, t_df)
+
+		splice_graph = sg.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+
+		# order by expression level
+		splice_graph.order_transcripts(order='expression')
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [0,2,1]
+
+		# order by transcript id
+		splice_graph.order_transcripts()
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [0,1,2]
+
+		# order by coordinate of tss
+		splice_graph.order_transcripts(order='tss')
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [0,2,1]
+
+		# order by coordinate of tes
+		splice_graph.order_transcripts()
+		print(splice_graph.t_df.head())
+		splice_graph.order_transcripts(order='tes')
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [1,2,0]
+
+# TODO this stuff will have to wait because of how splicegraph init works right now!
+	# def test_get_ordered_id_map(self):
+	# 	splice_graph = get_dummy_sg()
+	# 	id_map = splice_graph.get_ordered_id_map()
+	# 	print(id_map)
+
+	# 	test = list(id_map.items())
+	# 	control = [(0,0),(1,2),(2,1)]
+	# 	check_pairs(control, test)
+
+	# def test_update_loc_df_vertex_ids(self):
+	# 	splice_graph = get_dummy_sg()
+	# 	id_map = splice_graph.get_ordered_id_map()
+	# 	splice_graph.update_loc_df_vertex_ids(id_map)
+
+	# 	test = splice_graph.loc_df.apply(lambda x: (x.vertex_id, x.coord), axis=1)
+	# 	control = [(0,1),(1,2),(2,3)]
+	# 	check_pairs(control, test)
+
+	# def test_update_edge_df_vertex_ids(self):
+	# 	splice_graph = get_dummy_sg(special='intron')
+	# 	id_map = splice_graph.get_ordered_id_map()
+	# 	splice_graph.update_loc_df_vertex_ids(id_map)
+	# 	splice_graph.update_edge_df_vertex_ids(id_map)
+	# 	print(splice_graph.loc_df)
+	# 	print(splice_graph.edge_df)
+		
+	# 	test = splice_graph.edge_df.edge_id.tolist()
+	# 	control = [(0,1),(0,2),(2,1)]
+	# 	check_pairs(control, test)
+
+	# def test_update_t_df_vertex_ids(self):
+	# 	splice_graph = get_dummy_sg(special='intron')
+	# 	print(splice_graph.t_df)
+	# 	id_map = splice_graph.get_ordered_id_map()
+	# 	splice_graph.update_loc_df_vertex_ids(id_map)
+	# 	splice_graph.update_edge_df_vertex_ids(id_map)
+	# 	splice_graph.update_t_df_vertex_ids(id_map)
+
+	# 	test = splice_graph.t_df.apply(
+	# 		lambda x: tuple(x.path), axis=1)
+	# 	control = [(0,2,1),(2,1),(0,2)]
+	# 	check_pairs(control, test)
+
 def check_pairs(control, test):
 	print('control')
 	print(control)
 	for t in test:
 		print(t)
 		assert t in control
+	assert len(test) == len(control)
+
+def get_dummy_sg(special=None):
+	loc_df = pd.DataFrame({'chrom': [1,1,1],
+		'coord': [1,3,2],
+		'strand': ['+', '+', '+'],
+		'vertex_id': [0,1,2]})
+	loc_df = create_dupe_index(loc_df, 'vertex_id')
+	loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+	edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
+			  'v1': [0,0,1],
+			  'v2': [2,1,2],
+			  'edge_type': ['exon', 'exon', 'intron'], 
+			  'strand': ['+','+','+']})
+	edge_df = create_dupe_index(edge_df, 'edge_id')
+	edge_df = set_dupe_index(edge_df, 'edge_id')
+
+	t_df = pd.DataFrame({'tid':[2,1,0],
+			  'gid':[0,0,0],
+			  'gname':['0','0','0'],
+			  'path':[[0,1,2],[1,2],[0,1]],
+			  'counts_a': [0,0,12],
+			  'counts_b': [1,0,14]})
+	t_df = create_dupe_index(t_df, 'tid')
+	t_df = set_dupe_index(t_df, 'tid')
+
+	if special == 'intron':
+		edge_df.loc[(0,1), 'edge_type'] = 'intron'
+
+	loc_df = sg.get_loc_types(loc_df, t_df)
+
+	splice_graph = sg.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+	return splice_graph
 
 
 

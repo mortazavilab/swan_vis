@@ -74,8 +74,11 @@ args['color_alt_nodes'] = True
 args['indicate_dataset'] = False
 args['combine'] = False
 
+# # testing
+# print(merged.loc_df[['vertex_id', 'coord']])
+
 # gen_report(merged, args, browser=True)
-gen_report(merged, args, 'figures/mapt')
+gen_report(merged, args, 'figures/mapt', order='tss')
 
 
 

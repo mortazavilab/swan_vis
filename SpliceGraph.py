@@ -18,11 +18,8 @@ class SpliceGraph:
 			if loc_df is None or edge_df is None or t_df is None:
 				raise Exception('No workable input to SpliceGraph given.')
 
-		# loc_df, edge_df, and t_df as input
-		if loc_df is not None and edge_df is not None and t_df is not None:
-			1
 		# GTF as input
-		elif gtf:
+		if gtf:
 			if not os.path.exists(gtf):
 				raise Exception('GTF file not found. Check path.')
 			loc_df, edge_df, t_df = self.gtf_create_dfs(gtf)
@@ -32,13 +29,19 @@ class SpliceGraph:
 				raise Exception('TALON db file not found. Check path.')
 			loc_df, edge_df, t_df = self.db_create_dfs(talon_db)
 
-		# get loc types
-		loc_df = get_loc_types(loc_df, t_df)
-		
-		self.G = self.create_graph_from_dfs(loc_df, edge_df, t_df)
+		# assign the df fields
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
+
+		# reassign vertex ids across the board with 
+		# coordinate-based indices
+		self.update_ids()
+
+		# get loc types (TSS, TES, interal, etc)
+		self.loc_df = get_loc_types(self.loc_df, self.t_df)
+		
+		self.G = self.create_graph_from_dfs(self.loc_df, self.edge_df, self.t_df)
 
 		# add dataset column if one was given
 		if dataset:
@@ -177,10 +180,6 @@ class SpliceGraph:
 		loc_df.reset_index(inplace=True)
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		# loc_df = get_loc_types(loc_df, t_df)
-
-		# edge_df['annotated'] = True # we can assume that since we're working from a gtf, it's an annotation?? (maybe)
-		# loc_df['annotated'] = True
 
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
@@ -276,10 +275,7 @@ class SpliceGraph:
 		loc_df['alt_TSS'] = False
 		loc_df['TES'] = False
 		loc_df['alt_TES'] = False
-		# loc_df['annotated'] = True
-		# loc_df = get_loc_types(loc_df, t_df)
 
-		# edge_df['annotated'] = True
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
@@ -318,6 +314,70 @@ class SpliceGraph:
 		except:
 			strand = edge_df.loc[edge_df.v2 == x.vertex_id, 'strand'].values[0]
 		return strand
+
+	# update ids according to coordinates in loc_df, edge_df, and t_df
+	def update_ids(self):
+		id_map = self.get_ordered_id_map()
+		self.update_loc_df_vertex_ids(id_map)
+		self.update_edge_df_vertex_ids(id_map)
+		self.update_t_df_vertex_ids(id_map)
+
+	# get a dictionary mapping vertex id to ordered new vertex id
+	def get_ordered_id_map(self):
+
+		# get the strandedness of entry
+		strand = self.loc_df.loc[self.loc_df.index[0], 'strand']
+
+		# sort based on coord depending on strandedness
+		if strand == '+':
+			self.loc_df.sort_values(by='coord', 
+									ascending=True,
+									inplace=True)
+		elif strand == '-':
+			self.loc_df.sort_values(by='coord',
+									ascending=False,
+									inplace=True)
+
+		# dictionary mapping vertex_id to new_id
+		self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]
+		id_map = self.loc_df['new_id'].to_dict()
+		self.loc_df.drop('new_id', axis=1, inplace=True)
+
+		return id_map
+
+	# update vertex ids in loc_df
+	def update_loc_df_vertex_ids(self, id_map):
+
+		# add new id to df and use it to update vertex id columns
+		self.loc_df['new_id'] = self.loc_df.apply(
+			lambda x: id_map[x.vertex_id], axis=1)
+		self.loc_df.vertex_id = self.loc_df.new_id
+		self.loc_df.drop('new_id', axis=1, inplace=True)
+		self.loc_df.reset_index(drop=True, inplace=True)
+		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
+		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
+
+	# update vertex ids in edge_df
+	def update_edge_df_vertex_ids(self, id_map):
+
+		# remove old edge_id index and replace edge_id, v1, v2 
+		# with values from id_map
+		self.edge_df.reset_index(drop=True, inplace=True)
+		self.edge_df.v1 = self.edge_df.apply(
+			lambda x: id_map[x.v1], axis=1)
+		self.edge_df.v2 = self.edge_df.apply(
+			lambda x: id_map[x.v2], axis=1)
+		self.edge_df.edge_id = self.edge_df.apply(
+			lambda x: (x.v1, x.v2), axis=1)
+
+		self.edge_df = create_dupe_index(self.edge_df, 'edge_id')
+		self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
+
+	# update vertex ids in t_df
+	def update_t_df_vertex_ids(self, id_map):
+		# update vertex ids in the path
+		self.t_df.path = self.t_df.apply(
+			lambda x: [id_map[n] for n in x.path], axis=1)
 
 	# create the graph object from the dataframes
 	def create_graph_from_dfs(self, loc_df, edge_df, t_df):
@@ -396,6 +456,60 @@ class SpliceGraph:
 		self.t_df.fillna(value=0, inplace=True)
 		self.t_df = create_dupe_index(self.t_df, 'tid')
 		self.t_df = set_dupe_index(self.t_df, 'tid')
+
+	# order the transcripts by expression of transcript, transcript id, 
+	# or start/end nodes
+	def order_transcripts(self, order='tid'):
+
+		# order by transcript id
+		if order == 'tid':
+			ordered_tids = sorted(self.t_df.tid.tolist())
+			self.t_df = self.t_df.loc[ordered_tids]
+
+		# order by expression
+		elif order == 'expression':
+			count_fields = get_count_fields(self.t_df)
+
+			# make sure there are counts in the graph at all
+			if count_fields:
+				self.t_df['counts_sum'] = self.t_df.apply(lambda x:
+					sum(x[count_fields]), axis=1)
+				self.t_df.sort_values(by='counts_sum', 
+									  ascending=False, 
+									  inplace=True)
+				self.t_df.drop('counts_sum', axis=1, inplace=True)
+
+		# order by coordinate of tss
+		# TODO might be able to roll this in with getting ordered_nodes
+		# in PlottedGraph
+		elif order == 'tss':
+			self.t_df['start_coord'] = self.t_df.apply(lambda x: 
+				self.loc_df.loc[x.path[0], 'coord'], axis=1)
+
+			# watch out for strandedness
+			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
+				ascending = False
+			else: 
+				ascending = True
+			self.t_df.sort_values(by='start_coord',
+								  ascending=ascending,
+								  inplace=True)
+			self.t_df.drop('start_coord', axis=1, inplace=True)
+			
+		# order by coordinate of tes
+		elif order == 'tes':
+			self.t_df['end_coord'] = self.t_df.apply(lambda x: 
+				self.loc_df.loc[x.path[-1], 'coord'], axis=1)
+
+			# watch out for strandedness
+			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
+				ascending = True
+			else: 
+				ascending = False
+			self.t_df.sort_values(by='end_coord',
+								  ascending=ascending,
+								  inplace=True)
+			self.t_df.drop('end_coord', axis=1, inplace=True)
 
 # adds graph b with dataset name bname to graph a, which does not 
 # require a completely new column

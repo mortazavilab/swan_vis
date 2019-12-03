@@ -284,7 +284,7 @@ def get_tick_coords(exons, coord_map):
 	return tick_coords
 
 # plot each transcript in the splice graph overlaid on the full graph
-def plot_each_transcript(splice_graph, args, oprefix, browser=False, size=None):
+def plot_each_transcript(splice_graph, args, oprefix, browser=False):
 	if not browser:
 		plotted_graph = pg.PlottedGraph(splice_graph, args)
 		for tid in plotted_graph.t_df.tid.tolist():
