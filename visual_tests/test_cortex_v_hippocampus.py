@@ -83,18 +83,18 @@ args['indicate_dataset'] = False
 args['combine'] = False
 args['indicate_novel'] = True
 
-# testing
-print(merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
-print(merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
+# # testing
+# print(merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
+# print(merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
 
-merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']].to_csv('test_locs.csv')
-merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']].to_csv('test_edges.csv')
+# merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']].to_csv('test_locs.csv')
+# merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']].to_csv('test_edges.csv')
 
 # # testing
 # print(merged.loc_df[['vertex_id', 'coord']])
 
 # gen_report(merged, args, browser=True)
-# gen_report(merged, args, 'figures/mapt', order='tss')
+gen_report(merged, args, 'figures/mapt', order='tss')
 
 
 

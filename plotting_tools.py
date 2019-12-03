@@ -173,6 +173,15 @@ def plot_overlaid_path(pg, path, args):
 	G = nx.DiGraph()
 	G.add_nodes_from(nodes)
 	G.add_edges_from(edges)
+
+	# change colors of nodes in path so we color nodes by their role in the path
+	# as opposed to the overall graph
+	node_types = ['TSS', 'TES', 'alt_TSS', 'alt_TES']
+	for node_type in node_types:
+		nx.set_node_attributes(G, False, node_type)
+	attrs = {path_nodes[0]: {'TSS': True, 'alt_TSS': True},
+			 path_nodes[-1]: {'TES': True, 'alt_TES': True}}
+	nx.set_node_attributes(G, attrs)
 	path_pg.G = G
 
 	# plot the subgraph of this transcript path on top of 
