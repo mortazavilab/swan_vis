@@ -16,6 +16,7 @@ args['color_edges'] = True
 args['color_nodes'] = True
 args['color_alt_nodes'] = True
 args['indicate_dataset'] = False
+args['indicate_novel'] = True
 args['combine'] = False
 
 plotted_graph = pg.PlottedGraph(splice_graph, args)
@@ -32,13 +33,13 @@ save_fig('figures/mapt_exons_introns_alt_TSS_alt_TES_combined.png')
 plot_each_transcript(splice_graph, args, 'figures/mapt_combined')
 plot_each_transcript(splice_graph, args, 'figures/mapt', browser=True)
 
-# # each transcript through the combined graph
-# for tid in plotted_graph.t_df.tid.tolist():
-# 	print(tid)
-# 	oname = 'figures/mapt_combined_{}.png'.format(tid)
-# 	path = plotted_graph.t_df.loc[tid, 'path']
-# 	plot_overlaid_path(plotted_graph, path, args)
-# 	save_fig(oname)
+# each transcript through the combined graph
+for tid in plotted_graph.t_df.tid.tolist():
+	print(tid)
+	oname = 'figures/mapt_combined_{}.png'.format(tid)
+	path = plotted_graph.t_df.loc[tid, 'path']
+	plot_overlaid_path(plotted_graph, path, args)
+	save_fig(oname)
 
 # # also plot genome browser style!
 # for tid in splice_graph.t_df.tid.tolist():

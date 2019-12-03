@@ -572,13 +572,15 @@ def merge_graphs(a, b, aname, bname, store_a=True):
 	# dataset information
 	if not store_a:
 		sg.remove_dataset('TEMP')
-	else:
-		sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
-		sg.G = label_edges(sg.G, edge_df, a_col, a_col)
+	# else:
+	# 	sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
+	# 	sg.G = label_edges(sg.G, edge_df, a_col, a_col)
 
 	# assign labels to nodes and edges based on what dataset they came from
-	sg.G = label_nodes(sg.G, loc_df, b_col, b_col)
-	sg.G = label_edges(sg.G, edge_df, b_col, b_col)
+	d_fields = get_dataset_fields(df=loc_df)
+	for d_field in d_fields:
+		sg.G = label_nodes(sg.G, loc_df, d_field, d_field)
+		sg.G = label_edges(sg.G, edge_df, d_field, d_field)
 
 	# # 
 	# sg.merged = True

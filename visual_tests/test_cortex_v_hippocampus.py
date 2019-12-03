@@ -15,13 +15,21 @@ annot = sg.SpliceGraph(gtf='input_files/annot_mapt.gtf')
 cortex = sg.SpliceGraph(gtf='input_files/cortex_mapt.gtf')
 hippo = sg.SpliceGraph(gtf='input_files/hippocampus_mapt.gtf')
 
-merged = sg.add_graph(annot, cortex, 'Cortex')
+merged = sg.merge_graphs(annot, cortex, 'annotation', 'Cortex')
 merged = sg.add_graph(merged, hippo, 'Hippo')
 
+G = merged.G
 loc_df = merged.loc_df
 edge_df = merged.edge_df
 t_df = merged.t_df
 
+# # testing
+# # print(loc_df.head())
+# print(loc_df.columns)
+# print(edge_df.columns)
+# print(G.nodes(data=True))
+# print(G.edges(data=True))
+# exit()
 
 # # testing
 # print(merged.loc_df.head())
@@ -73,12 +81,20 @@ args['color_nodes'] = True
 args['color_alt_nodes'] = True
 args['indicate_dataset'] = False
 args['combine'] = False
+args['indicate_novel'] = True
+
+# testing
+print(merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
+print(merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
+
+merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']].to_csv('test_locs.csv')
+merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']].to_csv('test_edges.csv')
 
 # # testing
 # print(merged.loc_df[['vertex_id', 'coord']])
 
 # gen_report(merged, args, browser=True)
-gen_report(merged, args, 'figures/mapt', order='tss')
+# gen_report(merged, args, 'figures/mapt', order='tss')
 
 
 

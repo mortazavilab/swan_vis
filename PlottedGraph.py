@@ -367,6 +367,12 @@ def get_edge_plt_settings(G, ordered_nodes, rad, edge_width, args):
 			if is_unique_to_dataset(data, d_field, d_fields):
 				e_style_dict['linestyle'] = 'dashed'
 			else: e_style_dict['linestyle'] = None
+		elif args['indicate_novel']:
+			if data['dataset_annotation'] == False:
+				e_style_dict['linestyle'] = 'dashed'
+			else:
+				e_style_dict['linestyle'] = None
+
 		else: 
 			e_style_dict['linestyle'] = None
 
@@ -402,6 +408,15 @@ def get_node_plt_settings(G, pos, node_size, args):
 		# node only in the query dataset
 		if args['indicate_dataset']:			 
 			if is_unique_to_dataset(data, d_field, d_fields):
+				curr_style.update({'shape': 'D', 'size': node_size-30})
+				if args['combine'] and data['combined']:
+					curr_style.update({'shape': 'h', 'size': node_size})
+
+					if len(data['combined_types']) > 1: 
+						sub_curr_style.update({'shape': 'h'})
+		# novel node
+		if args['indicate_novel']:
+			if data['dataset_annotation'] == False:
 				curr_style.update({'shape': 'D', 'size': node_size-30})
 				if args['combine'] and data['combined']:
 					curr_style.update({'shape': 'h', 'size': node_size})
