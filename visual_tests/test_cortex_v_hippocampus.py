@@ -93,7 +93,7 @@ args['indicate_novel'] = True
 # # testing
 # print(merged.loc_df[['vertex_id', 'coord']])
 
-# gen_report(merged, args, browser=True)
+gen_report(merged, args, 'figures/mapt', browser=True, order='tss')
 gen_report(merged, args, 'figures/mapt', order='tss')
 
 

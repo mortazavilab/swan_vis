@@ -62,5 +62,8 @@ def gen_report(splice_graph, args, oprefix, browser=False, order='expression'):
 			oname = '{}_{}_browser.png'.format(oprefix, tid)
 		pdf.add_transcript(entry, oname)
 
-	pdf.write_pdf('{}_report.pdf'.format(oprefix))
+	if not browser:
+		pdf.write_pdf('{}_report.pdf'.format(oprefix))
+	else:
+		pdf.write_pdf('{}_report_browser.pdf'.format(oprefix))
 

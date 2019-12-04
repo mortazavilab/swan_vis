@@ -12,11 +12,6 @@ def create_dupe_index(df, ind_name):
 	df[ind_name+'_back'] = df[ind_name]
 	return df
 
-# removes the duplicate index
-def remove_dupe_index(df, ind_name):
-	df.reset_index(drop=True, inplace=True)
-
-
 # renames old index dupe column in df and resets the index
 def reset_dupe_index(df, ind_name):
 	df.rename({ind_name: ind_name+'_back'}, inplace=True, axis=1)

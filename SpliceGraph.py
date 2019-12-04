@@ -10,45 +10,131 @@ import sqlite3
 from utils import *
 
 class SpliceGraph:
-	def __init__(self, gtf=None, talon_db=None,
-				 loc_df=None, edge_df=None, t_df=None,
-				 dataset=None):
+	# def __init__(self, gtf=None, talon_db=None,
+	# 	# 		 loc_df=None, edge_df=None, t_df=None,
+	# 	# 		 dataset=None):
 
-		if not gtf and not talon_db:
-			if loc_df is None or edge_df is None or t_df is None:
-				raise Exception('No workable input to SpliceGraph given.')
+	# 	# if not gtf and not talon_db:
+	# 	# 	if loc_df is None or edge_df is None or t_df is None:
+	# 	# 		raise Exception('No workable input to SpliceGraph given.')
 
-		# GTF as input
-		if gtf:
-			if not os.path.exists(gtf):
-				raise Exception('GTF file not found. Check path.')
-			loc_df, edge_df, t_df = self.gtf_create_dfs(gtf)
-		# TALON DB as input
-		elif talon_db: 
-			if not os.path.exists(talon_db):
-				raise Exception('TALON db file not found. Check path.')
-			loc_df, edge_df, t_df = self.db_create_dfs(talon_db)
+	# 	# # GTF as input
+	# 	# if gtf:
+	# 	# 	if not os.path.exists(gtf):
+	# 	# 		raise Exception('GTF file not found. Check path.')
+	# 	# 	loc_df, edge_df, t_df = self.gtf_create_dfs(gtf)
+	# 	# # TALON DB as input
+	# 	# elif talon_db: 
+	# 	# 	if not os.path.exists(talon_db):
+	# 	# 		raise Exception('TALON db file not found. Check path.')
+	# 	# 	loc_df, edge_df, t_df = self.db_create_dfs(talon_db)
 
-		# assign the df fields
-		self.loc_df = loc_df
-		self.edge_df = edge_df
-		self.t_df = t_df
+	# 	# # assign the df fields
+	# 	# self.loc_df = loc_df
+	# 	# self.edge_df = edge_df
+	# 	# self.t_df = t_df
 
-		# reassign vertex ids across the board with 
-		# coordinate-based indices
-		self.update_ids()
+	# 	# # reassign vertex ids across the board with 
+	# 	# # coordinate-based indices
+	# 	# self.update_ids()
 
-		# get loc types (TSS, TES, interal, etc)
-		self.loc_df = get_loc_types(self.loc_df, self.t_df)
+	# 	# # get loc types (TSS, TES, interal, etc)
+	# 	# self.loc_df = get_loc_types(self.loc_df, self.t_df)
 		
-		self.G = self.create_graph_from_dfs(self.loc_df, self.edge_df, self.t_df)
+	# 	# self.G = self.create_graph_from_dfs(self.loc_df, self.edge_df, self.t_df)
 
-		# add dataset column if one was given
-		if dataset:
-			self.add_dataset(dataset)
+	# 	# # add dataset column if one was given
+	# 	# if dataset:
+	# 	# 	self.add_dataset(dataset)
+
+	def __init__(self):
+
+		self.datasets = []
+
+	# check if anything has been added to the graph yet
+	def is_empty(self):
+		if len(self.datasets) == 0: 
+			return True
+		else: 
+			return False
+
+	# add annotation to graph 
+	def add_annotation(self, gtf=None, db=None):
+
+		# neither gtf nor db given
+		if not gtf and not db: 
+			raise Exception('Provide a GTF or TALON db')
+
+		# column name for annotation 
+		col = 'annotation'
+
+		# use the add_dataset function to add stuff to graph
+		if gtf:
+			self.add_dataset(col, gtf=gtf)
+		elif db:
+			self.add_dataset(col, db=db)
+
+	# add dataset into graph from gtf
+	def add_dataset(self, col, gtf=None, db=None):
+
+		# # make sure that input dataset name is not
+		# # already in any of the df col spaces
+		# if col in self.loc_df.columns:
+		# 	raise Exception('Dataset name {} conflicts with preexisting '
+		# 		'column in loc_df. Choose a different name.'.format(col))
+		# if col in self.edge_df.columns:
+		# 	raise Exception('Dataset name conflicts with preexisting '
+		# 		'column in edge_df. Choose a different name.'.format(col))
+		# if col in self.t_df.columns:
+		# 	raise Exception('Dataset name conflicts with preexisting '
+		# 		'column in t_df. Choose a different name.'.format(col))
+
+		# first entry is easy 
+		if self.is_empty():
+
+			# get loc_df, edge_df, t_df
+			if gtf:
+				self.create_dfs_gtf(gtf)
+			elif db:
+				self.create_dfs_db(db)
+
+			# add column to each df to indicate where data came from
+			self.loc_df[col] = True
+			self.edge_df[col] = True
+			self.t_df[col] = True
+
+			self.update_ids()
+			self.get_loc_types()
+			self.create_graph_from_dfs()
+
+		# adding a new dataset to the graph
+		else:
+			temp = SpliceGraph()
+			if gtf:
+				temp.create_dfs_gtf(gtf)
+			elif db:
+				temp.create_dfs_db(db)
+
+		# update graph metadata
+		self.datasets.append(col)
+
+	# # add datset into graph from db
+	# def add_dataset_from_db(self, db, col):
+
+	# 	# get loc_df, edge_df, t_df
+	# 	self.create_dfs_db(db)
+
+	# 	if self.is_empty():
+	# 		self.update_ids()
+	# 		self.get_loc_types()
+	# 		self.create_graph_from_dfs()
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
-	def gtf_create_dfs(self, gtffile):
+	def create_dfs_gtf(self, gtf):
+
+		# make sure file exists
+		if not os.path.exists(gtf):
+			raise Exception('GTF file not found. Check path.')
 
 		# get dfs by parsing through gtf
 		loc_df = pd.DataFrame(columns=['chrom', 'coord',
@@ -68,8 +154,8 @@ class SpliceGraph:
 		transcript_paths = []
 		transcript_path = []
 
-		with open(gtffile, 'r') as gtf:
-			for line in gtf:
+		with open(gtf, 'r') as infile:
+			for line in infile:
 
 				# skip header lines
 				if '##' in line: continue
@@ -187,10 +273,16 @@ class SpliceGraph:
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
 
-		return loc_df, edge_df, t_df
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
-	def db_create_dfs(self, db):
+	def create_dfs_db(self, db):
+
+		# make sure file exists
+		if not os.path.exists(db):
+			raise Exception('TALON db file not found. Check path.')
 
 		# open db connection
 		conn = sqlite3.connect(db)
@@ -253,7 +345,7 @@ class SpliceGraph:
 		# get fields from each transcript and add to dataframe
 		gids, tids, paths = zip(*[(i[0], i[1], i[2:]) for i in data[::2]])
 		gnames = [i[0] for i in data[1::2]]
-		paths = self.get_edge_paths(paths)
+		paths = self.get_db_edge_paths(paths)
 
 		t_df['tid'] = np.asarray(tids)
 		t_df['gid'] = np.asarray(gids)
@@ -265,9 +357,9 @@ class SpliceGraph:
 
 		# furnish the last bit of info in each df
 		t_df['path'] = [[int(n) for n in path]
-						 for path in self.get_vertex_paths(paths, edge_df)]
+						 for path in self.get_db_vertex_paths(paths, edge_df)]
 		loc_df['strand'] = loc_df.apply(lambda x:
-				 self.get_strand(x, edge_df), axis=1)
+				 self.get_db_strand(x, edge_df), axis=1)
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		loc_df['internal'] = False
@@ -280,10 +372,53 @@ class SpliceGraph:
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
 
-		return loc_df, edge_df, t_df
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
+
+	# add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
+	def get_loc_types(self):
+
+		loc_df = self.loc_df
+		t_df = self.t_df
+
+		# label each location as internal off the bat, and not as TSS/TES
+		loc_df['internal'] = False
+		loc_df['TSS'] = False
+		loc_df['TES'] = False
+		loc_df['alt_TSS'] = False
+		loc_df['alt_TES'] = False
+
+		# label each TSS and TES
+		paths = t_df.path.tolist()
+		tss = np.unique([path[0] for path in paths])
+		loc_df.loc[tss, 'TSS'] = True
+		tes = np.unique([path[-1] for path in paths])
+		loc_df.loc[tes, 'TES'] = True
+		internal = np.unique([n for path in paths for n in path[1:-1]])
+		loc_df.loc[internal, 'internal'] = True
+
+		# label each alt TSS and alt TES for each gene
+		for g in t_df.gid.unique().tolist():
+			gene_entries = t_df.loc[t_df.gid == g]
+
+			# genes that have more than one transcript are alt TSS/TES candidates
+			if len(gene_entries.index) != 1: 
+
+				paths = gene_entries.path.tolist()
+				tss = [path[0] for path in paths]
+				tes = [path[-1] for path in paths]
+
+				# alt TSS/TES
+				if len(set(tss)) > 1: 
+					loc_df.loc[tss, 'alt_TSS'] = True
+				if len(set(tes)) > 1: 
+					loc_df.loc[tes, 'alt_TES'] = True
+
+		self.loc_df = loc_df
 
 	# convert talon query into edge path
-	def get_edge_paths(self, paths):
+	def get_db_edge_paths(self, paths):
 		edge_paths = []
 		for p in paths:
 			if p[1] == None:
@@ -294,7 +429,7 @@ class SpliceGraph:
 		return edge_paths
 
 	# convert edge path to vertex path
-	def get_vertex_paths(self, paths, edge_df):
+	def get_db_vertex_paths(self, paths, edge_df):
 		vertex_paths = []
 		for p in paths: 
 			path = []
@@ -307,7 +442,7 @@ class SpliceGraph:
 		return vertex_paths
 
 	# get the strand of each vertex
-	def get_strand(self, x, edge_df):
+	def get_db_strand(self, x, edge_df):
 		# use v1 or v2 depending on where vertex is in edge
 		try: 
 			strand = edge_df.loc[edge_df.v1 == x.vertex_id, 'strand'].values[0]
@@ -380,52 +515,45 @@ class SpliceGraph:
 			lambda x: [id_map[n] for n in x.path], axis=1)
 
 	# create the graph object from the dataframes
-	def create_graph_from_dfs(self, loc_df, edge_df, t_df):
+	def create_graph_from_dfs(self):
 
-		# graph initialization
 		G = nx.DiGraph()
 
 		# add nodes to graph from transcript paths
-		paths = t_df.path.tolist()
+		paths = self.t_df.path.tolist()
 		for path in paths:
 			nx.add_path(G, path)
 
 		# add node attributes from dfs
-		G = label_nodes(G, loc_df, 'internal', 'internal') 
-		G = label_nodes(G, loc_df, 'TSS', 'TSS') 
-		G = label_nodes(G, loc_df, 'alt_TSS', 'alt_TSS') 
-		G = label_nodes(G, loc_df, 'TES', 'TES')
-		G = label_nodes(G, loc_df, 'alt_TES', 'alt_TES')
-		G = label_nodes(G, loc_df, 'coord', 'coord')
-		# G = label_nodes(G, loc_df, 'annotated', 'annotated')
-		# G = label_edges(G, edge_df, 'annotated', 'annotated')
-		G = label_edges(G, edge_df, 'strand', 'strand')
-		G = label_edges(G, edge_df, 'edge_type', 'edge_type')
+		G = label_nodes(G, self.loc_df, 'internal', 'internal') 
+		G = label_nodes(G, self.loc_df, 'TSS', 'TSS') 
+		G = label_nodes(G, self.loc_df, 'alt_TSS', 'alt_TSS') 
+		G = label_nodes(G, self.loc_df, 'TES', 'TES')
+		G = label_nodes(G, self.loc_df, 'alt_TES', 'alt_TES')
+		G = label_nodes(G, self.loc_df, 'coord', 'coord')
+		G = label_edges(G, self.edge_df, 'strand', 'strand')
+		G = label_edges(G, self.edge_df, 'edge_type', 'edge_type')
 
-		return G
+		self.G = G
 
-	# returns true if graph has been merged before, otherwise False
-	def is_merged(self):
-		return self.merged
+	# # adds only dataset column to a preexisting SpliceGraph's
+	# # dfs, nodes, and edges
+	# def add_dataset(self, name):
 
-	# adds only dataset column to a preexisting SpliceGraph's
-	# dfs, nodes, and edges
-	def add_dataset(self, name):
+	# 	d_col = 'dataset_'+name
 
-		d_col = 'dataset_'+name
+	# 	# make sure we're not overwriting something
+	# 	if d_col in get_dataset_fields(self.G):
+	# 		raise Exception('Dataset {} already in the graph'.format(name))
 
-		# make sure we're not overwriting something
-		if d_col in get_dataset_fields(self.G):
-			raise Exception('Dataset {} already in the graph'.format(name))
+	# 	# add this column to all of the dfs
+	# 	self.loc_df[d_col] = True
+	# 	self.edge_df[d_col] = True
+	# 	self.t_df[d_col] = True
 
-		# add this column to all of the dfs
-		self.loc_df[d_col] = True
-		self.edge_df[d_col] = True
-		self.t_df[d_col] = True
-
-		# and to the edges/nodes
-		self.G = label_nodes(self.G, self.loc_df, d_col, d_col)
-		self.G = label_edges(self.G, self.edge_df, d_col, d_col)
+	# 	# and to the edges/nodes
+	# 	self.G = label_nodes(self.G, self.loc_df, d_col, d_col)
+	# 	self.G = label_edges(self.G, self.edge_df, d_col, d_col)
 
 	# removes the dataset columns from a preexisting SpliceGraph's
 	# dfs ONLY TODO do I want to add support for removing labels from nodes
@@ -712,43 +840,43 @@ def get_vertex_id_map(df, a_col, b_col):
 
 	return vertex_id_map
 
-# add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
-def get_loc_types(loc_df, t_df):
+# # add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
+# def get_loc_types(loc_df, t_df):
 
-	# label each location as internal off the bat, and not as TSS/TES
-	loc_df['internal'] = False
-	loc_df['TSS'] = False
-	loc_df['TES'] = False
-	loc_df['alt_TSS'] = False
-	loc_df['alt_TES'] = False
+# 	# label each location as internal off the bat, and not as TSS/TES
+# 	loc_df['internal'] = False
+# 	loc_df['TSS'] = False
+# 	loc_df['TES'] = False
+# 	loc_df['alt_TSS'] = False
+# 	loc_df['alt_TES'] = False
 
-	# label each TSS and TES
-	paths = t_df.path.tolist()
-	tss = np.unique([path[0] for path in paths])
-	loc_df.loc[tss, 'TSS'] = True
-	tes = np.unique([path[-1] for path in paths])
-	loc_df.loc[tes, 'TES'] = True
-	internal = np.unique([n for path in paths for n in path[1:-1]])
-	loc_df.loc[internal, 'internal'] = True
+# 	# label each TSS and TES
+# 	paths = t_df.path.tolist()
+# 	tss = np.unique([path[0] for path in paths])
+# 	loc_df.loc[tss, 'TSS'] = True
+# 	tes = np.unique([path[-1] for path in paths])
+# 	loc_df.loc[tes, 'TES'] = True
+# 	internal = np.unique([n for path in paths for n in path[1:-1]])
+# 	loc_df.loc[internal, 'internal'] = True
 
-	# label each alt TSS and alt TES for each gene
-	for g in t_df.gid.unique().tolist():
-		gene_entries = t_df.loc[t_df.gid == g]
+# 	# label each alt TSS and alt TES for each gene
+# 	for g in t_df.gid.unique().tolist():
+# 		gene_entries = t_df.loc[t_df.gid == g]
 
-		# genes that have more than one transcript are alt TSS/TES candidates
-		if len(gene_entries.index) != 1: 
+# 		# genes that have more than one transcript are alt TSS/TES candidates
+# 		if len(gene_entries.index) != 1: 
 
-			paths = gene_entries.path.tolist()
-			tss = [path[0] for path in paths]
-			tes = [path[-1] for path in paths]
+# 			paths = gene_entries.path.tolist()
+# 			tss = [path[0] for path in paths]
+# 			tes = [path[-1] for path in paths]
 
-			# alt TSS/TES
-			if len(set(tss)) > 1: 
-				loc_df.loc[tss, 'alt_TSS'] = True
-			if len(set(tes)) > 1: 
-				loc_df.loc[tes, 'alt_TES'] = True
+# 			# alt TSS/TES
+# 			if len(set(tss)) > 1: 
+# 				loc_df.loc[tss, 'alt_TSS'] = True
+# 			if len(set(tes)) > 1: 
+# 				loc_df.loc[tes, 'alt_TES'] = True
 
-	return loc_df
+# 	return loc_df
 
 # returns the fields in a graph that specify which dataset a node or
 # edge belongs to in a merged graph
