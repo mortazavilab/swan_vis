@@ -10,42 +10,6 @@ import sqlite3
 from utils import *
 
 class SpliceGraph:
-	# def __init__(self, gtf=None, talon_db=None,
-	# 	# 		 loc_df=None, edge_df=None, t_df=None,
-	# 	# 		 dataset=None):
-
-	# 	# if not gtf and not talon_db:
-	# 	# 	if loc_df is None or edge_df is None or t_df is None:
-	# 	# 		raise Exception('No workable input to SpliceGraph given.')
-
-	# 	# # GTF as input
-	# 	# if gtf:
-	# 	# 	if not os.path.exists(gtf):
-	# 	# 		raise Exception('GTF file not found. Check path.')
-	# 	# 	loc_df, edge_df, t_df = self.gtf_create_dfs(gtf)
-	# 	# # TALON DB as input
-	# 	# elif talon_db: 
-	# 	# 	if not os.path.exists(talon_db):
-	# 	# 		raise Exception('TALON db file not found. Check path.')
-	# 	# 	loc_df, edge_df, t_df = self.db_create_dfs(talon_db)
-
-	# 	# # assign the df fields
-	# 	# self.loc_df = loc_df
-	# 	# self.edge_df = edge_df
-	# 	# self.t_df = t_df
-
-	# 	# # reassign vertex ids across the board with 
-	# 	# # coordinate-based indices
-	# 	# self.update_ids()
-
-	# 	# # get loc types (TSS, TES, interal, etc)
-	# 	# self.loc_df = get_loc_types(self.loc_df, self.t_df)
-		
-	# 	# self.G = self.create_graph_from_dfs(self.loc_df, self.edge_df, self.t_df)
-
-	# 	# # add dataset column if one was given
-	# 	# if dataset:
-	# 	# 	self.add_dataset(dataset)
 
 	def __init__(self):
 
@@ -57,6 +21,10 @@ class SpliceGraph:
 			return True
 		else: 
 			return False
+
+	###########################################################################
+	############## Related to adding datasets and merging #####################
+	###########################################################################
 
 	# add annotation to graph 
 	def add_annotation(self, gtf=None, db=None):
@@ -107,7 +75,8 @@ class SpliceGraph:
 			self.get_loc_types()
 			self.create_graph_from_dfs()
 
-		# adding a new dataset to the graph
+		# adding a new dataset to the graph requires us to merge
+		# SpliceGraph objects
 		else:
 			temp = SpliceGraph()
 			if gtf:
@@ -115,19 +84,153 @@ class SpliceGraph:
 			elif db:
 				temp.create_dfs_db(db)
 
+			self.merge_dfs(temp, col)
+
 		# update graph metadata
 		self.datasets.append(col)
 
-	# # add datset into graph from db
-	# def add_dataset_from_db(self, db, col):
+	# merge dfs from two SpliceGraph objects
+	def merge_dfs(self, b, b_col):
 
-	# 	# get loc_df, edge_df, t_df
-	# 	self.create_dfs_db(db)
+		# loc_df merging/updating 
+		self.merge_loc_dfs(b, b_col)
+		id_map = self.get_merged_id_map()
+		self.update_loc_df_ids_merge(id_map)
 
-	# 	if self.is_empty():
-	# 		self.update_ids()
-	# 		self.get_loc_types()
-	# 		self.create_graph_from_dfs()
+		# edge_df merging/updating
+		b.update_edge_df_ids_merge(id_map)
+		self.merge_edge_dfs(b, b_col)
+
+		# t_df merging/updating
+		b.update_t_df_paths_merge(id_map)
+		self.merge_t_dfs(b, b_col)
+
+	# update t_df with vertex ids in path for the merged dfs
+	def update_t_df_paths_merge(self, id_map):
+		self.t_df.path = self.t_df.apply(
+			lambda x: [id_map[n] for n in x.path], axis=1)
+
+	# merge t_dfs on tid, gid, gname, path
+	def merge_t_dfs(self, b, b_col):
+
+		# some df reformatting
+		self.t_df.reset_index(drop=True, inplace=True)
+		b.t_df.reset_index(drop=True, inplace=True)
+		b.t_df[b_col] = True
+
+		# convert paths to tuples so we can merge on them
+		self.t_df.path = self.t_df.apply(
+			lambda x: tuple(x.path), axis=1)
+		b.t_df.path = b.t_df.apply(
+			lambda x: tuple(x.path), axis=1)
+
+		# merge on transcript information
+		t_df = self.t_df.merge(b.t_df,
+			   how='outer',
+			   on=['tid', 'gid', 'gname', 'path'],
+			   suffixes=['_a', '_b'])
+
+		# convert path back to list
+		t_df.path = t_df.apply(
+			lambda x: list(x.path), axis=1)
+
+		# assign False to entries that are not in the new dataset, 
+		# and to new entries that were not in the prior datasets
+		d_cols = self.datasets+[b_col]
+		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
+
+		self.t_df = t_df
+
+	# update edge_df ids and vertex ids from id_map for the merged dfs
+	def update_edge_df_ids_merge(self, id_map):
+		self.edge_df.v1 = self.edge_df.apply(
+			lambda x: id_map[x.v1], axis=1)
+		self.edge_df.v2 = self.edge_df.apply(
+			lambda x: id_map[x.v2], axis=1)
+		self.edge_df.edge_id = self.edge_df.apply(
+			lambda x: (x.v1, x.v2), axis=1)
+
+	# merge edge_dfs on edge_id, v1, v2, strand, edge_type
+	def merge_edge_dfs(self, b, b_col):
+
+		# some df reformatting
+		self.edge_df.reset_index(drop=True, inplace=True)
+		b.edge_df.reset_index(drop=True, inplace=True)
+		b.edge_df[b_col] = True
+
+		# merge on edge info
+		edge_df = self.edge_df.merge(b.edge_df,
+				  how='outer',
+				  on=['edge_id', 'v1', 'v2', 'edge_type', 'strand'],
+				  suffixes=['_a', '_b'])
+
+		# assign False to entries that are not in the new dataset, 
+		# and to new entries that were not in the prior datasets
+		d_cols = self.datasets+[b_col]
+		edge_df[d_cols] = edge_df[d_cols].fillna(value=False, axis=1)
+
+		self.edge_df = edge_df
+
+	# update loc_df vertex ids from id_map for the merged dfs
+	def update_loc_df_ids_merge(self, id_map):
+		self.loc_df['vertex_id'] = self.loc_df.apply(
+			lambda x: int(x.vertex_id_a) if x.vertex_id_b not in id_map.keys()
+									else id_map[x.vertex_id_b], axis=1)
+		self.loc_df.drop(['vertex_id_a', 'vertex_id_b'], axis=1, inplace=True)
+
+	# merge loc_dfs on coord, chrom, strand
+	def merge_loc_dfs(self, b, b_col):
+
+		# some df reformatting
+		node_types = ['TSS', 'alt_TSS', 'TES', 'alt_TES', 'internal']
+
+		self.loc_df.drop(node_types, axis=1, inplace=True)
+		self.loc_df.reset_index(drop=True, inplace=True)
+
+		b.loc_df.drop(node_types, axis=1, inplace=True)
+		b.loc_df.reset_index(drop=True, inplace=True)
+		b.loc_df[b_col] = True
+
+		# merge on location info
+		loc_df = self.loc_df.merge(b.loc_df,
+				 how='outer',
+				 on=['chrom', 'coord', 'strand'],
+				 suffixes=['_a','_b'])
+
+		# assign False to entries that are not in the new dataset, 
+		# and to new entries that were not in prior datasets
+		d_cols = self.datasets+[b_col]
+		loc_df[d_cols] = loc_df[d_cols].fillna(value=False, axis=1)
+
+		self.loc_df = loc_df
+
+	# returns a dictionary mapping vertex b: vertex a for each
+	# vertex in dataset b
+	def get_merged_id_map(self):
+
+		id_map = tuple(self.loc_df.apply(
+			lambda x: [x.vertex_id_b, x.vertex_id_a], axis=1))
+
+		# loop through id_map and assign new ids for 
+		# those present in b but not a
+		b_ind = int(self.loc_df.vertex_id_a.max() + 1)
+		i = 0
+		while i < len(id_map):
+			if math.isnan(id_map[i][1]):
+				id_map[i][1] = b_ind
+				b_ind += 1
+			elif math.isnan(id_map[i][0]):
+				id_map[i][0] = id_map[i][1]
+			i += 1
+
+		# make sure everything is ints
+		id_map = dict([(int(a), int(b)) for a,b in id_map])
+
+		return id_map
+
+	##########################################################################
+	############# Related to creating dfs from gtf or TALON DB ###############
+	##########################################################################
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def create_dfs_gtf(self, gtf):
@@ -536,309 +639,290 @@ class SpliceGraph:
 
 		self.G = G
 
-	# # adds only dataset column to a preexisting SpliceGraph's
-	# # dfs, nodes, and edges
-	# def add_dataset(self, name):
+	# # removes the dataset columns from a preexisting SpliceGraph's
+	# # dfs ONLY TODO do I want to add support for removing labels from nodes
+	# # in the future?
+	# def remove_dataset(self, name):
 
 	# 	d_col = 'dataset_'+name
+	# 	if d_col not in self.loc_df.columns or d_col not in self.edge_df.columns or d_col not in self.t_df.columns:
+	# 		raise Exception('Dataset {} not in the graph'.format(name))
 
-	# 	# make sure we're not overwriting something
-	# 	if d_col in get_dataset_fields(self.G):
-	# 		raise Exception('Dataset {} already in the graph'.format(name))
+	# 	# remove this column from all of the dfs
+	# 	self.loc_df.drop(d_col, axis=1, inplace=True)
+	# 	self.edge_df.drop(d_col, axis=1, inplace=True)
+	# 	self.t_df.drop(d_col, axis=1, inplace=True)
 
-	# 	# add this column to all of the dfs
-	# 	self.loc_df[d_col] = True
-	# 	self.edge_df[d_col] = True
-	# 	self.t_df[d_col] = True
+	# # adds abundance information to the t_df from an input abundance file 
+	# # where rows are transcript ids and columns are datasets
+	# def add_abundance_dataset(self, file, count_cols, dataset_name):
 
-	# 	# and to the edges/nodes
-	# 	self.G = label_nodes(self.G, self.loc_df, d_col, d_col)
-	# 	self.G = label_edges(self.G, self.edge_df, d_col, d_col)
+	# 	# get the counts from the input abundance file
+	# 	counts = process_abundance_file(file, count_cols)
+	# 	counts.rename({'counts': 'counts_{}'.format(dataset_name)},
+	# 				   axis=1, inplace=True)
 
-	# removes the dataset columns from a preexisting SpliceGraph's
-	# dfs ONLY TODO do I want to add support for removing labels from nodes
-	# in the future?
-	def remove_dataset(self, name):
+	# 	# merge on tid and format t_df as necessary
+	# 	self.t_df.reset_index(drop=True, inplace=True)
+	# 	self.t_df = self.t_df.merge(counts, on='tid', how='left')
+	# 	self.t_df.fillna(value=0, inplace=True)
+	# 	self.t_df = create_dupe_index(self.t_df, 'tid')
+	# 	self.t_df = set_dupe_index(self.t_df, 'tid')
 
-		d_col = 'dataset_'+name
-		if d_col not in self.loc_df.columns or d_col not in self.edge_df.columns or d_col not in self.t_df.columns:
-			raise Exception('Dataset {} not in the graph'.format(name))
+	# # order the transcripts by expression of transcript, transcript id, 
+	# # or start/end nodes
+	# def order_transcripts(self, order='tid'):
 
-		# remove this column from all of the dfs
-		self.loc_df.drop(d_col, axis=1, inplace=True)
-		self.edge_df.drop(d_col, axis=1, inplace=True)
-		self.t_df.drop(d_col, axis=1, inplace=True)
+	# 	# order by transcript id
+	# 	if order == 'tid':
+	# 		ordered_tids = sorted(self.t_df.tid.tolist())
+	# 		self.t_df = self.t_df.loc[ordered_tids]
 
-	# adds abundance information to the t_df from an input abundance file 
-	# where rows are transcript ids and columns are datasets
-	def add_abundance_dataset(self, file, count_cols, dataset_name):
+	# 	# order by expression
+	# 	elif order == 'expression':
+	# 		count_fields = get_count_fields(self.t_df)
 
-		# get the counts from the input abundance file
-		counts = process_abundance_file(file, count_cols)
-		counts.rename({'counts': 'counts_{}'.format(dataset_name)},
-					   axis=1, inplace=True)
+	# 		# make sure there are counts in the graph at all
+	# 		if count_fields:
+	# 			self.t_df['counts_sum'] = self.t_df.apply(lambda x:
+	# 				sum(x[count_fields]), axis=1)
+	# 			self.t_df.sort_values(by='counts_sum', 
+	# 								  ascending=False, 
+	# 								  inplace=True)
+	# 			self.t_df.drop('counts_sum', axis=1, inplace=True)
 
-		# merge on tid and format t_df as necessary
-		self.t_df.reset_index(drop=True, inplace=True)
-		self.t_df = self.t_df.merge(counts, on='tid', how='left')
-		self.t_df.fillna(value=0, inplace=True)
-		self.t_df = create_dupe_index(self.t_df, 'tid')
-		self.t_df = set_dupe_index(self.t_df, 'tid')
+	# 	# order by coordinate of tss
+	# 	# TODO might be able to roll this in with getting ordered_nodes
+	# 	# in PlottedGraph
+	# 	elif order == 'tss':
+	# 		self.t_df['start_coord'] = self.t_df.apply(lambda x: 
+	# 			self.loc_df.loc[x.path[0], 'coord'], axis=1)
 
-	# order the transcripts by expression of transcript, transcript id, 
-	# or start/end nodes
-	def order_transcripts(self, order='tid'):
-
-		# order by transcript id
-		if order == 'tid':
-			ordered_tids = sorted(self.t_df.tid.tolist())
-			self.t_df = self.t_df.loc[ordered_tids]
-
-		# order by expression
-		elif order == 'expression':
-			count_fields = get_count_fields(self.t_df)
-
-			# make sure there are counts in the graph at all
-			if count_fields:
-				self.t_df['counts_sum'] = self.t_df.apply(lambda x:
-					sum(x[count_fields]), axis=1)
-				self.t_df.sort_values(by='counts_sum', 
-									  ascending=False, 
-									  inplace=True)
-				self.t_df.drop('counts_sum', axis=1, inplace=True)
-
-		# order by coordinate of tss
-		# TODO might be able to roll this in with getting ordered_nodes
-		# in PlottedGraph
-		elif order == 'tss':
-			self.t_df['start_coord'] = self.t_df.apply(lambda x: 
-				self.loc_df.loc[x.path[0], 'coord'], axis=1)
-
-			# watch out for strandedness
-			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
-				ascending = False
-			else: 
-				ascending = True
-			self.t_df.sort_values(by='start_coord',
-								  ascending=ascending,
-								  inplace=True)
-			self.t_df.drop('start_coord', axis=1, inplace=True)
+	# 		# watch out for strandedness
+	# 		if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
+	# 			ascending = False
+	# 		else: 
+	# 			ascending = True
+	# 		self.t_df.sort_values(by='start_coord',
+	# 							  ascending=ascending,
+	# 							  inplace=True)
+	# 		self.t_df.drop('start_coord', axis=1, inplace=True)
 			
-		# order by coordinate of tes
-		elif order == 'tes':
-			self.t_df['end_coord'] = self.t_df.apply(lambda x: 
-				self.loc_df.loc[x.path[-1], 'coord'], axis=1)
+	# 	# order by coordinate of tes
+	# 	elif order == 'tes':
+	# 		self.t_df['end_coord'] = self.t_df.apply(lambda x: 
+	# 			self.loc_df.loc[x.path[-1], 'coord'], axis=1)
 
-			# watch out for strandedness
-			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
-				ascending = True
-			else: 
-				ascending = False
-			self.t_df.sort_values(by='end_coord',
-								  ascending=ascending,
-								  inplace=True)
-			self.t_df.drop('end_coord', axis=1, inplace=True)
+	# 		# watch out for strandedness
+	# 		if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
+	# 			ascending = True
+	# 		else: 
+	# 			ascending = False
+	# 		self.t_df.sort_values(by='end_coord',
+	# 							  ascending=ascending,
+	# 							  inplace=True)
+	# 		self.t_df.drop('end_coord', axis=1, inplace=True)
 
-# adds graph b with dataset name bname to graph a, which does not 
-# require a completely new column
-def add_graph(a, b, bname):
-	sg = merge_graphs(a,b,None,bname,store_a=False)
-	return sg
+# # adds graph b with dataset name bname to graph a, which does not 
+# # require a completely new column
+# def add_graph(a, b, bname):
+# 	sg = merge_graphs(a,b,None,bname,store_a=False)
+# 	return sg
 
-# merges two splice graph objects and creates a third
-# store_a is to support just adding b to graph a via 
-# add_graph
-def merge_graphs(a, b, aname, bname, store_a=True):
+# # merges two splice graph objects and creates a third
+# # store_a is to support just adding b to graph a via 
+# # add_graph
+# def merge_graphs(a, b, aname, bname, store_a=True):
 
-	# remove indices for each df
-	a.loc_df.reset_index(drop=True, inplace=True)
-	a.edge_df.reset_index(drop=True, inplace=True)
-	a.t_df.reset_index(drop=True, inplace=True)
-	b.loc_df.reset_index(drop=True, inplace=True)
-	b.edge_df.reset_index(drop=True, inplace=True)
-	b.t_df.reset_index(drop=True, inplace=True)
+# 	# remove indices for each df
+# 	a.loc_df.reset_index(drop=True, inplace=True)
+# 	a.edge_df.reset_index(drop=True, inplace=True)
+# 	a.t_df.reset_index(drop=True, inplace=True)
+# 	b.loc_df.reset_index(drop=True, inplace=True)
+# 	b.edge_df.reset_index(drop=True, inplace=True)
+# 	b.t_df.reset_index(drop=True, inplace=True)
 
-	# dataset columns
-	if not store_a:
-		a_col = 'dataset_TEMP'
-	else:
-		a_col = 'dataset_'+aname
-	b_col = 'dataset_'+bname
+# 	# dataset columns
+# 	if not store_a:
+# 		a_col = 'dataset_TEMP'
+# 	else:
+# 		a_col = 'dataset_'+aname
+# 	b_col = 'dataset_'+bname
 
-	# merge loc_dfs based on chrom, coord, strand and update vertex ids
-	loc_df = merge_loc_dfs(a.loc_df, b.loc_df, a_col, b_col)
-	id_map = get_vertex_id_map(loc_df, a_col, b_col)
-	loc_df = assign_new_vertex_ids(loc_df, id_map)
-	loc_df['vertex_id'] = loc_df['vertex_id'].astype(int)
+# 	# merge loc_dfs based on chrom, coord, strand and update vertex ids
+# 	loc_df = merge_loc_dfs(a.loc_df, b.loc_df, a_col, b_col)
+# 	id_map = get_vertex_id_map(loc_df, a_col, b_col)
+# 	loc_df = assign_new_vertex_ids(loc_df, id_map)
+# 	loc_df['vertex_id'] = loc_df['vertex_id'].astype(int)
 
-	# merge edge_df based on new vertex ids 
-	b.edge_df = assign_new_edge_ids(b.edge_df, id_map)
-	edge_df = merge_edge_dfs(a.edge_df, b.edge_df, a_col, b_col)
+# 	# merge edge_df based on new vertex ids 
+# 	b.edge_df = assign_new_edge_ids(b.edge_df, id_map)
+# 	edge_df = merge_edge_dfs(a.edge_df, b.edge_df, a_col, b_col)
 	
-	# merge t_df based on new vertex ids
-	b.t_df= assign_new_paths(b.t_df, id_map)
-	t_df = merge_t_dfs(a.t_df, b.t_df, a_col, b_col)
+# 	# merge t_df based on new vertex ids
+# 	b.t_df= assign_new_paths(b.t_df, id_map)
+# 	t_df = merge_t_dfs(a.t_df, b.t_df, a_col, b_col)
 
-	# final df formatting
-	loc_df.drop(['vertex_id_a', 'vertex_id_b'], inplace=True, axis=1)
-	loc_df = create_dupe_index(loc_df, 'vertex_id')
-	loc_df = set_dupe_index(loc_df, 'vertex_id')
-	loc_df = get_loc_types(loc_df, t_df)
+# 	# final df formatting
+# 	loc_df.drop(['vertex_id_a', 'vertex_id_b'], inplace=True, axis=1)
+# 	loc_df = create_dupe_index(loc_df, 'vertex_id')
+# 	loc_df = set_dupe_index(loc_df, 'vertex_id')
+# 	loc_df = get_loc_types(loc_df, t_df)
 
-	edge_df = create_dupe_index(edge_df, 'edge_id')
-	edge_df = set_dupe_index(edge_df, 'edge_id')
+# 	edge_df = create_dupe_index(edge_df, 'edge_id')
+# 	edge_df = set_dupe_index(edge_df, 'edge_id')
 
-	t_df = create_dupe_index(t_df, 'tid')
-	t_df = set_dupe_index(t_df, 'tid')
+# 	t_df = create_dupe_index(t_df, 'tid')
+# 	t_df = set_dupe_index(t_df, 'tid')
 
-	# finally, let's make the merged graph
-	sg = SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
+# 	# finally, let's make the merged graph
+# 	sg = SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
 
-	# if we didn't want to make a new dataset column for a, 
-	# remove it here. 
-	# otherwise, we're free to label nodes/edges with new 
-	# dataset information
-	if not store_a:
-		sg.remove_dataset('TEMP')
-	# else:
-	# 	sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
-	# 	sg.G = label_edges(sg.G, edge_df, a_col, a_col)
+# 	# if we didn't want to make a new dataset column for a, 
+# 	# remove it here. 
+# 	# otherwise, we're free to label nodes/edges with new 
+# 	# dataset information
+# 	if not store_a:
+# 		sg.remove_dataset('TEMP')
+# 	# else:
+# 	# 	sg.G = label_nodes(sg.G, loc_df, a_col, a_col)
+# 	# 	sg.G = label_edges(sg.G, edge_df, a_col, a_col)
 
-	# assign labels to nodes and edges based on what dataset they came from
-	d_fields = get_dataset_fields(df=loc_df)
-	for d_field in d_fields:
-		sg.G = label_nodes(sg.G, loc_df, d_field, d_field)
-		sg.G = label_edges(sg.G, edge_df, d_field, d_field)
+# 	# assign labels to nodes and edges based on what dataset they came from
+# 	d_fields = get_dataset_fields(df=loc_df)
+# 	for d_field in d_fields:
+# 		sg.G = label_nodes(sg.G, loc_df, d_field, d_field)
+# 		sg.G = label_edges(sg.G, edge_df, d_field, d_field)
 
-	# # 
-	# sg.merged = True
+# 	# # 
+# 	# sg.merged = True
 
-	return sg
+# 	return sg
 
-# merge transcript dfs on tid, gid, gname, and path
-def merge_t_dfs(a,b,a_col,b_col):
+# # merge transcript dfs on tid, gid, gname, and path
+# def merge_t_dfs(a,b,a_col,b_col):
 
-	# track which datasets each transcript is in 
-	a[a_col] = True
-	b[b_col] = True
+# 	# track which datasets each transcript is in 
+# 	a[a_col] = True
+# 	b[b_col] = True
 
-	# first convert paths to tuples so we can merge on them
-	a.path = a.apply(lambda x: tuple(x.path), axis=1)
-	b.path = b.apply(lambda x: tuple(x.path), axis=1)
+# 	# first convert paths to tuples so we can merge on them
+# 	a.path = a.apply(lambda x: tuple(x.path), axis=1)
+# 	b.path = b.apply(lambda x: tuple(x.path), axis=1)
 
-	# merge on path ids as well as transcript-associated names and ids
-	t_df = a.merge(b, 
-			how='outer',
-			on=['tid', 'gid', 'gname', 'path'], 
-			suffixes=['_a', '_b'])
+# 	# merge on path ids as well as transcript-associated names and ids
+# 	t_df = a.merge(b, 
+# 			how='outer',
+# 			on=['tid', 'gid', 'gname', 'path'], 
+# 			suffixes=['_a', '_b'])
 
-	# convert back to lists for path
-	t_df.path = t_df.apply(lambda x: list(x.path), axis=1)
+# 	# convert back to lists for path
+# 	t_df.path = t_df.apply(lambda x: list(x.path), axis=1)
 
-	# assign False to entries that are not in one dataset or another 
-	d_fields = get_dataset_fields(df=t_df)
-	t_df[d_fields] = t_df[d_fields].fillna(value=False, axis=1)
+# 	# assign False to entries that are not in one dataset or another 
+# 	d_fields = get_dataset_fields(df=t_df)
+# 	t_df[d_fields] = t_df[d_fields].fillna(value=False, axis=1)
 
-	return t_df
+# 	return t_df
 
-# 
-def assign_new_paths(b, id_map):
-	b.path = b.apply(lambda x: [id_map[n] for n in x.path], axis=1)
-	return b
+# # 
+# def assign_new_paths(b, id_map):
+# 	b.path = b.apply(lambda x: [id_map[n] for n in x.path], axis=1)
+# 	return b
 
-# merge the edge dfs
-def merge_edge_dfs(a, b, a_col, b_col):
+# # merge the edge dfs
+# def merge_edge_dfs(a, b, a_col, b_col):
 
-	# add column that we can track which dataset this comes from
-	a[a_col] = True
-	b[b_col] = True
+# 	# add column that we can track which dataset this comes from
+# 	a[a_col] = True
+# 	b[b_col] = True
 
-	# merge on edge_id as these have already been updated in merge_graphs
-	edge_df = a.merge(b,
-			how='outer',
-			on=['edge_id','v1','v2','edge_type','strand'],
-			suffixes=['_a', '_b'])
+# 	# merge on edge_id as these have already been updated in merge_graphs
+# 	edge_df = a.merge(b,
+# 			how='outer',
+# 			on=['edge_id','v1','v2','edge_type','strand'],
+# 			suffixes=['_a', '_b'])
 
-	# assign False to entries that are not in one dataset or another 
-	d_fields = get_dataset_fields(df=edge_df)
-	edge_df[d_fields] = edge_df[d_fields].fillna(value=False, axis=1)
+# 	# assign False to entries that are not in one dataset or another 
+# 	d_fields = get_dataset_fields(df=edge_df)
+# 	edge_df[d_fields] = edge_df[d_fields].fillna(value=False, axis=1)
 
-	return edge_df
+# 	return edge_df
 
-# replace vertex ids according to new values in loc_df 
-def assign_new_edge_ids(b, id_map):
-	b.v1 = b.apply(lambda x: id_map[x.v1], axis=1)
-	b.v2 = b.apply(lambda x: id_map[x.v2], axis=1)
-	b.edge_id = b.apply(lambda x: (x.v1, x.v2), axis=1)
-	return b
+# # replace vertex ids according to new values in loc_df 
+# def assign_new_edge_ids(b, id_map):
+# 	b.v1 = b.apply(lambda x: id_map[x.v1], axis=1)
+# 	b.v2 = b.apply(lambda x: id_map[x.v2], axis=1)
+# 	b.edge_id = b.apply(lambda x: (x.v1, x.v2), axis=1)
+# 	return b
 
-# merge loc_dfs
-def merge_loc_dfs(a, b, a_col, b_col):
+# # merge loc_dfs
+# def merge_loc_dfs(a, b, a_col, b_col):
 
-	# add column that we can track which dataset this comes from
-	a[a_col] = True
-	b[b_col] = True
+# 	# add column that we can track which dataset this comes from
+# 	a[a_col] = True
+# 	b[b_col] = True
 
-	# remove all node type columns as these will be recomputed
-	node_types = ['TSS', 'alt_TSS', 'TES', 'alt_TES', 'internal']
-	a.drop(node_types, axis=1, inplace=True)
-	b.drop(node_types, axis=1, inplace=True)
+# 	# remove all node type columns as these will be recomputed
+# 	node_types = ['TSS', 'alt_TSS', 'TES', 'alt_TES', 'internal']
+# 	a.drop(node_types, axis=1, inplace=True)
+# 	b.drop(node_types, axis=1, inplace=True)
 
-	# merge on location info
-	loc_df = a.merge(b,
-			how='outer',
-			on=['chrom', 'coord', 'strand'],
-			suffixes=['_a','_b'])
+# 	# merge on location info
+# 	loc_df = a.merge(b,
+# 			how='outer',
+# 			on=['chrom', 'coord', 'strand'],
+# 			suffixes=['_a','_b'])
 
-	# assign False to entries that are not in one dataset or another 
-	d_fields = get_dataset_fields(df=loc_df)
-	loc_df[d_fields] = loc_df[d_fields].fillna(value=False, axis=1)
+# 	# assign False to entries that are not in one dataset or another 
+# 	d_fields = get_dataset_fields(df=loc_df)
+# 	loc_df[d_fields] = loc_df[d_fields].fillna(value=False, axis=1)
 
-	return loc_df
+# 	return loc_df
 
-def assign_new_vertex_ids(df, id_map):
-	# id_map = get_vertex_id_map(df)
-	df['vertex_id'] = df.apply(lambda x: x.vertex_id_a
-						 if x.vertex_id_b not in id_map.keys()
-						 else id_map[x.vertex_id_b], axis=1)
-	return df
+# def assign_new_vertex_ids(df, id_map):
+# 	# id_map = get_vertex_id_map(df)
+# 	df['vertex_id'] = df.apply(lambda x: x.vertex_id_a
+# 						 if x.vertex_id_b not in id_map.keys()
+# 						 else id_map[x.vertex_id_b], axis=1)
+# 	return df
 
-# determines which dfs this entry was present in before the merge
-def present_in(x):
-	# # a merge has been done before
-	# if 'present_in' in x.columns:
-	# 	datasets = x.present_in
-	# else:
-	# 	datasets = []
-	datasets = []
-	if x.present_in_a == True:
-		datasets.append('a')
-	if x.present_in_b == True:
-		datasets.append('b')
-	return datasets
+# # determines which dfs this entry was present in before the merge
+# def present_in(x):
+# 	# # a merge has been done before
+# 	# if 'present_in' in x.columns:
+# 	# 	datasets = x.present_in
+# 	# else:
+# 	# 	datasets = []
+# 	datasets = []
+# 	if x.present_in_a == True:
+# 		datasets.append('a')
+# 	if x.present_in_b == True:
+# 		datasets.append('b')
+# 	return datasets
 
-# returns the mapping of vertices from b to their new ids
-def get_vertex_id_map(df, a_col, b_col):
+# # returns the mapping of vertices from b to their new ids
+# def get_vertex_id_map(df, a_col, b_col):
 
-	# vertices in both graph a and b 
-	ab_ids = df.apply(lambda x: (int(x.vertex_id_b), int(x.vertex_id_a))
-						if x[a_col] and x[b_col]
-						else np.nan, axis=1)
-	ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
-	vertex_id_map = dict(ab_ids)
+# 	# vertices in both graph a and b 
+# 	ab_ids = df.apply(lambda x: (int(x.vertex_id_b), int(x.vertex_id_a))
+# 						if x[a_col] and x[b_col]
+# 						else np.nan, axis=1)
+# 	ab_ids = [ab_id for ab_id in ab_ids if type(ab_id) == tuple]
+# 	vertex_id_map = dict(ab_ids)
 
-	# vertices only in graph b
-	b_ids = df.apply(lambda x: x.vertex_id_b
-						if not x[a_col] and x[b_col]
-						else np.nan, axis=1)
-	b_ids = [int(b_id) for b_id in b_ids if not math.isnan(b_id)]
+# 	# vertices only in graph b
+# 	b_ids = df.apply(lambda x: x.vertex_id_b
+# 						if not x[a_col] and x[b_col]
+# 						else np.nan, axis=1)
+# 	b_ids = [int(b_id) for b_id in b_ids if not math.isnan(b_id)]
 
-	# new ids for these guys
-	start_b_id = int(df.vertex_id_a.max()+1)
-	new_b_ids = [int(i) for i in range(start_b_id, len(b_ids)+start_b_id)]
-	vertex_id_map.update(dict(zip(b_ids, new_b_ids)))
+# 	# new ids for these guys
+# 	start_b_id = int(df.vertex_id_a.max()+1)
+# 	new_b_ids = [int(i) for i in range(start_b_id, len(b_ids)+start_b_id)]
+# 	vertex_id_map.update(dict(zip(b_ids, new_b_ids)))
 
-	return vertex_id_map
+# 	return vertex_id_map
 
 # # add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
 # def get_loc_types(loc_df, t_df):
@@ -878,32 +962,32 @@ def get_vertex_id_map(df, a_col, b_col):
 
 # 	return loc_df
 
-# returns the fields in a graph that specify which dataset a node or
-# edge belongs to in a merged graph
-def get_dataset_fields(graph=None, df=None):
-	# TODO does graph have datasets? If not throw an error
-	if graph is not None:
-		data = graph.nodes(data=True)[0]
-		d_fields = [k for k in data.keys() if 'dataset_' in k]
-	if df is not None:
-		d_fields = [col for col in df.columns if 'dataset_' in col]
-	return d_fields
+# # returns the fields in a graph that specify which dataset a node or
+# # edge belongs to in a merged graph
+# def get_dataset_fields(graph=None, df=None):
+# 	# TODO does graph have datasets? If not throw an error
+# 	if graph is not None:
+# 		data = graph.nodes(data=True)[0]
+# 		d_fields = [k for k in data.keys() if 'dataset_' in k]
+# 	if df is not None:
+# 		d_fields = [col for col in df.columns if 'dataset_' in col]
+# 	return d_fields
 
-# returns the fields in the t_df that hold counts of datasets
-def get_count_fields(t_df):
-	c_fields = [col for col in t_df.columns if 'counts_' in col]
-	return c_fields
+# # returns the fields in the t_df that hold counts of datasets
+# def get_count_fields(t_df):
+# 	c_fields = [col for col in t_df.columns if 'counts_' in col]
+# 	return c_fields
 
-# returns the (min, max) coordinates of an input gene
-def get_gene_min_max(loc_df, t_df, gid):
+# # returns the (min, max) coordinates of an input gene
+# def get_gene_min_max(loc_df, t_df, gid):
 
-	# all transcripts from this gene
-	paths = t_df.loc[t_df.gid == gid].path.tolist()
-	starts = np.unique([path[0] for path in paths]).tolist()
-	stops = np.unique([path[-1] for path in paths]).tolist()
-	coords = loc_df.loc[starts + stops, 'coord']
+# 	# all transcripts from this gene
+# 	paths = t_df.loc[t_df.gid == gid].path.tolist()
+# 	starts = np.unique([path[0] for path in paths]).tolist()
+# 	stops = np.unique([path[-1] for path in paths]).tolist()
+# 	coords = loc_df.loc[starts + stops, 'coord']
 
-	return int(min(coords)), int(max(coords))
+# 	return int(min(coords)), int(max(coords))
 
 
 
