@@ -14,6 +14,16 @@ class SpliceGraph:
 	def __init__(self):
 
 		self.datasets = []
+		
+		loc_df = pd.DataFrame(columns=['chrom', 'coord',
+									   'strand','vertex_id',
+									   'TSS', 'alt_TSS',
+									   'TES', 'alt_TES',
+									   'internal'])
+		edge_df = pd.DataFrame(columns=['edge_id', 'edge_type',
+									    'strand', 'v1', 'v2'])
+		t_df = pd.DataFrame(columns=['tid', 'gid',
+									 'gname', 'path'])
 
 	# check if anything has been added to the graph yet
 	def is_empty(self):
@@ -45,17 +55,20 @@ class SpliceGraph:
 	# add dataset into graph from gtf
 	def add_dataset(self, col, gtf=None, db=None):
 
-		# # make sure that input dataset name is not
-		# # already in any of the df col spaces
-		# if col in self.loc_df.columns:
-		# 	raise Exception('Dataset name {} conflicts with preexisting '
-		# 		'column in loc_df. Choose a different name.'.format(col))
-		# if col in self.edge_df.columns:
-		# 	raise Exception('Dataset name conflicts with preexisting '
-		# 		'column in edge_df. Choose a different name.'.format(col))
-		# if col in self.t_df.columns:
-		# 	raise Exception('Dataset name conflicts with preexisting '
-		# 		'column in t_df. Choose a different name.'.format(col))
+		# make sure that input dataset name is not
+		# already in any of the df col spaces
+		if col in self.datsets:
+			raise Exception('Dataset {} is already in the graph. '
+				'Use update_dataset (coming soon) or provide a different name.')
+		if col in self.loc_df.columns:
+			raise Exception('Dataset name {} conflicts with preexisting '
+				'column in loc_df. Choose a different name.'.format(col))
+		if col in self.edge_df.columns:
+			raise Exception('Dataset name conflicts with preexisting '
+				'column in edge_df. Choose a different name.'.format(col))
+		if col in self.t_df.columns:
+			raise Exception('Dataset name conflicts with preexisting '
+				'column in t_df. Choose a different name.'.format(col))
 
 		# first entry is easy 
 		if self.is_empty():
@@ -208,8 +221,8 @@ class SpliceGraph:
 	# vertex in dataset b
 	def get_merged_id_map(self):
 
-		id_map = tuple(self.loc_df.apply(
-			lambda x: [x.vertex_id_b, x.vertex_id_a], axis=1))
+		id_map = self.loc_df.apply(
+			lambda x: [x.vertex_id_b, x.vertex_id_a], axis=1)
 
 		# loop through id_map and assign new ids for 
 		# those present in b but not a
@@ -219,11 +232,15 @@ class SpliceGraph:
 			if math.isnan(id_map[i][1]):
 				id_map[i][1] = b_ind
 				b_ind += 1
+			# set up entries where there isn't a b id (entries only found in a)
+			# to be removed
 			elif math.isnan(id_map[i][0]):
-				id_map[i][0] = id_map[i][1]
+				id_map[i] = []
 			i += 1
 
+		# remove entries that are only in a but not in b
 		# make sure everything is ints
+		id_map = [i for i in id_map if len(i) == 2]
 		id_map = dict([(int(a), int(b)) for a,b in id_map])
 
 		return id_map
@@ -556,9 +573,9 @@ class SpliceGraph:
 	# update ids according to coordinates in loc_df, edge_df, and t_df
 	def update_ids(self):
 		id_map = self.get_ordered_id_map()
-		self.update_loc_df_vertex_ids(id_map)
-		self.update_edge_df_vertex_ids(id_map)
-		self.update_t_df_vertex_ids(id_map)
+		self.update_loc_df_ids(id_map)
+		self.update_edge_df_ids(id_map)
+		self.update_t_df_paths(id_map)
 
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
@@ -584,7 +601,7 @@ class SpliceGraph:
 		return id_map
 
 	# update vertex ids in loc_df
-	def update_loc_df_vertex_ids(self, id_map):
+	def update_loc_df_ids(self, id_map):
 
 		# add new id to df and use it to update vertex id columns
 		self.loc_df['new_id'] = self.loc_df.apply(
@@ -596,7 +613,7 @@ class SpliceGraph:
 		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
 
 	# update vertex ids in edge_df
-	def update_edge_df_vertex_ids(self, id_map):
+	def update_edge_df_ids(self, id_map):
 
 		# remove old edge_id index and replace edge_id, v1, v2 
 		# with values from id_map
@@ -612,7 +629,7 @@ class SpliceGraph:
 		self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
 
 	# update vertex ids in t_df
-	def update_t_df_vertex_ids(self, id_map):
+	def update_t_df_paths(self, id_map):
 		# update vertex ids in the path
 		self.t_df.path = self.t_df.apply(
 			lambda x: [id_map[n] for n in x.path], axis=1)
