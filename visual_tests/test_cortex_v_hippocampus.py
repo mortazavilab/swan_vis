@@ -49,6 +49,11 @@ from report_tools import *
 sg = sw.SpliceGraph()
 sg.add_annotation(gtf='input_files/annot_mapt.gtf')
 sg.add_dataset('cortex', gtf='input_files/cortex_mapt.gtf')
+sg.add_dataset('hippocampus', gtf='input_files/hippocampus_mapt.gtf')
+
+print(sg.loc_df.head())
+print(sg.edge_df.head())
+print(sg.t_df.head())
 
 
 

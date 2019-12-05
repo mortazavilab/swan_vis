@@ -516,6 +516,37 @@ class TestSpliceGraph(object):
 		control = [(0,0),(1,2),(2,1)]
 		check_pairs(control, test)
 
+	############################################################################
+	###################### Ordering transcripts tests ##########################
+	############################################################################
+
+	def test_order_transcripts(self):
+		a = get_dummy_sg()
+		a.t_df['counts_a'] =[0,0,12]
+		a.t_df['counts_b'] = [1,0,14]
+
+		# order by expression level
+		splice_graph.order_transcripts(order='expression')
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [0,2,1]
+
+		# order by transcript id
+		splice_graph.order_transcripts()
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [0,1,2]
+
+		# order by coordinate of tss
+		splice_graph.order_transcripts(order='tss')
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [0,2,1]
+
+		# order by coordinate of tes
+		splice_graph.order_transcripts()
+		print(splice_graph.t_df.head())
+		splice_graph.order_transcripts(order='tes')
+		print(splice_graph.t_df.head())
+		assert splice_graph.t_df.tid.tolist() == [1,2,0]
+
 def nan_to_neg(pair):
 	new_tuple = []
 	for i in pair:
