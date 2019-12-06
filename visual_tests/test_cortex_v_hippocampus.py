@@ -83,6 +83,10 @@ args['indicate_dataset'] = False
 args['combine'] = False
 args['indicate_novel'] = True
 
+plotted_graph = pg.PlottedGraph(merged, args)
+plot_graph(plotted_graph, args)
+save_fig('figures/mapt_summary.png')
+
 # # testing
 # print(merged.loc_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
 # print(merged.edge_df[['dataset_annotation', 'dataset_Cortex', 'dataset_Hippo']])
@@ -93,8 +97,8 @@ args['indicate_novel'] = True
 # # testing
 # print(merged.loc_df[['vertex_id', 'coord']])
 
-# gen_report(merged, args, browser=True)
-gen_report(merged, args, 'figures/mapt', order='tss')
+# gen_report(merged, args, 'figures/mapt', order='expression')
+# gen_report(merged, args, 'figures/mapt', order='expression', browser=True)
 
 
 

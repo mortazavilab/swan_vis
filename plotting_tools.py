@@ -292,6 +292,103 @@ def get_tick_coords(exons, coord_map):
 					   if t < start-0.002 or t > stop+0.002]
 	return tick_coords
 
+def plot_gene_scale(splice_graph):
+	# create a coordinate plot once - for report 
+	# this will be smarter in the future
+	tid = splice_graph.t_df.tid.tolist()[0]
+	gid = splice_graph.t_df.loc[tid, 'gid']
+	# g_min, g_max = sg.get_gene_min_max(splice_graph.loc_df, splice_graph.t_df, gid)
+
+	# what are the strand and chrom of the gene?
+	chrom = splice_graph.loc_df.loc[splice_graph.t_df.loc[tid, 'path'][0], 'chrom']
+	strand = splice_graph.loc_df.loc[splice_graph.t_df.loc[tid, 'path'][0], 'strand']
+
+	# what are the min and max of the gene? use these to define the coord space
+	g_min, g_max = sg.get_gene_min_max(splice_graph.loc_df, splice_graph.t_df, gid)
+	coord_map = get_whole_coord_map(g_min, g_max, chrom, strand)
+
+	# find the maximum interval divisible by 5 or 10 that spans the gene
+	gene_length = g_max-g_min+1
+	print(gene_length)
+	scale_len = [i for i in range(1000, gene_length, 1000) if int(str(i)[:-3])%50 == 0][-2]
+	scale_start = int(g_min + (scale_len/2))
+	scale_end = int(g_max - (scale_len/2))
+
+	print(scale_start)
+	print(scale_end)
+
+	print(coord_map.head())
+
+	# plot scale bar 
+	plt.figure(1, figsize=(14,1), frameon=False)
+	plt.xlim(-1.05, 1.05)
+	plt.ylim(-1.05, 1.05)
+	ax = plt.gca()
+
+	y_coord = -0.5
+	height = 1
+
+	width = int((50/100000)*gene_length)
+	width = coord_map.loc[scale_start+width, 'plot_coord'] - coord_map.loc[scale_start, 'plot_coord'] 
+
+	# plot start 
+	x_coord = coord_map.loc[scale_start, 'plot_coord']
+	print('x coord start')
+	print(x_coord)
+	print('width')
+	print(width)
+	rect = pch.Rectangle((x_coord, y_coord),
+			width=width, 
+			height=height,
+			color='k')
+	ax.add_patch(rect)
+
+	# plot stop
+	x_coord = coord_map.loc[scale_end, 'plot_coord']
+	print('x coord end')
+	print(x_coord)
+	print('width')
+	print(width)
+	rect = pch.Rectangle((x_coord, y_coord),
+			width=width, 
+			height=height,
+			color='k')	
+	ax.add_patch(rect)
+
+	# plot line between 
+	plt.plot([coord_map.loc[scale_start, 'plot_coord']+width,
+			 coord_map.loc[scale_end, 'plot_coord']-width], [0,0], color='k')
+
+	# add text
+	x_coord = coord_map.loc[scale_start, 'plot_coord'] - 0.35
+	y_coord = -.2
+	print((x_coord, y_coord))
+	txt = '{} kb'.format(str(scale_len)[:-3])
+	print(txt)
+	ax.text(x_coord, y_coord, txt, fontsize=30)
+
+	save_fig('figures/scale.png')
+	# ax.annotate(txt, xy=(x_coord, y_coord), xytext=(x_coord, y_coord))
+
+def get_whole_coord_map(g_min, g_max, chrom, strand):
+
+	# plot coordinates for each genomic coordinate
+	# use .9 to allow for some room on the sides
+	plot_coords = list(np.linspace(-0.95, 0.95, g_max-g_min+1)) 
+
+	# reverse if on minus strand 
+	if strand == '-':
+		plot_coords.reverse()
+
+	# map the locations vertex id to the plotting coord
+	g_coords = range(g_min, g_max+1)
+	coord_map = pd.DataFrame({'plot_coord': plot_coords, 'g_coord': g_coords})
+
+	# remove nan rows and set index
+	coord_map.set_index('g_coord', inplace=True)
+
+	return coord_map
+
 # plot each transcript in the splice graph overlaid on the full graph
 def plot_each_transcript(splice_graph, args, oprefix, browser=False):
 	if not browser:
@@ -303,6 +400,9 @@ def plot_each_transcript(splice_graph, args, oprefix, browser=False):
 			plot_overlaid_path(plotted_graph, path, args)
 			save_fig(oname)
 	else:
+
+		# plot_gene_scale(splice_graph)
+
 		for tid in splice_graph.t_df.tid.tolist():
 			oname = '{}_{}_browser.png'.format(oprefix, tid)
 			plot_path_browser(splice_graph, tid)
