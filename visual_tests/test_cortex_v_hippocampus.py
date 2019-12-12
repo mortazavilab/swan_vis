@@ -98,7 +98,7 @@ save_fig('figures/mapt_summary.png')
 # print(merged.loc_df[['vertex_id', 'coord']])
 
 # gen_report(merged, args, 'figures/mapt', order='expression')
-# gen_report(merged, args, 'figures/mapt', order='expression', browser=True)
+gen_report(merged, args, 'figures/mapt', order='expression', browser=True)
 
 
 

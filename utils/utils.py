@@ -66,10 +66,21 @@ def process_abundance_file(file, cols):
 	df = pd.read_csv(file, sep='\t')
 	keep_cols = ['annot_transcript_id']+cols
 	df = df[keep_cols]
-	df['counts'] = df.apply(lambda x: sum(x[col] for col in cols), axis=1)
+
+	for col in cols: 
+		total_counts = df[col].sum()
+		df['{}_tpm'.format(col)] = df.apply(lambda x: (x[col]*1000000)/total_counts, axis=1)
+	cols = ['{}_tpm'.format(col) for col in cols]
+
+	df['tpm'] = df[cols].mean(axis=1)
+
 	df.drop(cols, axis=1, inplace=True)
 	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
 	return df
+
+def truncate(n, decimals=0):
+    multiplier = 10 ** decimals
+    return int(n * multiplier) / multiplier
 
 
 

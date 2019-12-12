@@ -42,7 +42,7 @@ args['combine'] = False
 args['indicate_novel'] = True
 
 gen_report(merged, args, 'gaby/figures/mapt', order='expression')
-gen_report(merged, args, 'gaby/figures/mapt', order='expression')
+# gen_report(merged, args, 'gaby/figures/mapt', order='expression')
 
 
 # cst7
@@ -76,7 +76,7 @@ args['combine'] = False
 args['indicate_novel'] = True
 
 gen_report(merged, args, 'gaby/figures/cst7', order='expression')
-gen_report(merged, args, 'gaby/figures/cst7', order='expression')
+# gen_report(merged, args, 'gaby/figures/cst7', order='expression')
 
 # trem2
 annot = sg.SpliceGraph(gtf='input_files/gaby/annot_trem2.gtf')
@@ -109,7 +109,7 @@ args['combine'] = False
 args['indicate_novel'] = True
 
 gen_report(merged, args, 'gaby/figures/trem2', order='expression')
-gen_report(merged, args, 'gaby/figures/trem2', order='expression')
+# gen_report(merged, args, 'gaby/figures/trem2', order='expression')
 
 
 

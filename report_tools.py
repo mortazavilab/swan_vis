@@ -1,5 +1,4 @@
 from utils import *
-# from plotting_tools import *
 import plotting_tools as pt
 import SpliceGraph as sg 
 import PlottedGraph as pg
@@ -12,22 +11,22 @@ class PDF(FPDF):
 
 	def header(self):
 
-		# normie
-		self.set_font('Arial', 'B', 10)
-		self.cell(50, 10, 'Transcript ID', border=True, align='C')
-		for d in self.datasets:
-			self.cell(25, 10, '{} Counts'.format(d), border=True, align='C')
-		self.cell(100, 10, 'Transcript Model', border=True, align='C')
-		
-		# # add scale for browser
+		# # normie
 		# self.set_font('Arial', 'B', 10)
-		# self.cell(50, 20, 'Transcript ID', border=True, align='C')
+		# self.cell(50, 10, 'Transcript ID', border=True, align='C')
 		# for d in self.datasets:
-		# 	self.cell(25, 20, '{} Counts'.format(d), border=True, align='C')
-		# x = self.get_x()
-		# y = self.get_y()
-		# self.cell(100, 20, 'Transcript Model', border=True, align='C')
-		# self.image('figures/scale.png', x=x, y=y+12, w=100, h=7)
+		# 	self.cell(25, 10, '{} TPM'.format(d), border=True, align='C')
+		# self.cell(100, 10, 'Transcript Model', border=True, align='C')
+		
+		# add scale for browser
+		self.set_font('Arial', 'B', 10)
+		self.cell(50, 20, 'Transcript ID', border=True, align='C')
+		for d in self.datasets:
+			self.cell(25, 20, '{} TPM'.format(d), border=True, align='C')
+		x = self.get_x()
+		y = self.get_y()
+		self.cell(100, 20, 'Transcript Model', border=True, align='C')
+		self.image('figures/scale.png', x=x, y=y+12, w=100, h=7)
 
 		self.ln()
 
@@ -35,8 +34,8 @@ class PDF(FPDF):
 		self.set_font('Arial', '', 10)
 		self.cell(50, 20, entry['tid'], border=True, align='C')
 		for d in self.datasets:
-			field = 'counts_{}'.format(d)
-			self.cell(25, 20, str(entry[field]), border=True, align='C')
+			field = 'tpm_{}'.format(d)
+			self.cell(25, 20, str(truncate(entry[field], 3)), border=True, align='C')
 		
 		x = self.get_x()
 		y = self.get_y()
@@ -54,15 +53,15 @@ def gen_report(splice_graph, args, oprefix, browser=False, order='expression'):
 
 	splice_graph.order_transcripts(order)
 
-	count_fields = sg.get_count_fields(splice_graph.t_df)
-	dataset_names = [c_f.split('counts_')[-1] for c_f in count_fields]
+	count_fields = sg.get_tpm_fields(splice_graph.t_df)
+	dataset_names = [c_f.split('tpm_')[-1] for c_f in count_fields]
 
 	pdf = PDF()
 	pdf.set_left_margin(5)
 	pdf.add_datasets(dataset_names)
 	pdf.add_page()
 
-	pt.plot_gene_scale(splice_graph)
+	# pt.plot_gene_scale(splice_graph)
 
 	# plot each transcript
 	if not browser:

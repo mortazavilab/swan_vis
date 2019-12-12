@@ -357,7 +357,9 @@ def plot_gene_scale(splice_graph):
 
 	# plot line between 
 	plt.plot([coord_map.loc[scale_start, 'plot_coord']+width,
-			 coord_map.loc[scale_end, 'plot_coord']-width], [0,0], color='k')
+			 coord_map.loc[scale_end, 'plot_coord']-width], [0,0],
+			 color='k',
+			 linewidth=5)
 
 	# add text
 	x_coord = coord_map.loc[scale_start, 'plot_coord'] - 0.35
