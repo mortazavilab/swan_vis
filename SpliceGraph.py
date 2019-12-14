@@ -14,6 +14,8 @@ class SpliceGraph:
 	def __init__(self):
 
 		self.datasets = []
+		self.counts = []
+		self.tpm = []
 		
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'strand','vertex_id',
@@ -53,7 +55,8 @@ class SpliceGraph:
 			self.add_dataset(col, db=db)
 
 	# add dataset into graph from gtf
-	def add_dataset(self, col, gtf=None, db=None):
+	def add_dataset(self, col, gtf=None, db=None,
+					counts_file=None, count_cols=None):
 
 		# make sure that input dataset name is not
 		# already in any of the df col spaces
@@ -102,6 +105,39 @@ class SpliceGraph:
 
 		# update graph metadata
 		self.datasets.append(col)
+
+		# if we're also adding abundances
+		if counts_file and count_cols:
+			self.add_abundance(counts_file, count_cols, col)
+
+	# adds counts columns to t_df based on columns counts_cols found in 
+	# tsv counts_file. Relies on column annot_transcript_id to have the
+	# transcript id (tid) that is used to index t_df. 
+	# TODO make this more flexible in the future
+	def add_abundance(self, counts_file, count_cols, dataset_name):
+
+		# if the dataset we're trying to add counts too doesn't exist
+		if dataset_name not in self.datasets:
+			raise Exception('Trying to add expression data to a dataset '
+							'that is not in the graph. Add dataset to graph first.')
+
+		# get counts from input abundance file 
+		abundance_df = process_abundance_file(counts_file, count_cols)
+		abundance_df.rename({'tpm': '{}_tpm'.format(dataset_name),
+							 'counts': '{}_counts'.format(dataset_name)},
+							 axis=1, inplace=True)
+
+		# merge on transcript id (tid) with t_df and make sure it's 
+		# formatted correctly
+		self.t_df.reset_index(drop=True, inplace=True)
+		self.t_df = self.t_df.merge(abundance_df, on='tid', how='left')
+		self.t_df.fillna(value=0, inplace=True)
+		self.t_df = create_dupe_index(self.t_df, 'tid')
+		self.t_df = set_dupe_index(self.t_df, 'tid')
+
+		# finally update object's metadata
+		self.counts.append('{}_counts'.format(dataset_name))
+		self.tpm.append('{}_tpm'.format(dataset_name))
 
 	# merge dfs from two SpliceGraph objects
 	def merge_dfs(self, b, b_col):
@@ -657,6 +693,10 @@ class SpliceGraph:
 
 		self.G = G
 
+	##########################################################################
+	######################## Other SpliceGraph utilities #####################
+	##########################################################################
+
 	# order the transcripts by expression of transcript, transcript id, 
 	# or start/end nodes
 	def order_transcripts(self, order='tid'):
@@ -668,19 +708,19 @@ class SpliceGraph:
 
 		# order by expression
 		elif order == 'expression':
-			count_fields = get_count_fields(self.t_df)
+			count_cols = self.get_count_cols()
 
 			# make sure there are counts in the graph at all
-			if count_fields:
+			if count_cols:
 				self.t_df['counts_sum'] = self.t_df.apply(lambda x:
-					sum(x[count_fields]), axis=1)
+					sum(x[count_cols]), axis=1)
 				self.t_df.sort_values(by='counts_sum', 
 									  ascending=False, 
 									  inplace=True)
 				self.t_df.drop('counts_sum', axis=1, inplace=True)
 			else: 
 				raise Exception('Cannot order by expression because '
-					'there is no expression data.')
+								'there is no expression data.')
 
 		# order by coordinate of tss
 		# TODO might be able to roll this in with getting ordered_nodes
@@ -706,29 +746,34 @@ class SpliceGraph:
 
 			# watch out for strandedness
 			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
-				ascending = True
-			else: 
 				ascending = False
+			else: 
+				ascending = True
 			self.t_df.sort_values(by='end_coord',
 								  ascending=ascending,
 								  inplace=True)
 			self.t_df.drop('end_coord', axis=1, inplace=True)
 
-# # returns the fields in a graph that specify which dataset a node or
-# # edge belongs to in a merged graph
-# def get_dataset_fields(graph=None, df=None):
-# 	# TODO does graph have datasets? If not throw an error
-# 	if graph is not None:
-# 		data = graph.nodes(data=True)[0]
-# 		d_fields = [k for k in data.keys() if 'dataset_' in k]
-# 	if df is not None:
-# 		d_fields = [col for col in df.columns if 'dataset_' in col]
-# 	return d_fields
+	# gets the names of the dataset columns in the graph
+	# returns None if no datasets have been added
+	def get_dataset_cols(self):
+		if len(self.datasets) == 0:
+			return None
+		return self.datasets
 
-# # returns the fields in the t_df that hold counts of datasets
-# def get_count_fields(t_df):
-# 	c_fields = [col for col in t_df.columns if 'counts_' in col]
-# 	return c_fields
+	# gets the names of the counts columns in the graph
+	# returns None if no counts have been added
+	def get_count_cols(self):
+		if len(self.counts) == 0:
+			return None
+		return self.counts
+
+	# gets the names of tpm columns in the graph
+	# returns None if no counts have been added
+	def get_tpm_cols(self):
+		if len(self.tpm) == 0:
+			return None
+		return self.tpm
 
 # # returns the (min, max) coordinates of an input gene
 # def get_gene_min_max(loc_df, t_df, gid):

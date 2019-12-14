@@ -58,14 +58,25 @@ def get_field_value(key, fields):
 # currently only works with TALON abundance files but can easily 
 # be updated to work with more types of abundance files
 def process_abundance_file(file, cols):
+
 	df = pd.read_csv(file, sep='\t')
 	keep_cols = ['annot_transcript_id']+cols
 	df = df[keep_cols]
-	df['counts'] = df.apply(lambda x: sum(x[col] for col in cols), axis=1)
+
+	# get the counts
+	df['counts'] = df.apply(lambda x: sum(x[cols]), axis=1)
+
+	# get tpms
+	for col in cols: 
+		total_counts = df[col].sum()
+		df['{}_tpm'.format(col)] = df.apply(lambda x: (x[col]*1000000)/total_counts, axis=1)
+	cols = ['{}_tpm'.format(col) for col in cols]
+	df['tpm'] = df[cols].mean(axis=1)
+
+	# set up for merging
 	df.drop(cols, axis=1, inplace=True)
 	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
 	return df
-
 
 
 

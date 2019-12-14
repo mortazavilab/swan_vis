@@ -45,11 +45,18 @@ from report_tools import *
 # gen_report(merged, args, 'figures/mapt', browser=True, order='tss')
 # gen_report(merged, args, 'figures/mapt', order='tss')
 
+ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
 
 sg = sw.SpliceGraph()
 sg.add_annotation(gtf='input_files/annot_mapt.gtf')
-sg.add_dataset('cortex', gtf='input_files/cortex_mapt.gtf')
-sg.add_dataset('hippocampus', gtf='input_files/hippocampus_mapt.gtf')
+sg.add_dataset('cortex',
+				gtf='input_files/cortex_mapt.gtf',
+			    counts_file=ab_file,
+			    count_cols=['PB82', 'PB84'])
+sg.add_dataset('hippocampus',
+			   gtf='input_files/hippocampus_mapt.gtf',
+			   counts_file=ab_file,
+			   count_cols=['PB83', 'PB85'])
 
 print(sg.loc_df.head())
 print(sg.edge_df.head())
