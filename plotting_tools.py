@@ -308,11 +308,11 @@ def plot_each_transcript(splice_graph, args, oprefix, browser=False):
 			plot_path_browser(splice_graph, tid)
 			save_fig(oname)
 
-# saves current figure named oname. clears the figure space so additional
-# plotting can be done
-def save_fig(oname):
-	plt.axis('off')
-	plt.tight_layout()
-	plt.savefig(oname, format='png', dpi=200)
-	plt.clf()
-	plt.close()
+# # saves current figure named oname. clears the figure space so additional
+# # plotting can be done
+# def save_fig(oname):
+# 	plt.axis('off')
+# 	plt.tight_layout()
+# 	plt.savefig(oname, format='png', dpi=200)
+# 	plt.clf()
+# 	plt.close()

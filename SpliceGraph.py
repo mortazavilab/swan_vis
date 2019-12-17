@@ -8,6 +8,7 @@ import copy
 from collections import defaultdict
 import sqlite3
 from utils import *
+from PlottedGraph import PlottedGraph 
 
 class SpliceGraph:
 
@@ -16,6 +17,8 @@ class SpliceGraph:
 		self.datasets = []
 		self.counts = []
 		self.tpm = []
+
+		self.pg = None
 		
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'strand','vertex_id',
@@ -774,6 +777,45 @@ class SpliceGraph:
 		if len(self.tpm) == 0:
 			return None
 		return self.tpm
+
+	##########################################################################
+	############################ Plotting utilities ##########################
+	##########################################################################
+
+	# plot the SpliceGraph object according to the user's input
+	def plot_graph(self, combine=False,
+				   indicate_dataset=False,
+				   indicate_annotated=False):
+
+		# can only do one or another
+		if indicate_dataset and indicate_annotated:
+			raise Exception('Please choose either indicate_dataset '
+							'or indicate_annotated, not both.')
+
+		# if indicate_dataset or indicate_annotated are chosen, make sure
+		# the dataset or annotation data exists in the SpliceGraph
+		if indicate_annotated and 'annotation' not in self.get_dataset_cols():
+			raise Exception('Annotation data not present in graph. Use  '
+							'add_annotation before using indicate_annotated')
+		if indicate_dataset and indicate_dataset not in self.get_dataset_col():
+			raise Exception('Dataset {} not present in the graph. '
+							''.format(indicate_dataset))
+
+		# check to see if we already have a pg object 
+		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_annotated)
+		self.pg.plot_graph()
+
+	# saves current figure named oname. clears the figure space so additional
+	# plotting can be done
+	def save_fig(self, oname):
+		plt.axis('off')
+		plt.tight_layout()
+		plt.savefig(oname, format='png', dpi=200)
+		plt.clf()
+		plt.close()
+
+
+
 
 # # returns the (min, max) coordinates of an input gene
 # def get_gene_min_max(loc_df, t_df, gid):

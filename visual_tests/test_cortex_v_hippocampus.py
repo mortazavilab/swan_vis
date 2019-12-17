@@ -4,11 +4,10 @@ from collections import defaultdict
 lib_path = '/'.join(os.path.abspath(__file__).split('/')[0:-2])
 sys.path.append(lib_path+'/utils/')
 sys.path.append(lib_path)
-import SpliceGraph as sw
-import PlottedGraph as pg
-from utils import *
-from plotting_tools import * 
-from report_tools import *
+from SpliceGraph import SpliceGraph
+# from utils import *
+# from plotting_tools import * 
+# from report_tools import *
 
 
 # annot = sg.SpliceGraph(gtf='input_files/annot_mapt.gtf')
@@ -47,7 +46,7 @@ from report_tools import *
 
 ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
 
-sg = sw.SpliceGraph()
+sg = SpliceGraph()
 sg.add_annotation(gtf='input_files/annot_mapt.gtf')
 sg.add_dataset('cortex',
 				gtf='input_files/cortex_mapt.gtf',
@@ -58,9 +57,18 @@ sg.add_dataset('hippocampus',
 			   counts_file=ab_file,
 			   count_cols=['PB83', 'PB85'])
 
-print(sg.loc_df.head())
-print(sg.edge_df.head())
-print(sg.t_df.head())
+sg.plot_graph()
+sg.save_fig('figures/test.png')
+
+# print(sg.loc_df.head())
+# print(sg.edge_df.head())
+# print(sg.t_df.head())
+
+# print()
+
+# print(sg.pg.loc_df.head())
+# print(sg.pg.edge_df.head())
+# print(sg.pg.t_df.head())
 
 
 
