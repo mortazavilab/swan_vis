@@ -8,9 +8,9 @@ from collections import defaultdict
 import sqlite3
 from utils import *
 from plotting_tools import *
+from Graph import Graph
 
-#
-class PlottedGraph:
+class PlottedGraph(Graph):
 
 	def __init__(self, sg, combine, indicate_dataset, indicate_annotated):
 
@@ -30,10 +30,19 @@ class PlottedGraph:
 		self.t_df['path'] = self.t_df.apply(
 			lambda x: copy.deepcopy(x.path), axis=1)
 
-		# if combine:
-		# 	nbps = find_nb_paths(G)
-		# 	G, loc_df, edge_df, t_df = agg_nb_nodes(G, loc_df, edge_df, t_df, nbps, args)
-		# 	TODO order nodes again
+		# used for getting plotting settings 
+		self.loc_df['combined'] = False
+
+		# combine non-branching paths
+		if combine:
+			self.loc_df['sub_color'] = np.nan
+			nbps = self.find_nb_paths()
+			self.agg_nb_nodes(nbps)
+			self.update_ids()
+
+			print()
+			print('loc df with reordered ids')
+			print(self.loc_df)
 
 		# get positions/sizes of nodes, edges, and labels
 		self.calc_pos_sizes()
@@ -102,7 +111,7 @@ class PlottedGraph:
 		pos = defaultdict()
 
 		# order nodes based on genomic coords
-		ordered_nodes = self.loc_df.vertex_id.tolist()
+		ordered_nodes = self.loc_df['vertex_id'].tolist()
 
 		# check if forward or reverse strand 
 		# is the first node in the ordered list a TSS or TES? 
@@ -175,10 +184,216 @@ class PlottedGraph:
 
 		# TODO sub node sizes
 
+	###############################################################################
+	####################### Combining non-branching paths #########################
+	###############################################################################
+
+	# starting nodes:
+	# 1. have only one outgoing edge AND
+	# 2. have more than one incoming edge | is a TSS | parent is TES AND
+	# 3. node is not already in a nbp AND
+	# 4. node is not a TES
+
+	def is_nbp_start(self,n,nbps):
+		nbp_nodes = [n for p in nbps for n in p]
+		if self.G.out_degree(n) == 1: # 1
+			tes_parent = False
+			parents = list(self.G.predecessors(n))
+			if parents: 
+				for parent in parents:
+					if self.loc_df.loc[parent, 'TES']:
+						tes_parent = True
+			if self.G.in_degree(n) >= 1 or self.loc_df.loc[n, 'TSS'] or tes_parent: # 2
+				if n not in nbp_nodes and not self.loc_df.loc[n, 'TES']: # 3 & 4
+					return True
+		return False
+
+	# end nodes:
+	# 1. have more than one outgoing edge |
+	# 2. have more than one incoming edge |
+	# 3. is a TSS |
+	# 4. parent node is a TES
+	def is_nbp_end(self,n):
+		if self.G.out_degree(n) > 1: # 1
+			return True
+		if self.G.in_degree(n) > 1: # 2
+			return True
+		if self.loc_df.loc[n, 'TSS']: # 3 
+			return True
+		if self.G.in_degree(n) == 1: # 4
+			parent = list(self.G.predecessors(n))[0]
+			if self.loc_df.loc[parent, 'TES']:
+				return True
+		return False
+
+	# http://rosalind.info/problems/ba3m/ ty pavel 
+	# modified to not group up TES/TSSs 
+	# see is_nbp_start/end to see complete set of conditions
+	def find_nb_paths(self):
+		nbps = []
+		for v in self.G.nodes:
+			if self.is_nbp_start(v,nbps):
+				if self.G.out_degree(v) > 0:
+					for w in self.G.successors(v):
+						nbp = [v]
+						while not self.is_nbp_end(w):
+							nbp.append(w)
+							succ = list(self.G.successors(w))
+							if succ: w = succ[0]
+							else: break
+						if len(nbp) > 1: nbps.append(nbp)
+		return nbps
+
+	# aggregate nonbranching nodes and add to graph. remove old nodes
+	# update loc_df, edge_df, and t_df to reflect these changes
+	def agg_nb_nodes(self, nbps):
+
+		G = self.G
+		loc_df = self.loc_df
+		edge_df = self.edge_df
+		t_df = self.t_df
+
+		# loop through each transcript path and each non-branching path,
+		# replace nodes that will be aggregated 
+		# need to use this because pandas copy DOES NOT deepcopy lists!
+		t_df['new_path'] = t_df.apply(lambda x: copy.deepcopy(x.path), axis=1)
+		paths = t_df.new_path.tolist() # this gives me a reference to the paths
+								       # so when updating I'm directly modifying t_df
+		for path in paths: 
+			for combined_index, nbp in enumerate(nbps):
+
+				# get the nodes that need to be deleted from the path
+				# in the order they need to be deleted 
+				del_nodes = sorted([int(i) for i in list(set(path) & set(nbp))],
+					key=lambda x: loc_df.loc[x, 'coord'])
+
+				# remove each node that is in a non-branching path
+				for i, n in enumerate(del_nodes):
+					if i == 0: 
+						insertion_index = path.index(n)
+					path.remove(n)
+				if not del_nodes: insertion_index = -1
+
+				# add aggregate node tuple instead
+				if insertion_index != -1:
+					path.insert(insertion_index, 'c{}'.format(combined_index))
+
+		# shuffle around path columns in dataframe
+		t_df.drop('path', axis=1, inplace=True)
+		t_df.rename({'new_path': 'path'}, axis=1, inplace=True)
+
+		mod_G = nx.DiGraph(G)
+
+		combined_index = 0
+		loc_df['agg_path'] = np.nan
+		loc_df['combined'] = False
+		loc_df['combined_types'] = np.nan
+
+		# loop through each nonbranching path
+		for path in nbps: 
+
+			print()
+			print(path)
+
+			# some beginning of new loop things we need
+			path = tuple([int(n) for n in path])
+			start = path[0]
+			stop = path[-1]
+			combined_node = 'c{}'.format(combined_index)
+
+			# get the colors for each aggregate node
+			combined_types = [j[0] for j in sorted([i for i in 
+			   [('TSS',loc_df.loc[path,'TSS'].tolist().count(True)),
+			   ('TES',loc_df.loc[path,'TES'].tolist().count(True)),
+			   ('internal',loc_df.loc[path,'internal'].tolist().count(True))]
+			   if i[1] != 0], key=lambda x: x[1], reverse=True)][:2]
+
+			# compose the entries for edge_df for new edges that will be added
+			# that include the aggregate node
+			edge_attrs = {}
+			if mod_G.in_degree(start) > 0: 
+				in_nodes = list(mod_G.predecessors(start))
+				old_edges = [(v1, start) for v1 in in_nodes]
+				edge_attrs.update({(edge_id[0], combined_node): item for edge_id,item in edge_df.loc[old_edges,
+					['strand', 'edge_type']].to_dict(orient='index').items()})
+			if G.out_degree(stop) > 0: 
+				out_nodes = list(mod_G.successors(stop))
+				old_edges = [(stop, v2) for v2 in out_nodes]
+				edge_attrs.update({(combined_node, edge_id[1]): item for edge_id,item in edge_df.loc[old_edges,
+					['strand', 'edge_type']].to_dict(orient='index').items()})
+
+			# compose the entry for loc_df for the aggregate node
+			coord = loc_df.loc[start, 'coord']
+			chrom = loc_df.loc[start, 'chrom']
+			strand = loc_df.loc[start, 'strand']
+			tss = alt_tss = tes = alt_tes = internal = False
+			for n in path:
+				if loc_df.loc[n, 'TSS']: tss = True
+				if loc_df.loc[n, 'TES']: tes = True
+				if loc_df.loc[n, 'alt_TSS']: alt_tss = True
+				if loc_df.loc[n, 'alt_TES']: alt_tes = True
+				if loc_df.loc[n, 'internal']: internal = True
+			loc_attrs = {'chrom': chrom, 'strand': strand,
+				   'vertex_id': combined_node,
+				   'combined_types': combined_types,
+				   'vertex_id_back': combined_node,
+				   'agg_path': list(path), 'combined': True,
+				   'TSS': tss, 'TES': tes,
+				   'alt_TSS': alt_tss, 'alt_TES': alt_tes,
+				   'internal': internal, 'coord': coord}
+
+			# # if we're indicating dataset, which datasets are these nodes present in?
+			# if args['indicate_dataset']:
+			# 	node_attrs = assign_combined_datasets(mod_G, path, node_attrs)
+
+			# add the new node and edges to graph
+			mod_G.add_node(combined_node)
+			for edge,item in edge_attrs.items():
+				mod_G.add_edge(edge[0], edge[1])
+
+			# also add aggregate node and all associated edges to loc_df, edge_df
+			loc_df.reset_index(drop=True, inplace=True)
+			edge_df.reset_index(drop=True, inplace=True)
+			for edge, edge_attr in edge_attrs.items():
+				edge_attr.update({'edge_id': edge, 'strand': strand,
+								  'v1': edge[0], 'v2': edge[1]})
+				edge_df = edge_df.append(edge_attr, ignore_index=True)
+			loc_df = loc_df.append(loc_attrs, ignore_index=True)
+			loc_df = create_dupe_index(loc_df, 'vertex_id')
+			edge_df = create_dupe_index(edge_df, 'edge_id')
+			loc_df = set_dupe_index(loc_df, 'vertex_id')
+			edge_df = set_dupe_index(edge_df, 'edge_id')
+
+			# remove all old nodes from the graph
+			for n in path:
+				mod_G.remove_node(n)
+
+			# increment combined node index
+			combined_index += 1
+
+		# remove all old nodes/edges from loc_df and edge_df
+		del_nodes = [n for path in nbps for n in path]
+		del_edges = []
+		del_edges += edge_df.loc[edge_df.v1.isin(del_nodes), 'edge_id'].tolist()
+		del_edges += edge_df.loc[edge_df.v2.isin(del_nodes), 'edge_id'].tolist()
+		del_edges = list(set(del_edges))
+
+		loc_df = loc_df.loc[~loc_df.index.isin(del_nodes)] 
+		edge_df = edge_df.loc[~edge_df.index.isin(del_edges)]
+
+		self.G = mod_G
+		self.loc_df = loc_df 
+		self.edge_df = edge_df 
+		self.t_df = t_df
+
 # get the node color #TODO more settings if a path is given perhaps
 def get_node_color(x, color_dict):
 
-	# TES 
+	# first check if node is combined
+	# if x.combined:
+	# 	x.sub_color = 
+
+ 	# TES 
 	if x.alt_TES: return color_dict['alt_TES']
 	elif x.TES: return color_dict['TES']
 	# TSS
@@ -192,6 +407,10 @@ def get_node_shape(x):
 	# ie hexagonal 
 	# diamond
 	# etc
+
+	# hexagonal nodes for combined nodes 
+	if x.combined:
+		return 'H'
 	return 'o'
 
 # get the curve/style of the edge

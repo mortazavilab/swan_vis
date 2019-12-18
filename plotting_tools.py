@@ -191,6 +191,8 @@ def plot_overlaid_path(pg, path, args):
 	# save_fig(oname)
 
 # plot a transcript path as we'd see on the genome browser
+# TODO turn this into an easier coord system - ie just use the min/max of gene
+# and set the x lims to those numbers 
 def plot_path_browser(splice_graph, tid):
 
 	# plotting init stuff

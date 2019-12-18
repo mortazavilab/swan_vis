@@ -29,5 +29,5 @@ sg = SpliceGraph()
 sg.add_dataset('test',
 	gtf='input_files/test_combine_2.gtf')
 
-sg.plot_graph()
+sg.plot_graph(combine=True)
 sg.save_fig('figures/test_combine_not_combined.png')
