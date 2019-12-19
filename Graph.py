@@ -116,16 +116,6 @@ class Graph:
 		for path in paths:
 			nx.add_path(G, path)
 
-		# # add node attributes from dfs
-		# G = label_nodes(G, self.loc_df, 'internal', 'internal') 
-		# G = label_nodes(G, self.loc_df, 'TSS', 'TSS') 
-		# G = label_nodes(G, self.loc_df, 'alt_TSS', 'alt_TSS') 
-		# G = label_nodes(G, self.loc_df, 'TES', 'TES')
-		# G = label_nodes(G, self.loc_df, 'alt_TES', 'alt_TES')
-		# G = label_nodes(G, self.loc_df, 'coord', 'coord')
-		# G = label_edges(G, self.edge_df, 'strand', 'strand')
-		# G = label_edges(G, self.edge_df, 'edge_type', 'edge_type')
-
 		self.G = G
 
 	##########################################################################

@@ -38,20 +38,18 @@ class PlottedGraph(Graph):
 			self.loc_df['sub_color'] = np.nan
 			nbps = self.find_nb_paths()
 			self.agg_nb_nodes(nbps)
-			self.update_ids()
+			# self.update_ids()
 
-			print()
-			print('loc df with reordered ids')
+			# testing
 			print(self.loc_df)
+			print(self.edge_df)
+			print(self.t_df)
 
 		# get positions/sizes of nodes, edges, and labels
 		self.calc_pos_sizes()
 
 		# get color/shape plotting settings for nodes, edges
 		self.get_plt_settings()
-
-		print(self.loc_df[['color', 'node_shape']])
-		print(self.edge_df[['color', 'curve', 'line']])
 
 	# get color/shape plotting settings
 	def get_plt_settings(self):
@@ -90,7 +88,6 @@ class PlottedGraph(Graph):
 		edge_dict = {'pos': 'arc3,rad={}'.format(self.rad),
 					 'neg': 'arc3,rad=-{}'.format(self.rad),
 					 'straight': None}
-		print(edge_dict)
 		ordered_nodes = self.loc_df.vertex_id.tolist()
 		ordered_edges = [(n,m) for n,m in zip(ordered_nodes[:-1],ordered_nodes[1:])]
 
@@ -111,7 +108,10 @@ class PlottedGraph(Graph):
 		pos = defaultdict()
 
 		# order nodes based on genomic coords
-		ordered_nodes = self.loc_df['vertex_id'].tolist()
+		loc_ids = self.loc_df.vertex_id.tolist()
+		coords = self.loc_df.coord.tolist()
+		ordered_nodes = [i[0] for i in sorted(zip(loc_ids, coords),
+			key=lambda x: x[1])]
 
 		# check if forward or reverse strand 
 		# is the first node in the ordered list a TSS or TES? 
@@ -291,9 +291,6 @@ class PlottedGraph(Graph):
 
 		# loop through each nonbranching path
 		for path in nbps: 
-
-			print()
-			print(path)
 
 			# some beginning of new loop things we need
 			path = tuple([int(n) for n in path])
