@@ -226,7 +226,8 @@ class PlottedGraph(Graph):
 	# see is_nbp_start/end to see complete set of conditions
 	def find_nb_paths(self):
 		nbps = []
-		for v in self.G.nodes:
+		# for v in self.G.nodes:
+		for v in self.loc_df.vertex_id.tolist():
 			if self.is_nbp_start(v,nbps):
 				if self.G.out_degree(v) > 0:
 					for w in self.G.successors(v):
