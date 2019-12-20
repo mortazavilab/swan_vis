@@ -48,17 +48,18 @@ ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
 
 sg = SpliceGraph()
 sg.add_annotation(gtf='input_files/annot_mapt.gtf')
-sg.add_dataset('cortex',
-				gtf='input_files/cortex_mapt.gtf',
-			    counts_file=ab_file,
-			    count_cols=['PB82', 'PB84'])
-sg.add_dataset('hippocampus',
-			   gtf='input_files/hippocampus_mapt.gtf',
-			   counts_file=ab_file,
-			   count_cols=['PB83', 'PB85'])
+
+# sg.add_dataset('cortex',
+# 				gtf='input_files/cortex_mapt.gtf',
+# 			    counts_file=ab_file,
+# 			    count_cols=['PB82', 'PB84'])
+# sg.add_dataset('hippocampus',
+# 			   gtf='input_files/hippocampus_mapt.gtf',
+# 			   counts_file=ab_file,
+# 			   count_cols=['PB83', 'PB85'])
 
 sg.plot_graph()
-sg.save_fig('figures/test.png')
+sg.save_fig('figures/test_mapt.png')
 
 # print(sg.loc_df.head())
 # print(sg.edge_df.head())

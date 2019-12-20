@@ -29,7 +29,7 @@ sg = SpliceGraph()
 sg.add_dataset('test',
 	gtf='input_files/test_combine_2.gtf')
 
-sg.plot_graph(combine=True)
+sg.plot_graph()
 
 print(sg.pg.loc_df)
 print(sg.pg.edge_df)
