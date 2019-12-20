@@ -30,4 +30,9 @@ sg.add_dataset('test',
 	gtf='input_files/test_combine_2.gtf')
 
 sg.plot_graph(combine=True)
+
+print(sg.pg.loc_df)
+print(sg.pg.edge_df)
+print(sg.pg.t_df)
+
 sg.save_fig('figures/test_combine_not_combined.png')

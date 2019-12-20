@@ -35,20 +35,27 @@ class PlottedGraph(Graph):
 
 		# combine non-branching paths
 		if combine:
-			self.loc_df['sub_color'] = np.nan
 			nbps = self.find_nb_paths()
 			self.agg_nb_nodes(nbps)
 
-			# testing
-			print(self.loc_df)
-			print(self.edge_df)
-			print(self.t_df)
+			# # get plotting settings for combined nodes
+			# self.loc_df['sub_color'] = np.nan
 
 		# get positions/sizes of nodes, edges, and labels
 		self.calc_pos_sizes()
 
 		# get color/shape plotting settings for nodes, edges
 		self.get_plt_settings()
+
+		print(self.loc_df)
+		print(self.loc_df['combined_types'])
+		print(self.edge_df)
+		print(self.t_df)
+
+
+	###############################################################################
+	################### Getting plotting settings for nodes/edges #################
+	###############################################################################
 
 	# get color/shape plotting settings
 	def get_plt_settings(self):
@@ -71,14 +78,17 @@ class PlottedGraph(Graph):
 					  'alt_TES': orange,
 					  'internal': yellow}
 
+		#### NODES ####
 		# node plotting settings: color
-		self.loc_df['color'] = self.loc_df.apply(
+		self.loc_df = self.loc_df.apply(
 			lambda x: get_node_color(x, color_dict), axis=1)
 
 		# node plotting settings: shape
 		self.loc_df['node_shape'] = self.loc_df.apply(
 			lambda x: get_node_shape(x), axis=1)
 
+
+		#### EDGES ####
 		# edge plotting settings: color
 		self.edge_df['color'] = self.edge_df.apply(
 			lambda x: color_dict[x.edge_type], axis=1)
@@ -123,6 +133,7 @@ class PlottedGraph(Graph):
 		# area-related sizes need to be non-linearly scaled
 		# calculated by fitting power series curve to handpicked sizes
 		node_size = 19248*(x**-1.14) 
+		sub_node_size = node_size/2
 		label_size = 43.9*(x**-0.484)
 
 		# linearly-related sizes
@@ -132,9 +143,15 @@ class PlottedGraph(Graph):
 		# assign fields to plotted graph object 
 		self.pos = pos
 		self.node_size = node_size
+		self.sub_node_size = sub_node_size
 		self.label_size = label_size
 		self.rad = rad
 		self.edge_width = edge_width
+
+
+	###############################################################################
+	########################## Actually plotting stuff ############################
+	###############################################################################
 
 	# plots input plotted graph
 	def plot_graph(self):
@@ -176,6 +193,13 @@ class PlottedGraph(Graph):
 				node_color=entry.color,
 				node_size=self.node_size,
 				node_shape=entry.node_shape)
+			if entry.combined:
+				if len(entry.combined_types) == 2:
+					nx.draw_networkx_nodes(self.G, self.pos,
+						nodelist=[node],
+						node_color=entry.sub_color,
+						node_size=self.sub_node_size,
+						node_shape=entry.node_shape)
 
 		# TODO sub node sizes
 
@@ -295,9 +319,10 @@ class PlottedGraph(Graph):
 			combined_node = 'c{}'.format(combined_index)
 
 			# get the colors for each aggregate node
+			# TODO need to fix how these are colored with alt TSS/TES vs singleton TSS/TES
 			combined_types = [j[0] for j in sorted([i for i in 
-			   [('TSS',loc_df.loc[path,'TSS'].tolist().count(True)),
-			   ('TES',loc_df.loc[path,'TES'].tolist().count(True)),
+			   [('alt_TSS',loc_df.loc[path,'alt_TSS'].tolist().count(True)),
+			   ('alt_TES',loc_df.loc[path,'alt_TES'].tolist().count(True)),
 			   ('internal',loc_df.loc[path,'internal'].tolist().count(True))]
 			   if i[1] != 0], key=lambda x: x[1], reverse=True)][:2]
 
@@ -390,18 +415,36 @@ class PlottedGraph(Graph):
 # get the node color #TODO more settings if a path is given perhaps
 def get_node_color(x, color_dict):
 
-	# first check if node is combined
-	# if x.combined:
-	# 	x.sub_color = 
+	# combined nodes
+	if x.combined:
+		types = x.combined_types
 
- 	# TES 
-	if x.alt_TES: return color_dict['alt_TES']
-	elif x.TES: return color_dict['TES']
-	# TSS
-	if x.alt_TSS: return color_dict['alt_TSS']
-	elif x.TSS: return color_dict['TSS']
-	# internal
-	return color_dict['internal']
+		# did one or two types of node go into this node?
+		if len(types) == 2:
+			x['sub_color'] = color_dict[types[0]]
+			x['color'] = color_dict[types[1]]
+		else: 
+			x['sub_color'] = np.nan
+			x['color'] = color_dict[types[0]]
+
+	# non combined nodes
+	else:
+
+		# we don't need a sub color
+		x['sub_color'] = np.nan
+
+		# colors should label nodes by their 
+		# MOST UNIQUE type (yes I know this is subjective) 
+		# to me, this means that the label priority for a node is 
+		# internal < TSS/alt_TSS < TES/alt_TES
+		if x.internal: color = color_dict['internal']
+		if x.TSS: color = color_dict['TSS']
+		if x.alt_TSS: color = color_dict['alt_TSS']
+		if x.TES: color = color_dict['TES']
+		if x.alt_TES: color = color_dict['alt_TES']
+		x['color'] = color
+
+	return x
 
 # get the shape of the node #TODO more settings obvi
 def get_node_shape(x):
