@@ -12,12 +12,15 @@ from Graph import Graph
 
 class PlottedGraph(Graph):
 
-	def __init__(self, sg, combine, indicate_dataset, indicate_annotated):
+	def __init__(self, sg, combine, indicate_dataset, indicate_novel):
 
 		# save settings so we know how much we need to recompute
 		self.combine = combine
 		self.indicate_dataset = indicate_dataset 
-		self.indicate_annotated = indicate_annotated
+		self.indicate_novel = indicate_novel
+
+		# other fields to copy over
+		self.datasets = sg.datasets
 
 		# assign dfs for plotted graph
 		self.G = sg.G.copy()
@@ -37,9 +40,6 @@ class PlottedGraph(Graph):
 		if combine:
 			nbps = self.find_nb_paths()
 			self.agg_nb_nodes(nbps)
-
-			# # get plotting settings for combined nodes
-			# self.loc_df['sub_color'] = np.nan
 
 		# get positions/sizes of nodes, edges, and labels
 		self.calc_pos_sizes()
@@ -72,39 +72,44 @@ class PlottedGraph(Graph):
 					  'alt_TES': orange,
 					  'internal': yellow}
 
+		###############
 		#### NODES ####
+		###############
+
 		# node plotting settings: color
 		self.loc_df = self.loc_df.apply(
 			lambda x: get_node_color(x, color_dict), axis=1)
 
 		# node plotting settings: shape
+		dataset_cols = self.get_dataset_cols()
+		if self.indicate_dataset:
+			dataset_cols.remove(self.indicate_dataset)
 		self.loc_df['node_shape'] = self.loc_df.apply(
-			lambda x: get_node_shape(x), axis=1)
+			lambda x: self.get_node_shape(x, dataset_cols), axis=1)
 
-
+		###############
 		#### EDGES ####
+		###############
+
 		# edge plotting settings: color
 		self.edge_df['color'] = self.edge_df.apply(
 			lambda x: color_dict[x.edge_type], axis=1)
 
-
-		# edge_dict = {'pos': 'arc3,rad={}'.format(self.rad),
-		# 			 'neg': 'arc3,rad=-{}'.format(self.rad),
 		edge_dict = {'pos': 'arc3,rad=',
 					 'neg': 'arc3,rad=-',
 					 'straight': None}
 		ordered_nodes = self.get_ordered_nodes()
 		ordered_edges = [(n,m) for n,m in zip(ordered_nodes[:-1],ordered_nodes[1:])]
 
-		# edge plotting settings: curve type
+		# edge plotting settings: curve type 
 		self.edge_df['raw_index'] = [i for i in range(len(self.edge_df.index))]
 		self.edge_df['curve'] = self.edge_df.apply(
 			lambda x: get_edge_style(x, ordered_edges, edge_dict, self.pos, self.rad_scale), axis=1)
 		self.edge_df.drop('raw_index', axis=1, inplace=True)
 
-		# edge plotting settings: line type
+		# edge plotting settings: line type (dashed or not)
 		self.edge_df['line'] = self.edge_df.apply(
-			lambda x: get_edge_line(x), axis=1)
+			lambda x: self.get_edge_line(x), axis=1)
 		
 	# calculates the positions and sizes of edges/nodes based on the 
 	# number of nodes in the graph
@@ -145,6 +150,40 @@ class PlottedGraph(Graph):
 		self.rad_scale = 0.35
 		self.edge_width = edge_width
 
+	# get the shape of the node 
+	def get_node_shape(self, x, dataset_cols):
+
+		# is this node unique from all other datasets?
+		# and in the provided dataset name?
+		def unique_to_dataset(dataset_name, x, dataset_cols):
+			if not dataset_name: return False
+			if x[dataset_name] and not any(x[dataset_cols].tolist()):
+				return True
+			return False
+
+		# is this node annotated?
+		def is_novel(indicate_novel, x):
+			if not indicate_novel: return False
+			if x.annotation: return False
+			return True
+
+		# default shape
+		shape = 'o'
+
+		# hexagonal nodes for combined nodes 
+		if x.combined:
+			shape = 'H'
+			if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols): 
+				shape = 'h'
+		# diamond nodes for novel or inidicate_dataset nodes
+		if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
+			shape = 'D'
+
+		return shape
+
+	# get the style of the line for an edge
+	def get_edge_line(self, x):
+		return None
 
 	###############################################################################
 	########################## Actually plotting stuff ############################
@@ -443,17 +482,6 @@ def get_node_color(x, color_dict):
 
 	return x
 
-# get the shape of the node #TODO more settings obvi
-def get_node_shape(x):
-	# ie hexagonal 
-	# diamond
-	# etc
-
-	# hexagonal nodes for combined nodes 
-	if x.combined:
-		return 'H'
-	return 'o'
-
 # get the curve/style of the edge
 def get_edge_style(x, ordered_edges, edge_dict, pos, rad_scale):
 
@@ -471,8 +499,5 @@ def get_edge_style(x, ordered_edges, edge_dict, pos, rad_scale):
 	else:
 		return edge_dict['neg']+str(rad)
 
-# get the style of the line for an edge
-# TODO add support for indicate_dataset etc
-def get_edge_line(x):
-	return None
+
 

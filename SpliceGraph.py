@@ -737,6 +737,14 @@ class SpliceGraph(Graph):
 								  inplace=True)
 			self.t_df.drop('end_coord', axis=1, inplace=True)
 
+	# # returns True if node is unique to dataset, otherwise False
+	# def node_unique_to_dataset(self, node, dataset):
+	# 	pass
+
+	# # returns True if edge is unique to dataset, otherwise False
+	# def edge_unique_to_dataset(self, edge, dataset):
+	# 	pass
+
 	# # gets the names of the dataset columns in the graph
 	# # returns None if no datasets have been added
 	# def get_dataset_cols(self):
@@ -765,24 +773,24 @@ class SpliceGraph(Graph):
 	# plot the SpliceGraph object according to the user's input
 	def plot_graph(self, combine=False,
 				   indicate_dataset=False,
-				   indicate_annotated=False):
+				   indicate_novel=False):
 
 		# can only do one or another
-		if indicate_dataset and indicate_annotated:
+		if indicate_dataset and indicate_novel:
 			raise Exception('Please choose either indicate_dataset '
-							'or indicate_annotated, not both.')
+							'or indicate_novel, not both.')
 
-		# if indicate_dataset or indicate_annotated are chosen, make sure
+		# if indicate_dataset or indicate_novel are chosen, make sure
 		# the dataset or annotation data exists in the SpliceGraph
-		if indicate_annotated and 'annotation' not in self.get_dataset_cols():
+		if indicate_novel and 'annotation' not in self.get_dataset_cols():
 			raise Exception('Annotation data not present in graph. Use  '
-							'add_annotation before using indicate_annotated')
-		if indicate_dataset and indicate_dataset not in self.get_dataset_col():
+							'add_annotation before using indicate_novel')
+		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
 			raise Exception('Dataset {} not present in the graph. '
 							''.format(indicate_dataset))
 
 		# check to see if we already have a pg object 
-		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_annotated)
+		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_novel)
 		self.pg.plot_graph()
 
 	# saves current figure named oname. clears the figure space so additional
