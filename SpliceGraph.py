@@ -172,6 +172,10 @@ class SpliceGraph(Graph):
 		d_cols = self.datasets+[b_col]
 		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
 
+		# set up index again
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
 		self.t_df = t_df
 
 	# update edge_df ids and vertex ids from id_map for the merged dfs
@@ -770,10 +774,9 @@ class SpliceGraph(Graph):
 	############################ Plotting utilities ##########################
 	##########################################################################
 
-	# plot the SpliceGraph object according to the user's input
-	def plot_graph(self, combine=False,
-				   indicate_dataset=False,
-				   indicate_novel=False):
+	# make sure that the set of arguments work with each other 
+	# before we start plotting
+	def check_plotting_args(self, combine, indicate_dataset, indicate_novel):
 
 		# can only do one or another
 		if indicate_dataset and indicate_novel:
@@ -789,9 +792,39 @@ class SpliceGraph(Graph):
 			raise Exception('Dataset {} not present in the graph. '
 							''.format(indicate_dataset))
 
-		# check to see if we already have a pg object 
+	# plot the SpliceGraph object according to the user's input
+	def plot_graph(self, combine=False,
+				   indicate_dataset=False,
+				   indicate_novel=False):
+
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel)
+
+		# TODO check to see if we already have a pg object and 
+		# reinitialize based on compatibility of object 
+
+		# create PlottedGraph object and plot summary graph
 		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_novel)
 		self.pg.plot_graph()
+
+
+	# plot an input transcript's path through the summary graph 
+	def plot_transcript_path(self, tid, combine=False,
+							 indicate_dataset=False,
+							 indicate_novel=False):
+
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel)
+
+		# get path from transcript id
+		path = self.t_df[tid].path
+
+		# create PlottedGraph object
+		self.pg = PlottedGraph(self,
+							   combined,
+							   indicate_dataset,
+							   indicate_novel,
+							   path=path)
+
+		# plot_graph
 
 	# saves current figure named oname. clears the figure space so additional
 	# plotting can be done
