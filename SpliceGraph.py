@@ -815,16 +815,16 @@ class SpliceGraph(Graph):
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel)
 
 		# get path from transcript id
-		path = self.t_df[tid].path
+		path = self.t_df.loc[tid].path
 
 		# create PlottedGraph object
 		self.pg = PlottedGraph(self,
-							   combined,
+							   combine,
 							   indicate_dataset,
 							   indicate_novel,
 							   path=path)
 
-		# plot_graph
+		self.pg.plot_graph()
 
 	# saves current figure named oname. clears the figure space so additional
 	# plotting can be done

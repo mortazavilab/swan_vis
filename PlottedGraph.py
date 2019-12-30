@@ -12,12 +12,18 @@ from Graph import Graph
 
 class PlottedGraph(Graph):
 
-	def __init__(self, sg, combine, indicate_dataset, indicate_novel):
+	def __init__(self,
+				 sg,
+				 combine,
+				 indicate_dataset,
+				 indicate_novel,
+				 path=None):
 
 		# save settings so we know how much we need to recompute
 		self.combine = combine
 		self.indicate_dataset = indicate_dataset 
 		self.indicate_novel = indicate_novel
+		self.path = path
 
 		# other fields to copy over
 		self.datasets = sg.datasets
@@ -70,7 +76,8 @@ class PlottedGraph(Graph):
 					  'alt_TSS': light_blue,
 					  'TES': red,
 					  'alt_TES': orange,
-					  'internal': yellow}
+					  'internal': yellow,
+					  'gray': gray}
 
 		# get the list of datasets we should be looking at to determine
 		# node or edge uniqueness
@@ -84,7 +91,7 @@ class PlottedGraph(Graph):
 
 		# node plotting settings: color
 		self.loc_df = self.loc_df.apply(
-			lambda x: get_node_color(x, color_dict), axis=1)
+			lambda x: self.get_node_color(x, color_dict), axis=1)
 
 		# node plotting settings: shape
 		self.loc_df['node_shape'] = self.loc_df.apply(
@@ -96,7 +103,7 @@ class PlottedGraph(Graph):
 
 		# edge plotting settings: color
 		self.edge_df['color'] = self.edge_df.apply(
-			lambda x: color_dict[x.edge_type], axis=1)
+			lambda x: self.get_edge_color(x, color_dict), axis=1)
 
 		edge_dict = {'pos': 'arc3,rad=',
 					 'neg': 'arc3,rad=-',
@@ -107,7 +114,7 @@ class PlottedGraph(Graph):
 		# edge plotting settings: curve type 
 		self.edge_df['raw_index'] = [i for i in range(len(self.edge_df.index))]
 		self.edge_df['curve'] = self.edge_df.apply(
-			lambda x: get_edge_style(x, ordered_edges, edge_dict, self.pos, self.rad_scale), axis=1)
+			lambda x: self.get_edge_style(x, ordered_edges, edge_dict), axis=1)
 		self.edge_df.drop('raw_index', axis=1, inplace=True)
 
 		# edge plotting settings: line type (dashed or not)
@@ -156,20 +163,6 @@ class PlottedGraph(Graph):
 	# get the shape of the node 
 	def get_node_shape(self, x, dataset_cols):
 
-		# # is this node unique from all other datasets?
-		# # and in the provided dataset?
-		# def unique_to_dataset(dataset_name, x, dataset_cols):
-		# 	if not dataset_name: return False
-		# 	if x[dataset_name] and not any(x[dataset_cols].tolist()):
-		# 		return True
-		# 	return False
-
-		# # is this node annotated?
-		# def is_novel(indicate_novel, x):
-		# 	if not indicate_novel: return False
-		# 	if x.annotation: return False
-		# 	return True
-
 		# default shape
 		shape = 'o'
 
@@ -180,9 +173,89 @@ class PlottedGraph(Graph):
 				shape = 'h'
 		# diamond nodes for novel or inidicate_dataset nodes
 		if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
-			shape = 'd'
+			shape = 'D'
 
 		return shape
+
+	# get the node color 
+	def get_node_color(self, x, color_dict):
+
+		# if we're dealing with a path, color only according
+		# to the node's role in the path
+		if self.path:
+			if x.vertex_id == self.path[0]:
+				x['color'] = color_dict['alt_TSS']
+			elif x.vertex_id == self.path[-1]:
+				x['color'] = color_dict['alt_TES']
+			elif x.vertex_id in self.path:
+				x['color'] = color_dict['internal']
+			else:
+				x['color'] = color_dict['gray']
+
+		# combined nodes
+		elif x.combined:
+			types = x.combined_types
+
+			# did one or two types of node go into this node?
+			if len(types) == 2:
+				x['sub_color'] = color_dict[types[0]]
+				x['color'] = color_dict[types[1]]
+			else: 
+				x['sub_color'] = np.nan
+				x['color'] = color_dict[types[0]]
+
+		# non combined nodes
+		else:
+
+			# we don't need a sub color
+			x['sub_color'] = np.nan
+
+			# colors should label nodes by their 
+			# MOST UNIQUE type (yes I know this is subjective) 
+			# to me, this means that the label priority for a node is 
+			# internal < TSS/alt_TSS < TES/alt_TES
+			if x.internal: color = color_dict['internal']
+			if x.TSS: color = color_dict['TSS']
+			if x.alt_TSS: color = color_dict['alt_TSS']
+			if x.TES: color = color_dict['TES']
+			if x.alt_TES: color = color_dict['alt_TES']
+			x['color'] = color
+
+		return x
+
+	# get the color of the edge
+	def get_edge_color(self, x, color_dict):
+
+		# firstly, if we're given a path, 
+		# only color the edges that are in the path
+		if self.path:
+			path_edges = [(self.path[i],self.path[i+1])
+						   for i in range(len(self.path)-1)]
+			if x.edge_id in path_edges:
+				color = color_dict[x.edge_type]
+			else: color = color_dict['gray']
+
+		else:
+			color = color_dict[x.edge_type]
+
+		return color
+
+	# get the curve/style of the edge
+	def get_edge_style(self, x, ordered_edges, edge_dict):
+
+		# over 20 nodes, all should be curved
+		if len(ordered_edges) < 20:
+			if x.edge_id in ordered_edges:
+				return edge_dict['straight']
+
+		# make the arcs pretty
+		dist = self.pos[x.v2][0] - self.pos[x.v1][0]
+		rad = self.rad_scale/dist
+
+		if x.raw_index % 2 == 0:
+			return edge_dict['pos']+str(rad)
+		else:
+			return edge_dict['neg']+str(rad)
 
 	# get the style of the line for an edge
 	def get_edge_line(self, x, dataset_cols):
@@ -455,56 +528,56 @@ class PlottedGraph(Graph):
 			key=lambda x: x[1])]
 		return ordered_nodes
 
-# get the node color #TODO more settings if a path is given perhaps
-def get_node_color(x, color_dict):
+# # get the node color #TODO more settings if a path is given perhaps
+# def get_node_color(x, color_dict):
 
-	# combined nodes
-	if x.combined:
-		types = x.combined_types
+# 	# combined nodes
+# 	if x.combined:
+# 		types = x.combined_types
 
-		# did one or two types of node go into this node?
-		if len(types) == 2:
-			x['sub_color'] = color_dict[types[0]]
-			x['color'] = color_dict[types[1]]
-		else: 
-			x['sub_color'] = np.nan
-			x['color'] = color_dict[types[0]]
+# 		# did one or two types of node go into this node?
+# 		if len(types) == 2:
+# 			x['sub_color'] = color_dict[types[0]]
+# 			x['color'] = color_dict[types[1]]
+# 		else: 
+# 			x['sub_color'] = np.nan
+# 			x['color'] = color_dict[types[0]]
 
-	# non combined nodes
-	else:
+# 	# non combined nodes
+# 	else:
 
-		# we don't need a sub color
-		x['sub_color'] = np.nan
+# 		# we don't need a sub color
+# 		x['sub_color'] = np.nan
 
-		# colors should label nodes by their 
-		# MOST UNIQUE type (yes I know this is subjective) 
-		# to me, this means that the label priority for a node is 
-		# internal < TSS/alt_TSS < TES/alt_TES
-		if x.internal: color = color_dict['internal']
-		if x.TSS: color = color_dict['TSS']
-		if x.alt_TSS: color = color_dict['alt_TSS']
-		if x.TES: color = color_dict['TES']
-		if x.alt_TES: color = color_dict['alt_TES']
-		x['color'] = color
+# 		# colors should label nodes by their 
+# 		# MOST UNIQUE type (yes I know this is subjective) 
+# 		# to me, this means that the label priority for a node is 
+# 		# internal < TSS/alt_TSS < TES/alt_TES
+# 		if x.internal: color = color_dict['internal']
+# 		if x.TSS: color = color_dict['TSS']
+# 		if x.alt_TSS: color = color_dict['alt_TSS']
+# 		if x.TES: color = color_dict['TES']
+# 		if x.alt_TES: color = color_dict['alt_TES']
+# 		x['color'] = color
 
-	return x
+# 	return x
 
-# get the curve/style of the edge
-def get_edge_style(x, ordered_edges, edge_dict, pos, rad_scale):
+# # get the curve/style of the edge
+# def get_edge_style(x, ordered_edges, edge_dict, pos, rad_scale):
 
-	# over 20 nodes, all should be curved
-	if len(ordered_edges) < 20:
-		if x.edge_id in ordered_edges:
-			return edge_dict['straight']
+# 	# over 20 nodes, all should be curved
+# 	if len(ordered_edges) < 20:
+# 		if x.edge_id in ordered_edges:
+# 			return edge_dict['straight']
 
-	# make the arcs pretty
-	dist = pos[x.v2][0] - pos[x.v1][0]
-	rad = rad_scale/dist
+# 	# make the arcs pretty
+# 	dist = pos[x.v2][0] - pos[x.v1][0]
+# 	rad = rad_scale/dist
 
-	if x.raw_index % 2 == 0:
-		return edge_dict['pos']+str(rad)
-	else:
-		return edge_dict['neg']+str(rad)
+# 	if x.raw_index % 2 == 0:
+# 		return edge_dict['pos']+str(rad)
+# 	else:
+# 		return edge_dict['neg']+str(rad)
 
 # is this entry unique from all other datasets?
 # and in the provided dataset?

@@ -49,6 +49,7 @@ ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
 sg = SpliceGraph()
 sg.add_annotation(gtf='input_files/annot_mapt.gtf')
 
+
 # # with abundances, takes longer to run
 # sg.add_dataset('cortex',
 # 				gtf='input_files/cortex_mapt.gtf',
@@ -61,16 +62,20 @@ sg.add_annotation(gtf='input_files/annot_mapt.gtf')
 
 sg.add_dataset('cortex',
 				gtf='input_files/cortex_mapt.gtf')
+
 sg.add_dataset('hippocampus',
 			   gtf='input_files/hippocampus_mapt.gtf')
 
+# # testing
+# sg.plot_graph(indicate_dataset='cortex')
+# sg.save_fig('figures/test_mapt_cortex.png')
+# sg.plot_graph(indicate_dataset='hippocampus')
+# sg.save_fig('figures/test_mapt_hippocampus.png') 
 # sg.plot_graph(indicate_novel=True)
-sg.plot_graph(indicate_dataset='cortex')
-sg.save_fig('figures/test_mapt_cortex.png')
-sg.plot_graph(indicate_dataset='hippocampus')
-sg.save_fig('figures/test_mapt_hippocampus.png')
-sg.plot_graph(indicate_novel=True)
-sg.save_fig('figures/test_mapt_novel.png')
+# sg.save_fig('figures/test_mapt_novel.png')
+
+sg.plot_transcript_path('ENSMUST00000106992.9')
+sg.save_fig('figures/test_mapt_ENSMUST00000106992.9.png')
 
 
 # print(sg.loc_df[['annotation', 'cortex', 'hippocampus']])
