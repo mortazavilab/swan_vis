@@ -118,6 +118,10 @@ class Graph:
 
 		self.G = G
 
+	# order edge df based on source id
+	def order_edge_df(self):
+		self.edge_df.sort_values(by='v1', inplace=True)
+
 	##########################################################################
 	############################# Other utilities ############################
 	##########################################################################

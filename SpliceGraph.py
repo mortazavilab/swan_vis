@@ -16,31 +16,6 @@ class SpliceGraph(Graph):
 	def __init__(self):
 		super().__init__()
 
-	# def __init__(self):
-
-	# 	self.datasets = []
-	# 	self.counts = []
-	# 	self.tpm = []
-
-	# 	self.pg = None
-		
-	# 	self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
-	# 								   'strand','vertex_id',
-	# 								   'TSS', 'alt_TSS',
-	# 								   'TES', 'alt_TES',
-	# 								   'internal'])
-	# 	self.edge_df = pd.DataFrame(columns=['edge_id', 'edge_type',
-	# 								    'strand', 'v1', 'v2'])
-	# 	self.t_df = pd.DataFrame(columns=['tid', 'gid',
-	# 								 'gname', 'path'])
-
-	# # check if anything has been added to the graph yet
-	# def is_empty(self):
-	# 	if len(self.datasets) == 0: 
-	# 		return True
-	# 	else: 
-	# 		return False
-
 	###########################################################################
 	############## Related to adding datasets and merging #####################
 	###########################################################################
@@ -107,6 +82,7 @@ class SpliceGraph(Graph):
 		# order node ids by genomic position, add node types,
 		# and create graph
 		self.update_ids()
+		self.order_edge_df()
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 

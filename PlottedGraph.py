@@ -47,12 +47,6 @@ class PlottedGraph(Graph):
 		# get color/shape plotting settings for nodes, edges
 		self.get_plt_settings()
 
-		print(self.loc_df)
-		# print(self.loc_df['combined_types'])
-		print(self.edge_df)
-		print(self.t_df)
-
-
 	###############################################################################
 	################### Getting plotting settings for nodes/edges #################
 	###############################################################################
@@ -139,7 +133,7 @@ class PlottedGraph(Graph):
 		label_size = 43.9*(x**-0.484)
 
 		# linearly-related sizes
-		rad_scale = ((11/540)*x)#+(73/540)
+		# rad_scale = ((11/540)*x)#+(73/540)
 		edge_width = -x/18 + (121/18)
 
 		# assign fields to plotted graph object 
@@ -147,7 +141,7 @@ class PlottedGraph(Graph):
 		self.node_size = node_size
 		self.sub_node_size = sub_node_size
 		self.label_size = label_size
-		self.rad_scale = rad_scale
+		# self.rad_scale = rad_scale
 		self.rad_scale = 0.35
 		self.edge_width = edge_width
 
