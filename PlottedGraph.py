@@ -72,6 +72,12 @@ class PlottedGraph(Graph):
 					  'alt_TES': orange,
 					  'internal': yellow}
 
+		# get the list of datasets we should be looking at to determine
+		# node or edge uniqueness
+		dataset_cols = self.get_dataset_cols()
+		if self.indicate_dataset:
+			dataset_cols.remove(self.indicate_dataset)
+
 		###############
 		#### NODES ####
 		###############
@@ -81,9 +87,6 @@ class PlottedGraph(Graph):
 			lambda x: get_node_color(x, color_dict), axis=1)
 
 		# node plotting settings: shape
-		dataset_cols = self.get_dataset_cols()
-		if self.indicate_dataset:
-			dataset_cols.remove(self.indicate_dataset)
 		self.loc_df['node_shape'] = self.loc_df.apply(
 			lambda x: self.get_node_shape(x, dataset_cols), axis=1)
 
@@ -109,7 +112,7 @@ class PlottedGraph(Graph):
 
 		# edge plotting settings: line type (dashed or not)
 		self.edge_df['line'] = self.edge_df.apply(
-			lambda x: self.get_edge_line(x), axis=1)
+			lambda x: self.get_edge_line(x, dataset_cols), axis=1)
 		
 	# calculates the positions and sizes of edges/nodes based on the 
 	# number of nodes in the graph
@@ -153,19 +156,19 @@ class PlottedGraph(Graph):
 	# get the shape of the node 
 	def get_node_shape(self, x, dataset_cols):
 
-		# is this node unique from all other datasets?
-		# and in the provided dataset name?
-		def unique_to_dataset(dataset_name, x, dataset_cols):
-			if not dataset_name: return False
-			if x[dataset_name] and not any(x[dataset_cols].tolist()):
-				return True
-			return False
+		# # is this node unique from all other datasets?
+		# # and in the provided dataset?
+		# def unique_to_dataset(dataset_name, x, dataset_cols):
+		# 	if not dataset_name: return False
+		# 	if x[dataset_name] and not any(x[dataset_cols].tolist()):
+		# 		return True
+		# 	return False
 
-		# is this node annotated?
-		def is_novel(indicate_novel, x):
-			if not indicate_novel: return False
-			if x.annotation: return False
-			return True
+		# # is this node annotated?
+		# def is_novel(indicate_novel, x):
+		# 	if not indicate_novel: return False
+		# 	if x.annotation: return False
+		# 	return True
 
 		# default shape
 		shape = 'o'
@@ -177,13 +180,17 @@ class PlottedGraph(Graph):
 				shape = 'h'
 		# diamond nodes for novel or inidicate_dataset nodes
 		if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
-			shape = 'D'
+			shape = 'd'
 
 		return shape
 
 	# get the style of the line for an edge
-	def get_edge_line(self, x):
-		return None
+	def get_edge_line(self, x, dataset_cols):
+		style = None
+		# dashed if novel or unique to dataset
+		if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
+			style = 'dashed'
+		return style
 
 	###############################################################################
 	########################## Actually plotting stuff ############################
@@ -498,6 +505,20 @@ def get_edge_style(x, ordered_edges, edge_dict, pos, rad_scale):
 		return edge_dict['pos']+str(rad)
 	else:
 		return edge_dict['neg']+str(rad)
+
+# is this entry unique from all other datasets?
+# and in the provided dataset?
+def unique_to_dataset(dataset_name, x, dataset_cols):
+	if not dataset_name: return False
+	if x[dataset_name] and not any(x[dataset_cols].tolist()):
+		return True
+	return False
+
+# is this entry annotated?
+def is_novel(indicate_novel, x):
+	if not indicate_novel: return False
+	if x.annotation: return False
+	return True
 
 
 
