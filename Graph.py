@@ -154,6 +154,10 @@ class Graph:
 			return None
 		return self.tpm
 
+	# gets strandedness of transcript from transcript id
+	def get_strand_from_tid(self, tid):
+		return self.loc_df.loc[self.t_df.loc[tid, 'path'][0], 'strand']
+
 	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
 		return self.t_df.loc[tid].path
@@ -172,6 +176,16 @@ class Graph:
 		coords = self.loc_df.loc[starts+stops, 'coord']
 
 		return int(min(coords)), int(max(coords))
+
+	# returns the min and max coordinates of an input transcript
+	def get_transcript_min_max(self, tid):
+
+		path = self.t_df.loc[tid, 'path']
+		ends = [path[0], path[-1]]
+		end_coords = self.loc_df.loc[ends, 'coord']
+
+		return int(min(end_coords)), int(max(end_coords))
+
 
 	###########################################################################
 	################################## Extras #################################

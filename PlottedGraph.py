@@ -373,9 +373,11 @@ class PlottedGraph(Graph):
 		# what are the min/max coords in the gene?
 		gid = self.get_gid_from_tid(self.tid)
 		g_min, g_max = self.get_gene_min_max(gid)
+		t_min, t_max = self.get_transcript_min_max(self.tid)
 		g_len = g_max - g_min
 		x_min = int(g_min-(6/(g_max-g_min)))
 		x_max = int(g_max+(6/(g_max-g_min)))
+		strand = self.get_strand_from_tid(self.tid)
 		path = self.get_path_from_tid(self.tid)
 
 		# plotting init
@@ -397,8 +399,12 @@ class PlottedGraph(Graph):
 			ax.add_patch(rect)
 
 		# plot each intron as a hashed line
-		x_coords = self.loc_df.loc[[v1,v2], 'coord']
-		plt.plot([g_min, g_max], [0,0], color=teal)
+		dist = 0.001*g_len
+		plt.plot([t_min+dist, t_max-dist], [0,0], color=teal)
+
+		# reverse plot if we're on the minus strand
+		if strand == '-':
+			plt.gca().invert_xaxis()
 
 		def get_tick_coords(loc_df, gene_len, exons, g_min, g_max):
 
@@ -410,6 +416,7 @@ class PlottedGraph(Graph):
 
 			# remove ticks that are after the end of the last exon
 			stop = loc_df.loc[exons[-1][1], 'coord']
+			tick_coords = [t for t in tick_coords if t < stop]
 
 			# remove ticks in and around the area of plotted exons
 			dist = 0.001*gene_len
@@ -419,8 +426,12 @@ class PlottedGraph(Graph):
 				tick_coords = [t for t in tick_coords
 							   if t < start-dist or t > stop+dist]
 
-			return tick_coords 
+			# if we only have one intron, and nothing made the cut, just stick
+			# a tick in the middle of the intron
+			if len(exons) == 2 and not tick_coords:
+				tick_coords = [(loc_df.loc[exons[0][1],'coord']+loc_df.loc[exons[1][0],'coord'])/2]
 
+			return tick_coords 
 
 		# get coordinates for evenly-spaced ticks indicating strandedness
 		# ala genome browser
@@ -503,7 +514,7 @@ class PlottedGraph(Graph):
 		# need to use this because pandas copy DOES NOT deepcopy lists!
 		t_df['new_path'] = t_df.apply(lambda x: copy.deepcopy(x.path), axis=1)
 		paths = t_df.new_path.tolist() # this gives me a reference to the paths
-								       # so when updating I'm directly modifying t_df
+									   # so when updating I'm directly modifying t_df
 		for path in paths: 
 			for combined_index, nbp in enumerate(nbps):
 
