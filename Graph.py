@@ -154,6 +154,25 @@ class Graph:
 			return None
 		return self.tpm
 
+	# get the path from the transcript id
+	def get_path_from_tid(self, tid):
+		return self.t_df.loc[tid].path
+
+	# get the gene id from the transcript id
+	def get_gid_from_tid(self, tid):
+		return self.t_df.loc[tid, 'gid']
+
+	# returns the min and max coordinates of an input gene
+	def get_gene_min_max(self, gid):
+
+		# get all starts and stops from gene and their coordinates
+		paths = self.t_df.loc[self.t_df.gid == gid].path.tolist()
+		starts = np.unique([path[0] for path in paths]).tolist()
+		stops = np.unique([path[-1] for path in paths]).tolist()
+		coords = self.loc_df.loc[starts+stops, 'coord']
+
+		return int(min(coords)), int(max(coords))
+
 	###########################################################################
 	################################## Extras #################################
 	##########################################################################

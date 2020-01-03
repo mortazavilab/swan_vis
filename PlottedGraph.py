@@ -17,13 +17,16 @@ class PlottedGraph(Graph):
 				 combine,
 				 indicate_dataset,
 				 indicate_novel,
-				 path=None):
+				 tid=None,
+				 browser=False):
 
 		# save settings so we know how much we need to recompute
 		self.combine = combine
 		self.indicate_dataset = indicate_dataset 
 		self.indicate_novel = indicate_novel
-		self.path = path
+		# self.path = path
+		self.tid = tid
+		self.browser = browser
 
 		# other fields to copy over
 		self.datasets = sg.datasets
@@ -39,19 +42,28 @@ class PlottedGraph(Graph):
 		self.t_df['path'] = self.t_df.apply(
 			lambda x: copy.deepcopy(x.path), axis=1)
 
-		# used for getting plotting settings 
-		self.loc_df['combined'] = False
 
-		# combine non-branching paths
-		if combine:
-			nbps = self.find_nb_paths()
-			self.agg_nb_nodes(nbps)
+		## TODO is this the best way to handle browser vs. not browser graphs?
+		# if we're making a swan graph
+		if not browser:
 
-		# get positions/sizes of nodes, edges, and labels
-		self.calc_pos_sizes()
+			# used for getting plotting settings 
+			self.loc_df['combined'] = False
 
-		# get color/shape plotting settings for nodes, edges
-		self.get_plt_settings()
+			# combine non-branching paths
+			if combine:
+				nbps = self.find_nb_paths()
+				self.agg_nb_nodes(nbps)
+
+			# get positions/sizes of nodes, edges, and labels
+			self.calc_pos_sizes()
+
+			# get color/shape plotting settings for nodes, edges
+			self.get_plt_settings()
+
+		# if we're just making browser track things
+		# elif browser:
+		# 	1
 
 	###############################################################################
 	################### Getting plotting settings for nodes/edges #################
@@ -182,7 +194,8 @@ class PlottedGraph(Graph):
 
 		# if we're dealing with a path, color only according
 		# to the node's role in the path
-		if self.path:
+		if self.tid:
+			self.path = self.get_path_from_tid(self.tid)
 			if x.vertex_id == self.path[0]:
 				x['color'] = color_dict['alt_TSS']
 			elif x.vertex_id == self.path[-1]:
@@ -269,8 +282,39 @@ class PlottedGraph(Graph):
 	########################## Actually plotting stuff ############################
 	###############################################################################
 
-	# plots input plotted graph
+	# plots input plotted graph according to user's choices
 	def plot_graph(self):
+
+		# swan graph
+		if not self.browser:
+			self.plot_swan_graph()
+		# browser track
+		else:
+			self.plot_browser_path()
+
+		# # plotting stuff
+		# plt.figure(1, figsize=(14,2.8), frameon=False)
+		# plt.xlim(-1.05, 1.05)
+		# plt.ylim(-1.05, 1.05) 
+
+		# # plot edges, nodes, and labels
+		# self.plot_edges()
+
+		# # relabel nodes with strings for the purpose of labelling them
+		# relabel_map = {k:(k if type(k) == str else int(k)) for k in self.G.nodes}
+		# self.G = nx.relabel_nodes(self.G, relabel_map)
+		# nx.draw_networkx_labels(self.G,
+		# 	self.pos,
+		# 	font_size=self.label_size)
+
+		# self.plot_nodes()
+
+	###############################################################################
+	############################ Swan graph plotting ##############################
+	###############################################################################
+
+	# plots swan graph of current plotted graph
+	def plot_swan_graph(self):
 
 		# plotting stuff
 		plt.figure(1, figsize=(14,2.8), frameon=False)
@@ -317,7 +361,72 @@ class PlottedGraph(Graph):
 						node_size=self.sub_node_size,
 						node_shape=entry.node_shape)
 
-		# TODO sub node sizes
+
+	###############################################################################
+	######################## Browser track style plotting #########################
+	###############################################################################
+
+	# plots the browser track representation of the transcript from self.path
+	def plot_browser_path(self):
+
+		# which gene does this transcript come from?
+		# what are the min/max coords in the gene?
+		gid = self.get_gid_from_tid(self.tid)
+		g_min, g_max = self.get_gene_min_max(gid)
+		g_len = g_max - g_min
+		x_min = int(g_min-(6/(g_max-g_min)))
+		x_max = int(g_max+(6/(g_max-g_min)))
+		path = self.get_path_from_tid(self.tid)
+
+		# plotting init
+		plt.figure(1, figsize=(14,2.8), frameon=False)
+		plt.xlim(x_min, x_max)
+		plt.ylim(-1.05, 1.05)
+		ax = plt.gca()
+		teal = '#014753'
+
+		# plot each exon as a rectangle
+		y_coord = -0.1
+		height = 0.2
+		exons = [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])][::2]
+		introns = [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])][1::2]
+		for v1,v2 in exons:
+			x_coord = self.loc_df.loc[v1, 'coord']
+			width = self.loc_df.loc[v2, 'coord'] - x_coord
+			rect = pch.Rectangle((x_coord,y_coord), width, height, color=teal)
+			ax.add_patch(rect)
+
+		# plot each intron as a hashed line
+		x_coords = self.loc_df.loc[[v1,v2], 'coord']
+		plt.plot([g_min, g_max], [0,0], color=teal)
+
+		def get_tick_coords(loc_df, gene_len, exons, g_min, g_max):
+
+			tick_coords = list(np.linspace(g_min, g_max, 40))
+
+			# remove ticks that are before the start of the first exon
+			start = loc_df.loc[exons[0][1], 'coord']
+			tick_coords = [t for t in tick_coords if t > start]
+
+			# remove ticks that are after the end of the last exon
+			stop = loc_df.loc[exons[-1][1], 'coord']
+
+			# remove ticks in and around the area of plotted exons
+			dist = 0.001*gene_len
+			for v1,v2 in exons:
+				start = loc_df.loc[v1, 'coord']
+				stop = loc_df.loc[v2, 'coord']
+				tick_coords = [t for t in tick_coords
+							   if t < start-dist or t > stop+dist]
+
+			return tick_coords 
+
+
+		# get coordinates for evenly-spaced ticks indicating strandedness
+		# ala genome browser
+		tick_coords = get_tick_coords(self.loc_df, g_len, exons, g_min, g_max)
+		plt.plot(tick_coords, [0 for i in range(len(tick_coords))],
+			color=teal, marker='4')
 
 	###############################################################################
 	####################### Combining non-branching paths #########################

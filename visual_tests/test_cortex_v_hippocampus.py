@@ -76,6 +76,11 @@ sg.add_dataset('hippocampus',
 
 sg.plot_transcript_path('ENSMUST00000106992.9')
 sg.save_fig('figures/test_mapt_ENSMUST00000106992.9.png')
+sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
+sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
+
+
+print(sg.get_gene_min_max('ENSMUSG00000018411.17'))
 
 
 # print(sg.loc_df[['annotation', 'cortex', 'hippocampus']])

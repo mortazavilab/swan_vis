@@ -776,7 +776,7 @@ class SpliceGraph(Graph):
 
 	# make sure that the set of arguments work with each other 
 	# before we start plotting
-	def check_plotting_args(self, combine, indicate_dataset, indicate_novel):
+	def check_plotting_args(self, combine, indicate_dataset, indicate_novel, browser=False):
 
 		# can only do one or another
 		if indicate_dataset and indicate_novel:
@@ -791,6 +791,16 @@ class SpliceGraph(Graph):
 		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
 			raise Exception('Dataset {} not present in the graph. '
 							''.format(indicate_dataset))
+
+		# if browser, can't do indicate_novel, combine, or indicate_dataset
+		if browser:
+			if indicate_novel or indicate_dataset:
+				raise Exception('Currently highlighting splice junctions in '
+								'browser form is unsupported. Use browser option '
+								'without inidicate_novel or inidicate_dataset.')
+			if combine:
+				raise Exception('Combining non-branching splice junctions '
+								'not possible for browser track plotting.')
 
 	# plot the SpliceGraph object according to the user's input
 	def plot_graph(self, combine=False,
@@ -810,19 +820,21 @@ class SpliceGraph(Graph):
 	# plot an input transcript's path through the summary graph 
 	def plot_transcript_path(self, tid, combine=False,
 							 indicate_dataset=False,
-							 indicate_novel=False):
+							 indicate_novel=False,
+							 browser=False):
 
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel)
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 
-		# get path from transcript id
-		path = self.t_df.loc[tid].path
+		# # get path from transcript id
+		# path = self.t_df.loc[tid].path
 
 		# create PlottedGraph object
 		self.pg = PlottedGraph(self,
 							   combine,
 							   indicate_dataset,
 							   indicate_novel,
-							   path=path)
+							   tid=tid,
+							   browser=browser)
 
 		self.pg.plot_graph()
 
