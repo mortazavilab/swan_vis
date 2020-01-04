@@ -262,6 +262,8 @@ class PlottedGraph(Graph):
 				return edge_dict['straight']
 
 		# make the arcs pretty
+		## TODO maybe should have the arc height vary with number of nodes, ie 
+		## shorter arc with less nodes? idk, still looks weird
 		dist = self.pos[x.v2][0] - self.pos[x.v1][0]
 		rad = self.rad_scale/dist
 
@@ -291,23 +293,6 @@ class PlottedGraph(Graph):
 		# browser track
 		else:
 			self.plot_browser_path()
-
-		# # plotting stuff
-		# plt.figure(1, figsize=(14,2.8), frameon=False)
-		# plt.xlim(-1.05, 1.05)
-		# plt.ylim(-1.05, 1.05) 
-
-		# # plot edges, nodes, and labels
-		# self.plot_edges()
-
-		# # relabel nodes with strings for the purpose of labelling them
-		# relabel_map = {k:(k if type(k) == str else int(k)) for k in self.G.nodes}
-		# self.G = nx.relabel_nodes(self.G, relabel_map)
-		# nx.draw_networkx_labels(self.G,
-		# 	self.pos,
-		# 	font_size=self.label_size)
-
-		# self.plot_nodes()
 
 	###############################################################################
 	############################ Swan graph plotting ##############################
@@ -647,57 +632,6 @@ class PlottedGraph(Graph):
 		ordered_nodes = [i[0] for i in sorted(zip(loc_ids, coords),
 			key=lambda x: x[1])]
 		return ordered_nodes
-
-# # get the node color #TODO more settings if a path is given perhaps
-# def get_node_color(x, color_dict):
-
-# 	# combined nodes
-# 	if x.combined:
-# 		types = x.combined_types
-
-# 		# did one or two types of node go into this node?
-# 		if len(types) == 2:
-# 			x['sub_color'] = color_dict[types[0]]
-# 			x['color'] = color_dict[types[1]]
-# 		else: 
-# 			x['sub_color'] = np.nan
-# 			x['color'] = color_dict[types[0]]
-
-# 	# non combined nodes
-# 	else:
-
-# 		# we don't need a sub color
-# 		x['sub_color'] = np.nan
-
-# 		# colors should label nodes by their 
-# 		# MOST UNIQUE type (yes I know this is subjective) 
-# 		# to me, this means that the label priority for a node is 
-# 		# internal < TSS/alt_TSS < TES/alt_TES
-# 		if x.internal: color = color_dict['internal']
-# 		if x.TSS: color = color_dict['TSS']
-# 		if x.alt_TSS: color = color_dict['alt_TSS']
-# 		if x.TES: color = color_dict['TES']
-# 		if x.alt_TES: color = color_dict['alt_TES']
-# 		x['color'] = color
-
-# 	return x
-
-# # get the curve/style of the edge
-# def get_edge_style(x, ordered_edges, edge_dict, pos, rad_scale):
-
-# 	# over 20 nodes, all should be curved
-# 	if len(ordered_edges) < 20:
-# 		if x.edge_id in ordered_edges:
-# 			return edge_dict['straight']
-
-# 	# make the arcs pretty
-# 	dist = pos[x.v2][0] - pos[x.v1][0]
-# 	rad = rad_scale/dist
-
-# 	if x.raw_index % 2 == 0:
-# 		return edge_dict['pos']+str(rad)
-# 	else:
-# 		return edge_dict['neg']+str(rad)
 
 # is this entry unique from all other datasets?
 # and in the provided dataset?

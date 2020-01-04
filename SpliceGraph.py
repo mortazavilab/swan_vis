@@ -594,92 +594,6 @@ class SpliceGraph(Graph):
 			strand = edge_df.loc[edge_df.v2 == x.vertex_id, 'strand'].values[0]
 		return strand
 
-	# # update ids according to coordinates in loc_df, edge_df, and t_df
-	# def update_ids(self):
-	# 	id_map = self.get_ordered_id_map()
-	# 	self.update_loc_df_ids(id_map)
-	# 	self.update_edge_df_ids(id_map)
-	# 	self.update_t_df_paths(id_map)
-
-	# # get a dictionary mapping vertex id to ordered new vertex id
-	# def get_ordered_id_map(self):
-
-	# 	# get the strandedness of entry
-	# 	strand = self.loc_df.loc[self.loc_df.index[0], 'strand']
-
-	# 	# sort based on coord depending on strandedness
-	# 	if strand == '+':
-	# 		self.loc_df.sort_values(by='coord', 
-	# 								ascending=True,
-	# 								inplace=True)
-	# 	elif strand == '-':
-	# 		self.loc_df.sort_values(by='coord',
-	# 								ascending=False,
-	# 								inplace=True)
-
-	# 	# dictionary mapping vertex_id to new_id
-	# 	self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]
-	# 	id_map = self.loc_df['new_id'].to_dict()
-	# 	self.loc_df.drop('new_id', axis=1, inplace=True)
-
-	# 	return id_map
-
-	# # update vertex ids in loc_df
-	# def update_loc_df_ids(self, id_map):
-
-	# 	# add new id to df and use it to update vertex id columns
-	# 	self.loc_df['new_id'] = self.loc_df.apply(
-	# 		lambda x: id_map[x.vertex_id], axis=1)
-	# 	self.loc_df.vertex_id = self.loc_df.new_id
-	# 	self.loc_df.drop('new_id', axis=1, inplace=True)
-	# 	self.loc_df.reset_index(drop=True, inplace=True)
-	# 	self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
-	# 	self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
-
-	# # update vertex ids in edge_df
-	# def update_edge_df_ids(self, id_map):
-
-	# 	# remove old edge_id index and replace edge_id, v1, v2 
-	# 	# with values from id_map
-	# 	self.edge_df.reset_index(drop=True, inplace=True)
-	# 	self.edge_df.v1 = self.edge_df.apply(
-	# 		lambda x: id_map[x.v1], axis=1)
-	# 	self.edge_df.v2 = self.edge_df.apply(
-	# 		lambda x: id_map[x.v2], axis=1)
-	# 	self.edge_df.edge_id = self.edge_df.apply(
-	# 		lambda x: (x.v1, x.v2), axis=1)
-
-	# 	self.edge_df = create_dupe_index(self.edge_df, 'edge_id')
-	# 	self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
-
-	# # update vertex ids in t_df
-	# def update_t_df_paths(self, id_map):
-	# 	# update vertex ids in the path
-	# 	self.t_df.path = self.t_df.apply(
-	# 		lambda x: [id_map[n] for n in x.path], axis=1)
-
-	# # create the graph object from the dataframes
-	# def create_graph_from_dfs(self):
-
-	# 	G = nx.DiGraph()
-
-	# 	# add nodes to graph from transcript paths
-	# 	paths = self.t_df.path.tolist()
-	# 	for path in paths:
-	# 		nx.add_path(G, path)
-
-	# 	# # add node attributes from dfs
-	# 	# G = label_nodes(G, self.loc_df, 'internal', 'internal') 
-	# 	# G = label_nodes(G, self.loc_df, 'TSS', 'TSS') 
-	# 	# G = label_nodes(G, self.loc_df, 'alt_TSS', 'alt_TSS') 
-	# 	# G = label_nodes(G, self.loc_df, 'TES', 'TES')
-	# 	# G = label_nodes(G, self.loc_df, 'alt_TES', 'alt_TES')
-	# 	# G = label_nodes(G, self.loc_df, 'coord', 'coord')
-	# 	# G = label_edges(G, self.edge_df, 'strand', 'strand')
-	# 	# G = label_edges(G, self.edge_df, 'edge_type', 'edge_type')
-
-	# 	self.G = G
-
 	##########################################################################
 	######################## Other SpliceGraph utilities #####################
 	##########################################################################
@@ -741,35 +655,6 @@ class SpliceGraph(Graph):
 								  inplace=True)
 			self.t_df.drop('end_coord', axis=1, inplace=True)
 
-	# # returns True if node is unique to dataset, otherwise False
-	# def node_unique_to_dataset(self, node, dataset):
-	# 	pass
-
-	# # returns True if edge is unique to dataset, otherwise False
-	# def edge_unique_to_dataset(self, edge, dataset):
-	# 	pass
-
-	# # gets the names of the dataset columns in the graph
-	# # returns None if no datasets have been added
-	# def get_dataset_cols(self):
-	# 	if len(self.datasets) == 0:
-	# 		return None
-	# 	return self.datasets
-
-	# # gets the names of the counts columns in the graph
-	# # returns None if no counts have been added
-	# def get_count_cols(self):
-	# 	if len(self.counts) == 0:
-	# 		return None
-	# 	return self.counts
-
-	# # gets the names of tpm columns in the graph
-	# # returns None if no counts have been added
-	# def get_tpm_cols(self):
-	# 	if len(self.tpm) == 0:
-	# 		return None
-	# 	return self.tpm
-
 	##########################################################################
 	############################ Plotting utilities ##########################
 	##########################################################################
@@ -825,9 +710,6 @@ class SpliceGraph(Graph):
 
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 
-		# # get path from transcript id
-		# path = self.t_df.loc[tid].path
-
 		# create PlottedGraph object
 		self.pg = PlottedGraph(self,
 							   combine,
@@ -838,6 +720,31 @@ class SpliceGraph(Graph):
 
 		self.pg.plot_graph()
 
+	# plots each transcript's path through the summary graph, and automatically saves them!
+	def plot_each_transcript(self, prefix, combine=False,
+							 indicate_dataset=False,
+							 indicate_novel=False,
+							 browser=False):
+
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+
+		# loop through each transcript in the SpliceGraph object
+		for tid in self.t_df.index:
+			self.pg = PlottedGraph(self,
+								   combine,
+								   indicate_dataset,
+								   indicate_novel,
+								   tid=tid,
+								   browser=browser)
+			fname = create_fname(prefix,
+								 combine,
+								 indicate_dataset,
+								 indicate_novel,
+								 browser,
+								 tid)
+			self.pg.plot_graph()
+			self.save_fig(fname)
+
 	# saves current figure named oname. clears the figure space so additional
 	# plotting can be done
 	def save_fig(self, oname):
@@ -847,19 +754,25 @@ class SpliceGraph(Graph):
 		plt.clf()
 		plt.close()
 
+##########################################################################
+################################## Extras ################################
+##########################################################################
 
-
-
-# # returns the (min, max) coordinates of an input gene
-# def get_gene_min_max(loc_df, t_df, gid):
-
-# 	# all transcripts from this gene
-# 	paths = t_df.loc[t_df.gid == gid].path.tolist()
-# 	starts = np.unique([path[0] for path in paths]).tolist()
-# 	stops = np.unique([path[-1] for path in paths]).tolist()
-# 	coords = loc_df.loc[starts + stops, 'coord']
-
-# 	return int(min(coords)), int(max(coords))
+# creates a file name based on input plotting arguments
+def create_fname(prefix, combine, indicate_dataset, indicate_novel, browser, tid=None):
+	fname = prefix
+	if combine:
+		fname += '_combine'
+	if indicate_dataset:
+		fname += '_{}'.format(indicate_dataset)
+	if indicate_novel:
+		fname += '_novel'
+	if browser: 
+		fname += '_browser'
+	if tid: 
+		fname += '_{}'.format(tid)
+	fname += '.png'
+	return fname
 
 
 

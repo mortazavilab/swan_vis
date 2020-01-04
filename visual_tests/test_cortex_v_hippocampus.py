@@ -79,9 +79,11 @@ sg.save_fig('figures/test_mapt_ENSMUST00000106992.9.png')
 sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
 sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 
+# plot each transcript test
+sg.plot_each_transcript('figures/test_mapt')
 
-print(sg.get_gene_min_max('ENSMUSG00000018411.17'))
-
+# plot each transcript browser test
+sg.plot_each_transcript('figures/test_mapt', browser=True)
 
 # print(sg.loc_df[['annotation', 'cortex', 'hippocampus']])
 # print(sg.loc_df.head())
