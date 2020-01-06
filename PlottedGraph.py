@@ -18,13 +18,15 @@ class PlottedGraph(Graph):
 				 indicate_dataset,
 				 indicate_novel,
 				 tid=None,
-				 browser=False):
+				 browser=False,
+				 gid=None):
 
 		# save settings so we know how much we need to recompute
 		self.combine = combine
 		self.indicate_dataset = indicate_dataset 
 		self.indicate_novel = indicate_novel
 		# self.path = path
+		self.gid = gid # if we're plotting a set of transcripts belonging to a specific gene
 		self.tid = tid
 		self.browser = browser
 
@@ -42,6 +44,8 @@ class PlottedGraph(Graph):
 		self.t_df['path'] = self.t_df.apply(
 			lambda x: copy.deepcopy(x.path), axis=1)
 
+		if gid: 
+			self.g_min, self.g_max = self.get_gene_min_max(gid)
 
 		## TODO is this the best way to handle browser vs. not browser graphs?
 		# if we're making a swan graph
@@ -360,8 +364,10 @@ class PlottedGraph(Graph):
 		g_min, g_max = self.get_gene_min_max(gid)
 		t_min, t_max = self.get_transcript_min_max(self.tid)
 		g_len = g_max - g_min
+
 		x_min = int(g_min-(6/(g_max-g_min)))
 		x_max = int(g_max+(6/(g_max-g_min)))
+
 		strand = self.get_strand_from_tid(self.tid)
 		path = self.get_path_from_tid(self.tid)
 
@@ -423,6 +429,75 @@ class PlottedGraph(Graph):
 		tick_coords = get_tick_coords(self.loc_df, g_len, exons, g_min, g_max)
 		plt.plot(tick_coords, [0 for i in range(len(tick_coords))],
 			color=teal, marker='4')
+
+	# plots the scale of a browser style graph
+	def plot_browser_scale(self):
+
+		# get plot limits
+		g_min = self.g_min
+		g_max = self.g_max 
+
+		plt.figure(1, figsize=(14,2), frameon=False)
+		plt.xlim(g_min, g_max)
+		plt.ylim(-1.05, 1.05)
+		ax = plt.gca()
+
+		y_coord = -0.5
+		height = 1
+		gene_len = g_max - g_min
+		width = int((10/10000)*gene_len)
+
+		# try different scale lengths until we've reached something optimal
+		scale_len = 500
+		while 1:
+			if scale_len >= gene_len:
+				break
+			scale_len *= 10
+
+		# dial it back so we show a nice chunk instead of the scale of the entire gene
+		scale_len /= 10
+
+		# are we going to indicate this in bp or kb?
+		if scale_len < 1000: 
+			scale_unit = 'bp'
+			text_scale = scale_len
+		elif scale_len < 10**6:
+			scale_unit = 'kb'
+			text_scale =  scale_len / 1000
+		else:
+			scale_unit = 'mb'
+			text_scale = scale_len / 10**6
+		text_scale = int(text_scale)
+
+		# center the edges of the scale bar
+		gene_mid_pt = (g_max+g_min)/2
+		scale_start = gene_mid_pt - (scale_len/2)
+		scale_end = gene_mid_pt + (scale_len/2)
+
+		# start bar
+		rect = pch.Rectangle((scale_start, y_coord),
+			width=width,
+			height=height,
+			color='k')
+		ax.add_patch(rect)
+
+		# end bar
+		rect = pch.Rectangle((scale_end, y_coord),
+			width=width,
+			height=height,
+			color='k')
+		ax.add_patch(rect)
+
+		# plot the line in between the bars
+		plt.plot([scale_start+width, scale_end-width], [0,0],
+			color='k',
+			linewidth=2)
+
+		# add scale text
+		x_coord = scale_start - (gene_len/9)
+		y_coord = -0.2
+		txt = '{} {}'.format(text_scale, scale_unit)
+		ax.text(x_coord, y_coord, txt, fontsize=30)
 
 	###############################################################################
 	####################### Combining non-branching paths #########################

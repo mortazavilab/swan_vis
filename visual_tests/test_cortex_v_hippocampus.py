@@ -60,6 +60,7 @@ sg.add_annotation(gtf='input_files/annot_mapt.gtf')
 # 			   counts_file=ab_file,
 # 			   count_cols=['PB83', 'PB85'])
 
+# without abundances, much faster to run
 sg.add_dataset('cortex',
 				gtf='input_files/cortex_mapt.gtf')
 
@@ -79,11 +80,20 @@ sg.save_fig('figures/test_mapt_ENSMUST00000106992.9.png')
 sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
 sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 
-# plot each transcript test
-sg.plot_each_transcript('figures/test_mapt')
+# print(sg.t_df.head())
 
-# plot each transcript browser test
-sg.plot_each_transcript('figures/test_mapt', browser=True)
+# # plot each transcript test
+# sg.plot_each_transcript('ENSMUSG00000018411.17','figures/test_mapt')
+
+# # plot each transcript browser test
+# sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/test_mapt', browser=True)
+
+# report test
+# sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid')
+sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid', browser=True)
+
+
+
 
 # print(sg.loc_df[['annotation', 'cortex', 'hippocampus']])
 # print(sg.loc_df.head())

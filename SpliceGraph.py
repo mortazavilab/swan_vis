@@ -10,6 +10,7 @@ import sqlite3
 from utils import *
 from PlottedGraph import PlottedGraph 
 from Graph import Graph
+from Report import *
 
 class SpliceGraph(Graph):
 
@@ -659,33 +660,6 @@ class SpliceGraph(Graph):
 	############################ Plotting utilities ##########################
 	##########################################################################
 
-	# make sure that the set of arguments work with each other 
-	# before we start plotting
-	def check_plotting_args(self, combine, indicate_dataset, indicate_novel, browser=False):
-
-		# can only do one or another
-		if indicate_dataset and indicate_novel:
-			raise Exception('Please choose either indicate_dataset '
-							'or indicate_novel, not both.')
-
-		# if indicate_dataset or indicate_novel are chosen, make sure
-		# the dataset or annotation data exists in the SpliceGraph
-		if indicate_novel and 'annotation' not in self.get_dataset_cols():
-			raise Exception('Annotation data not present in graph. Use  '
-							'add_annotation before using indicate_novel')
-		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
-			raise Exception('Dataset {} not present in the graph. '
-							''.format(indicate_dataset))
-
-		# if browser, can't do indicate_novel, combine, or indicate_dataset
-		if browser:
-			if indicate_novel or indicate_dataset:
-				raise Exception('Currently highlighting splice junctions in '
-								'browser form is unsupported. Use browser option '
-								'without inidicate_novel or inidicate_dataset.')
-			if combine:
-				raise Exception('Combining non-branching splice junctions '
-								'not possible for browser track plotting.')
 
 	# plot the SpliceGraph object according to the user's input
 	def plot_graph(self, combine=False,
@@ -721,27 +695,32 @@ class SpliceGraph(Graph):
 		self.pg.plot_graph()
 
 	# plots each transcript's path through the summary graph, and automatically saves them!
-	def plot_each_transcript(self, prefix, combine=False,
+	def plot_each_transcript(self, gid, prefix, combine=False,
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False):
 
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 
+		# make sure this gid is even in the SpliceGraph
+		if gid not in self.t_df.gid.tolist():
+			raise Exception('Gene id {} not found in SpliceGraph.'.format(gid))
+
 		# loop through each transcript in the SpliceGraph object
-		for tid in self.t_df.index:
+		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
 			self.pg = PlottedGraph(self,
 								   combine,
 								   indicate_dataset,
 								   indicate_novel,
 								   tid=tid,
+								   gid=gid,
 								   browser=browser)
 			fname = create_fname(prefix,
 								 combine,
 								 indicate_dataset,
 								 indicate_novel,
 								 browser,
-								 tid)
+								 tid=tid)
 			self.pg.plot_graph()
 			self.save_fig(fname)
 
@@ -754,12 +733,111 @@ class SpliceGraph(Graph):
 		plt.clf()
 		plt.close()
 
+	##########################################################################
+	############################### Report stuff #############################
+	##########################################################################
+
+	# creates a report for each transcript model for a gene
+	def gen_report(self, gid, prefix,
+				   datasets=None, combine=False,
+				   indicate_dataset=False, 
+				   indicate_novel=False,
+				   browser=False,
+				   order='expression'):
+
+		# make sure arguments are ok, reorder transcripts, 
+		# generate plots for each transcript model
+		# default datasets included should be all datasets but the annotation
+		if not datasets:
+			datasets = copy.deepcopy(self.datasets)
+			datasets.remove('annotation')
+
+		self.order_transcripts(order)
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+		self.check_datasets(datasets)
+		fname = create_fname(prefix, 
+							 combine,
+							 indicate_dataset,
+							 indicate_novel,
+							 browser,
+							 ftype='report',
+							 gid=gid)
+
+		# plot all transcripts with these settings
+		self.plot_each_transcript(gid, prefix, combine,
+								  indicate_dataset,
+								  indicate_novel,
+								  browser=browser)
+
+		# if we're making a browser report, generate the scale as well
+		if browser:
+			self.pg.plot_browser_scale()
+			self.save_fig(prefix+'_browser_scale.png')
+
+		# create report
+		if not browser:
+			report_type = 'swan'
+		else:
+			report_type = 'browser'
+		report = Report(report_type, datasets)
+		report.add_page()
+		report.write_pdf(fname)
+
+
+	##########################################################################
+	############################# Error handling #############################
+	##########################################################################
+
+	# make sure that the set of arguments work with each other 
+	# before we start plotting
+	def check_plotting_args(self, combine, indicate_dataset, indicate_novel, browser=False):
+
+		# can only do one or another
+		if indicate_dataset and indicate_novel:
+			raise Exception('Please choose either indicate_dataset '
+							'or indicate_novel, not both.')
+
+		# if indicate_dataset or indicate_novel are chosen, make sure
+		# the dataset or annotation data exists in the SpliceGraph
+		if indicate_novel and 'annotation' not in self.get_dataset_cols():
+			raise Exception('Annotation data not present in graph. Use  '
+							'add_annotation before using indicate_novel')
+		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
+			raise Exception('Dataset {} not present in the graph. '
+							''.format(indicate_dataset))
+
+		# if browser, can't do indicate_novel, combine, or indicate_dataset
+		if browser:
+			if indicate_novel or indicate_dataset:
+				raise Exception('Currently highlighting splice junctions in '
+								'browser form is unsupported. Use browser option '
+								'without inidicate_novel or inidicate_dataset.')
+			if combine:
+				raise Exception('Combining non-branching splice junctions '
+								'not possible for browser track plotting.')
+
+
+	# check that all datasets are in the SpliceGraph:
+	def check_datasets(self, datasets):
+
+		# make sure we have an iterable
+		if type(datasets) != list:
+			datasets = [datasets]
+
+		sg_datasets = self.get_dataset_cols()
+		for d in datasets:
+			if d not in sg_datasets:
+				raise Exception('Dataset {} not present in graph. '
+								'Datasets in graph are {}'.format(d, sg_datasets))
+
 ##########################################################################
 ################################## Extras ################################
 ##########################################################################
 
 # creates a file name based on input plotting arguments
-def create_fname(prefix, combine, indicate_dataset, indicate_novel, browser, tid=None):
+def create_fname(prefix, combine, indicate_dataset,
+				 indicate_novel, browser,
+				 ftype='figure', tid=None, gid=None):
 	fname = prefix
 	if combine:
 		fname += '_combine'
@@ -771,8 +849,14 @@ def create_fname(prefix, combine, indicate_dataset, indicate_novel, browser, tid
 		fname += '_browser'
 	if tid: 
 		fname += '_{}'.format(tid)
-	fname += '.png'
+	if gid: 
+		fname += '_{}'.format(gid)
+	if ftype == 'figure':
+		fname += '.png'
+	elif ftype == 'report':
+		fname += '_report.pdf'
 	return fname
+
 
 
 
