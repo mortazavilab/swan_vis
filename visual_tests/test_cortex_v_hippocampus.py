@@ -50,22 +50,22 @@ sg = SpliceGraph()
 sg.add_annotation(gtf='input_files/annot_mapt.gtf')
 
 
-# # with abundances, takes longer to run
-# sg.add_dataset('cortex',
-# 				gtf='input_files/cortex_mapt.gtf',
-# 			    counts_file=ab_file,
-# 			    count_cols=['PB82', 'PB84'])
-# sg.add_dataset('hippocampus',
-# 			   gtf='input_files/hippocampus_mapt.gtf',
-# 			   counts_file=ab_file,
-# 			   count_cols=['PB83', 'PB85'])
-
-# without abundances, much faster to run
+# with abundances, takes longer to run
 sg.add_dataset('cortex',
-				gtf='input_files/cortex_mapt.gtf')
-
+				gtf='input_files/cortex_mapt.gtf',
+			    counts_file=ab_file,
+			    count_cols=['PB82', 'PB84'])
 sg.add_dataset('hippocampus',
-			   gtf='input_files/hippocampus_mapt.gtf')
+			   gtf='input_files/hippocampus_mapt.gtf',
+			   counts_file=ab_file,
+			   count_cols=['PB83', 'PB85'])
+
+# # without abundances, much faster to run
+# sg.add_dataset('cortex',
+# 				gtf='input_files/cortex_mapt.gtf')
+
+# sg.add_dataset('hippocampus',
+# 			   gtf='input_files/hippocampus_mapt.gtf')
 
 # # testing
 # sg.plot_graph(indicate_dataset='cortex')
@@ -89,7 +89,7 @@ sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 # sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/test_mapt', browser=True)
 
 # report test
-# sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid')
+sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid')
 sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid', browser=True)
 
 

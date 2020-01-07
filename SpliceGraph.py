@@ -755,7 +755,7 @@ class SpliceGraph(Graph):
 		self.order_transcripts(order)
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 		self.check_datasets(datasets)
-		fname = create_fname(prefix, 
+		pdf_name = create_fname(prefix, 
 							 combine,
 							 indicate_dataset,
 							 indicate_novel,
@@ -779,10 +779,22 @@ class SpliceGraph(Graph):
 			report_type = 'swan'
 		else:
 			report_type = 'browser'
-		report = Report(report_type, datasets)
+		report = Report(prefix, report_type, datasets)
 		report.add_page()
-		report.write_pdf(fname)
 
+		# loop through each transcript and add it to the report
+		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
+			entry = self.t_df.loc[tid]
+			## TODO would be faster if I didn't have to compute these names twice....
+			## ie once in plot_each_transcript and once here
+			fname = create_fname(prefix,
+								 combine,
+								 indicate_dataset,
+								 indicate_novel, 
+								 browser,
+								 tid=entry.tid)
+			report.add_transcript(entry, fname)
+		report.write_pdf(pdf_name)
 
 	##########################################################################
 	############################# Error handling #############################
@@ -834,28 +846,28 @@ class SpliceGraph(Graph):
 ################################## Extras ################################
 ##########################################################################
 
-# creates a file name based on input plotting arguments
-def create_fname(prefix, combine, indicate_dataset,
-				 indicate_novel, browser,
-				 ftype='figure', tid=None, gid=None):
-	fname = prefix
-	if combine:
-		fname += '_combine'
-	if indicate_dataset:
-		fname += '_{}'.format(indicate_dataset)
-	if indicate_novel:
-		fname += '_novel'
-	if browser: 
-		fname += '_browser'
-	if tid: 
-		fname += '_{}'.format(tid)
-	if gid: 
-		fname += '_{}'.format(gid)
-	if ftype == 'figure':
-		fname += '.png'
-	elif ftype == 'report':
-		fname += '_report.pdf'
-	return fname
+# # creates a file name based on input plotting arguments
+# def create_fname(prefix, combine, indicate_dataset,
+# 				 indicate_novel, browser,
+# 				 ftype='figure', tid=None, gid=None):
+# 	fname = prefix
+# 	if combine:
+# 		fname += '_combine'
+# 	if indicate_dataset:
+# 		fname += '_{}'.format(indicate_dataset)
+# 	if indicate_novel:
+# 		fname += '_novel'
+# 	if browser: 
+# 		fname += '_browser'
+# 	if tid: 
+# 		fname += '_{}'.format(tid)
+# 	if gid: 
+# 		fname += '_{}'.format(gid)
+# 	if ftype == 'figure':
+# 		fname += '.png'
+# 	elif ftype == 'report':
+# 		fname += '_report.pdf'
+# 	return fname
 
 
 

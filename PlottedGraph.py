@@ -437,7 +437,7 @@ class PlottedGraph(Graph):
 		g_min = self.g_min
 		g_max = self.g_max 
 
-		plt.figure(1, figsize=(14,2), frameon=False)
+		plt.figure(1, figsize=(14,1), frameon=False)
 		plt.xlim(g_min, g_max)
 		plt.ylim(-1.05, 1.05)
 		ax = plt.gca()

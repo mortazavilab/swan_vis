@@ -78,6 +78,30 @@ def process_abundance_file(file, cols):
 	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
 	return df
 
+# creates a file name based on input plotting arguments
+def create_fname(prefix, combine, indicate_dataset,
+				 indicate_novel, browser,
+				 ftype='figure', tid=None, gid=None):
+	fname = prefix
+	if combine:
+		fname += '_combine'
+	if indicate_dataset:
+		fname += '_{}'.format(indicate_dataset)
+	if indicate_novel:
+		fname += '_novel'
+	if browser: 
+		fname += '_browser'
+	if tid: 
+		fname += '_{}'.format(tid)
+	if gid: 
+		fname += '_{}'.format(gid)
+	if ftype == 'figure':
+		fname += '.png'
+	elif ftype == 'report':
+		fname += '_report.pdf'
+	return fname
+
+
 	
 
 
