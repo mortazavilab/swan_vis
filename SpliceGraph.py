@@ -610,16 +610,16 @@ class SpliceGraph(Graph):
 
 		# order by expression
 		elif order == 'expression':
-			count_cols = self.get_count_cols()
+			tpm_cols = self.get_tpm_cols()
 
 			# make sure there are counts in the graph at all
-			if count_cols:
-				self.t_df['counts_sum'] = self.t_df.apply(lambda x:
-					sum(x[count_cols]), axis=1)
-				self.t_df.sort_values(by='counts_sum', 
+			if tpm_cols:
+				self.t_df['tpm_sum'] = self.t_df.apply(lambda x:
+					sum(x[tpm_cols]), axis=1)
+				self.t_df.sort_values(by='tpm_sum', 
 									  ascending=False, 
 									  inplace=True)
-				self.t_df.drop('counts_sum', axis=1, inplace=True)
+				self.t_df.drop('tpm_sum', axis=1, inplace=True)
 			else: 
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')

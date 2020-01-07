@@ -89,8 +89,8 @@ sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 # sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/test_mapt', browser=True)
 
 # report test
-sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid')
-sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='tid', browser=True)
+sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression')
+sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', browser=True)
 
 
 
