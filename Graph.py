@@ -31,6 +31,37 @@ class Graph:
 									 'gname', 'path'])
 
 	##########################################################################
+	################# Related to checking contents of Graph ##################
+	##########################################################################
+
+	# check that input datasets are in the Graph:
+	def check_datasets(self, datasets):
+
+		# make sure we have an iterable
+		if type(datasets) != list:
+			datasets = [datasets]
+
+		g_datasets = self.get_dataset_cols()
+		for d in datasets:
+			if d not in g_datasets:
+				raise Exception('Dataset {} not present in graph. '
+								'Datasets in graph are {}'.format(d, g_datasets))
+
+	# check that input datasets have abundance data in the Graph:
+	def check_abundances(self, datasets):
+
+		# make sure we have an iterable
+		if type(datasets) != list:
+			datasets = [datasets]
+
+		ab_cols = self.get_count_cols()
+		for d in datasets:
+			if '{}_counts'.format(d) not in ab_cols:
+				raise Exception('Abundance for dataset {} not present in graph. '
+								'Datasets with abundance information '
+								'in graph are {}'.format(d, ab_cols))
+
+	##########################################################################
 	####################### Related to creating Graph ########################
 	##########################################################################
 
@@ -134,24 +165,43 @@ class Graph:
 			return False
 
 	# gets the names of the dataset columns in the graph
-	# returns None if no datasets have been added
 	def get_dataset_cols(self):
-		if len(self.datasets) == 0:
-			return None
 		return self.datasets
 
 	# gets the names of the counts columns in the graph
 	# returns None if no counts have been added
-	def get_count_cols(self):
-		if len(self.counts) == 0:
-			return None
+	# if datasets option given, returns the counts 
+	# columns associated with the input datasets
+	def get_count_cols(self, datasets=None):
+
+		if datasets:
+			if type(datasets) != list:
+				datasets = [datasets]
+			print(datasets)
+			print(type(datasets))
+			self.check_abundances(datasets)
+			counts_cols = []
+			for d in datasets:
+				counts_cols.append('{}_counts'.format(d))
+			return counts_cols
+
 		return self.counts
 
 	# gets the names of tpm columns in the graph
 	# returns None if no counts have been added
-	def get_tpm_cols(self):
-		if len(self.tpm) == 0:
-			return None
+	# if datasets option given, returns the counts 
+	# columns associated with the input datasets
+	def get_tpm_cols(self, datasets=None):
+
+		if datasets:
+			if type(datasets) != list:
+				datasets = [datasets]
+			self.check_abundances(datasets)
+			tpm_cols = []
+			for d in datasets:
+				tpm_cols.append('{}_tpm'.format(d))
+			return tpm_cols
+
 		return self.tpm
 
 	# gets strandedness of transcript from transcript id
