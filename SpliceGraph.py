@@ -737,47 +737,71 @@ class SpliceGraph(Graph):
 	############################### Report stuff #############################
 	##########################################################################
 
-	# creates a report for each transcript model for a gene
-	def gen_report(self, gid, prefix,
-				   datasets=None, combine=False,
+	# creates a report for each transcript model for a gene according to user input
+	def gen_report(self,
+				   gid,
+				   prefix,
+				   datasets='all',
+				   tpm=False,
+				   include_unexpressed=False,
+				   combine=False,
 				   indicate_dataset=False, 
 				   indicate_novel=False,
 				   browser=False,
 				   order='expression'):
 
-		# make sure arguments are ok, reorder transcripts, 
-		# generate plots for each transcript model
-		# default datasets included should be all datasets but the annotation
-		if not datasets:
+		# make sure all input datasets are present in graph
+		if datasets == 'all':
 			datasets = copy.deepcopy(self.datasets)
 			datasets.remove('annotation')
-
-		self.order_transcripts(order)
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+		elif not datasets:
+			datasets = []
 		self.check_datasets(datasets)
-		pdf_name = create_fname(prefix, 
-							 combine,
-							 indicate_dataset,
-							 indicate_novel,
-							 browser,
-							 ftype='report',
-							 gid=gid)
 
-		# plot all transcripts with these settings
+		# now check to make sure abundance data is there for the
+		# query columns, if user is asking
+		if tpm:
+			self.check_abundances(datasets)
+			report_cols = self.get_tpm_cols(datasets)
+		elif datasets:
+			report_cols = datasets
+
+		# if user doesn't care about datasets, just show all transcripts
+		if not datasets:
+			include_unexpressed = True
+		# user only wants transcript isoforms that appear in their data
+		if not include_unexpressed:
+			counts_cols = self.get_count_cols()
+			report_tids = self.t_df.loc[(self.t_df.gid==gid)&(sum(counts_cols) > 0),
+						  'tid'].tolist()
+		else:
+			report_tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
+
+		# order transcripts by user's preferences
+		self.order_transcripts(order)
+
+		# make sure our swan/browser graph args work together
+		# and plot each transcript with these settings
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 		self.plot_each_transcript(gid, prefix, combine,
 								  indicate_dataset,
 								  indicate_novel,
 								  browser=browser)
 
-		# if we're making a browser report, generate the scale as well
-		if browser:
-			self.pg.plot_browser_scale()
-			self.save_fig(prefix+'_browser_scale.png')
-
 		# create report
+		pdf_name = create_fname(prefix, 
+					 combine,
+					 indicate_dataset,
+					 indicate_novel,
+					 browser,
+					 ftype='report',
+					 gid=gid)
+		# if we're plotting tracks, we need a scale as well
 		if not browser:
 			report_type = 'swan'
 		else:
+			self.pg.plot_browser_scale()
+			self.save_fig(prefix+'_browser_scale.png')
 			report_type = 'browser'
 		report = Report(prefix, report_type, datasets)
 		report.add_page()
@@ -829,18 +853,18 @@ class SpliceGraph(Graph):
 								'not possible for browser track plotting.')
 
 
-	# check that all datasets are in the SpliceGraph:
-	def check_datasets(self, datasets):
+	# # check that all datasets are in the SpliceGraph:
+	# def check_datasets(self, datasets):
 
-		# make sure we have an iterable
-		if type(datasets) != list:
-			datasets = [datasets]
+	# 	# make sure we have an iterable
+	# 	if type(datasets) != list:
+	# 		datasets = [datasets]
 
-		sg_datasets = self.get_dataset_cols()
-		for d in datasets:
-			if d not in sg_datasets:
-				raise Exception('Dataset {} not present in graph. '
-								'Datasets in graph are {}'.format(d, sg_datasets))
+	# 	sg_datasets = self.get_dataset_cols()
+	# 	for d in datasets:
+	# 		if d not in sg_datasets:
+	# 			raise Exception('Dataset {} not present in graph. '
+	# 							'Datasets in graph are {}'.format(d, sg_datasets))
 
 ##########################################################################
 ################################## Extras ################################
