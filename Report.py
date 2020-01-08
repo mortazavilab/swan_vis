@@ -4,7 +4,7 @@ from fpdf import FPDF
 # report for genes - extension of FPDF class
 class Report(FPDF):
 
-	def __init__(self, prefix, report_type, datasets):
+	def __init__(self, prefix, report_type, report_cols):
 		super().__init__(orientation='L')
 
 		# set report type, 'browser' or 'swan'
@@ -13,8 +13,12 @@ class Report(FPDF):
 		else: 
 			self.report_type = report_type
 
-		# the dataset columns that we'll include
-		self.datasets = datasets
+		# the columns that we'll include
+		self.report_cols = report_cols
+		print('in report constructor')
+		print('report cols:')
+		print(self.report_cols)
+		print()
 
 		# prefix for files that we'll pull from 
 		self.prefix = prefix
@@ -31,8 +35,8 @@ class Report(FPDF):
 			header_height = 20
 
 		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
-		for dataset in self.datasets:
-			self.cell(50, header_height, '{} TPM'.format(dataset),
+		for col in self.report_cols:
+			self.cell(50, header_height, col,
 					  border=True, align='C')
 
 		# in case we need to add the browser models
@@ -51,8 +55,19 @@ class Report(FPDF):
 	def add_transcript(self, entry, oname):
 		self.set_font('Arial', '', 10)
 		self.cell(50, 20, entry['tid'], border=True, align='C')
-		for d in self.datasets:
-			self.cell(50, 20, str(round(entry['{}_tpm'.format(d)],2)), border=True, align='C')
+		for col in self.report_cols:
+			if '_tpm' in col:
+				print()
+				print(col)
+				text = str(round(entry[col],2))
+			else:
+				text = entry[col]
+				if text == True:
+					text = 'Yes'
+				elif text == False:
+					text = 'No'
+					
+			self.cell(50, 20, text, border=True, align='C')	
 		x = self.get_x()
 		y = self.get_y()
 		self.cell(100, 20, '', border=True)

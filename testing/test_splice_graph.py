@@ -11,226 +11,6 @@ import networkx as nx
 import math
 
 class TestSpliceGraph(object):
-
-# 	def test_add_dataset(self):
-# 		loc_df = pd.DataFrame({'chrom': [1,2,3],
-# 			'coord': [1,1,1],
-# 			'strand': ['+', '-', '+'],
-# 			'vertex_id': [0,1,2]})
-# 		loc_df = create_dupe_index(loc_df, 'vertex_id')
-# 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-
-# 		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
-# 				  'v1': [0,0,1],
-# 				  'v2': [2,1,2],
-# 				  'edge_type': ['exon', 'exon', 'intron'], 
-# 				  'strand': ['+','+','+']})
-# 		edge_df = create_dupe_index(edge_df, 'edge_id')
-# 		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-# 		t_df = pd.DataFrame({'tid':[0,1,3],
-# 				  'gid':[0,0,0],
-# 				  'gname':['0','0','0'],
-# 				  'path':[[0,1,2],[0,2],[0,1]]})
-# 		t_df = create_dupe_index(t_df, 'tid')
-# 		t_df = set_dupe_index(t_df, 'tid')
-
-# 		loc_df = sw.get_loc_types(loc_df, t_df)
-
-# 		splice_graph = sw.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
-# 		splice_graph.add_dataset('annotation')
-# 		print(splice_graph.loc_df.head())
-# 		print(splice_graph.edge_df.head())
-# 		print(splice_graph.t_df.head())
-# 		print(splice_graph.G.nodes(data=True))
-# 		print(splice_graph.G.edges(data=True))
-		
-# 		# df cols added correctly
-# 		assert all(d == True for d in splice_graph.loc_df.dataset_annotation)
-# 		assert all(d == True for d in splice_graph.edge_df.dataset_annotation)
-# 		assert all(d == True for d in splice_graph.t_df.dataset_annotation)
-
-# 		# node/edge designations added correctly
-# 		assert all(i[1] == True for i in splice_graph.G.nodes(data='dataset_annotation'))
-# 		assert all(i[2] == True for i in splice_graph.G.edges(data='dataset_annotation'))
-
-# 	def test_remove_dataset(self):
-# 		loc_df = pd.DataFrame({'chrom': [1,2,3],
-# 			'coord': [1,1,1],
-# 			'strand': ['+', '-', '+'],
-# 			'vertex_id': [0,1,2]})
-# 		loc_df = create_dupe_index(loc_df, 'vertex_id')
-# 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-
-# 		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
-# 				  'v1': [0,0,1],
-# 				  'v2': [2,1,2],
-# 				  'edge_type': ['exon', 'exon', 'intron'], 
-# 				  'strand': ['+','+','+']})
-# 		edge_df = create_dupe_index(edge_df, 'edge_id')
-# 		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-# 		t_df = pd.DataFrame({'tid':[0,1,3],
-# 				  'gid':[0,0,0],
-# 				  'gname':['0','0','0'],
-# 				  'path':[[0,1,2],[0,2],[0,1]]})
-# 		t_df = create_dupe_index(t_df, 'tid')
-# 		t_df = set_dupe_index(t_df, 'tid')
-
-# 		loc_df = sw.get_loc_types(loc_df, t_df)
-
-# 		splice_graph = sw.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
-# 		splice_graph.add_dataset('annotation')
-
-# 		splice_graph.remove_dataset('annotation')
-
-# 		print(splice_graph.loc_df.head())
-# 		print(splice_graph.edge_df.head())
-# 		print(splice_graph.t_df.head())
-
-# 		assert 'dataset_annotation' not in splice_graph.loc_df.columns
-# 		assert 'dataset_annotation' not in splice_graph.edge_df.columns
-# 		assert 'dataset_annotation' not in splice_graph.t_df.columns
-
-# 	def test_add_abundance_dataset(self):
-# 		loc_df = pd.DataFrame({'chrom': [1,2,3],
-# 			'coord': [1,1,1],
-# 			'strand': ['+', '-', '+'],
-# 			'vertex_id': [0,1,2]})
-# 		loc_df = create_dupe_index(loc_df, 'vertex_id')
-# 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-
-# 		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
-# 				  'v1': [0,0,1],
-# 				  'v2': [2,1,2],
-# 				  'edge_type': ['exon', 'exon', 'intron'], 
-# 				  'strand': ['+','+','+']})
-# 		edge_df = create_dupe_index(edge_df, 'edge_id')
-# 		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-# 		t_df = pd.DataFrame({'tid':[0,1,2],
-# 				  'gid':[0,0,0],
-# 				  'gname':['0','0','0'],
-# 				  'path':[[0,1,2],[0,2],[0,1]]})
-# 		t_df = create_dupe_index(t_df, 'tid')
-# 		t_df = set_dupe_index(t_df, 'tid')
-
-# 		loc_df = sw.get_loc_types(loc_df, t_df)
-
-# 		splice_graph = sw.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
-
-# 		# add dataset test
-# 		file = 'input_files/test_abundance.tsv'
-# 		splice_graph.add_abundance_dataset(file, ['count_1a', 'count_1b'], '1')
-# 		splice_graph.add_abundance_dataset(file, ['count_2a', 'count_2b'], '2')
-
-# 		print(splice_graph.t_df)
-
-# 		# dataset 1 pairs
-# 		dataset_1_pairs = splice_graph.t_df.apply(lambda x: (x.tid, x.counts_1), axis=1)
-# 		control_pairs = [(0,4),(1,8),(2,12)]
-# 		check_pairs(control_pairs, dataset_1_pairs)
-
-# 		# dataset 2 pairs
-# 		dataset_2_pairs = splice_graph.t_df.apply(lambda x: (x.tid, x.counts_2), axis=1)
-# 		control_pairs = [(0,6),(1,10),(2,14)]
-# 		check_pairs(control_pairs, dataset_2_pairs)
-
-# 	def test_order_transcripts(self):
-# 		loc_df = pd.DataFrame({'chrom': [1,1,1],
-# 			'coord': [1,2,3],
-# 			'strand': ['+', '+', '+'],
-# 			'vertex_id': [0,1,2]})
-# 		loc_df = create_dupe_index(loc_df, 'vertex_id')
-# 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-
-# 		edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
-# 				  'v1': [0,0,1],
-# 				  'v2': [2,1,2],
-# 				  'edge_type': ['exon', 'exon', 'intron'], 
-# 				  'strand': ['+','+','+']})
-# 		edge_df = create_dupe_index(edge_df, 'edge_id')
-# 		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-# 		t_df = pd.DataFrame({'tid':[2,1,0],
-# 				  'gid':[0,0,0],
-# 				  'gname':['0','0','0'],
-# 				  'path':[[0,1,2],[1,2],[0,1]],
-# 				  'counts_a': [0,0,12],
-# 				  'counts_b': [1,0,14]})
-# 		t_df = create_dupe_index(t_df, 'tid')
-# 		t_df = set_dupe_index(t_df, 'tid')
-
-# 		loc_df = sw.get_loc_types(loc_df, t_df)
-
-# 		splice_graph = sw.SpliceGraph(loc_df=loc_df, edge_df=edge_df, t_df=t_df)
-
-# 		# order by expression level
-# 		splice_graph.order_transcripts(order='expression')
-# 		print(splice_graph.t_df.head())
-# 		assert splice_graph.t_df.tid.tolist() == [0,2,1]
-
-# 		# order by transcript id
-# 		splice_graph.order_transcripts()
-# 		print(splice_graph.t_df.head())
-# 		assert splice_graph.t_df.tid.tolist() == [0,1,2]
-
-# 		# order by coordinate of tss
-# 		splice_graph.order_transcripts(order='tss')
-# 		print(splice_graph.t_df.head())
-# 		assert splice_graph.t_df.tid.tolist() == [0,2,1]
-
-# 		# order by coordinate of tes
-# 		splice_graph.order_transcripts()
-# 		print(splice_graph.t_df.head())
-# 		splice_graph.order_transcripts(order='tes')
-# 		print(splice_graph.t_df.head())
-# 		assert splice_graph.t_df.tid.tolist() == [1,2,0]
-
-# # TODO this stuff will have to wait because of how splicegraph init works right now!
-# 	# def test_get_ordered_id_map(self):
-# 	# 	splice_graph = get_dummy_sg()
-# 	# 	id_map = splice_graph.get_ordered_id_map()
-# 	# 	print(id_map)
-
-# 	# 	test = list(id_map.items())
-# 	# 	control = [(0,0),(1,2),(2,1)]
-# 	# 	check_pairs(control, test)
-
-# 	# def test_update_loc_df_ids(self):
-# 	# 	splice_graph = get_dummy_sg()
-# 	# 	id_map = splice_graph.get_ordered_id_map()
-# 	# 	splice_graph.update_loc_df_ids(id_map)
-
-# 	# 	test = splice_graph.loc_df.apply(lambda x: (x.vertex_id, x.coord), axis=1)
-# 	# 	control = [(0,1),(1,2),(2,3)]
-# 	# 	check_pairs(control, test)
-
-# 	# def test_update_edge_df_ids(self):
-# 	# 	splice_graph = get_dummy_sg(special='intron')
-# 	# 	id_map = splice_graph.get_ordered_id_map()
-# 	# 	splice_graph.update_loc_df_ids(id_map)
-# 	# 	splice_graph.update_edge_df_ids(id_map)
-# 	# 	print(splice_graph.loc_df)
-# 	# 	print(splice_graph.edge_df)
-		
-# 	# 	test = splice_graph.edge_df.edge_id.tolist()
-# 	# 	control = [(0,1),(0,2),(2,1)]
-# 	# 	check_pairs(control, test)
-
-# 	# def test_update_t_df_paths(self):
-# 	# 	splice_graph = get_dummy_sg(special='intron')
-# 	# 	print(splice_graph.t_df)
-# 	# 	id_map = splice_graph.get_ordered_id_map()
-# 	# 	splice_graph.update_loc_df_ids(id_map)
-# 	# 	splice_graph.update_edge_df_ids(id_map)
-# 	# 	splice_graph.update_t_df_paths(id_map)
-
-# 	# 	test = splice_graph.t_df.apply(
-# 	# 		lambda x: tuple(x.path), axis=1)
-# 	# 	control = [(0,2,1),(2,1),(0,2)]
-# 	# 	check_pairs(control, test)
-
 	
 	###########################################################################
 	######################### Merging tests ###################################
@@ -415,68 +195,69 @@ class TestSpliceGraph(object):
 		print('internal')
 		check_pairs(control_internal, test_internal)
 
-	def test_update_ids(self):
-		a = get_dummy_sg()
-		a.update_ids()
+	# This stuff lives in test_graph.py now because these methods live there now
+	# def test_update_ids(self):
+	# 	a = get_dummy_sg()
+	# 	a.update_ids()
 
-		# loc_df
-		print('loc_df')
-		test = a.loc_df.apply(
-			lambda x: (x.vertex_id, x.coord), axis=1)
-		control = [(0,1),(1,2),(2,3)]
-		check_pairs(control, test)
+	# 	# loc_df
+	# 	print('loc_df')
+	# 	test = a.loc_df.apply(
+	# 		lambda x: (x.vertex_id, x.coord), axis=1)
+	# 	control = [(0,1),(1,2),(2,3)]
+	# 	check_pairs(control, test)
 
-		# edge_df
-		print('edge_df')
-		test = a.edge_df.edge_id.tolist()
-		control = [(0,1),(0,2),(2,1)]
-		check_pairs(control, test)
+	# 	# edge_df
+	# 	print('edge_df')
+	# 	test = a.edge_df.edge_id.tolist()
+	# 	control = [(0,1),(0,2),(2,1)]
+	# 	check_pairs(control, test)
 
-		# t_df
-		print('t_df')
-		test = a.t_df.path.tolist()
-		test = [tuple(path) for path in test]
-		control = [(0,2,1),(2,1),(0,2)]
-		check_pairs(control, test)
+	# 	# t_df
+	# 	print('t_df')
+	# 	test = a.t_df.path.tolist()
+	# 	test = [tuple(path) for path in test]
+	# 	control = [(0,2,1),(2,1),(0,2)]
+	# 	check_pairs(control, test)
 
-	def test_update_loc_df_ids(self):
-		a = get_dummy_sg()
-		id_map = a.get_ordered_id_map()
-		a.update_loc_df_ids(id_map)
+	# def test_update_loc_df_ids(self):
+	# 	a = get_dummy_sg()
+	# 	id_map = a.get_ordered_id_map()
+	# 	a.update_loc_df_ids(id_map)
 
-		test = a.loc_df.apply(
-			lambda x: (x.vertex_id, x.coord), axis=1)
-		control = [(0,1),(1,2),(2,3)]
-		check_pairs(control, test)
+	# 	test = a.loc_df.apply(
+	# 		lambda x: (x.vertex_id, x.coord), axis=1)
+	# 	control = [(0,1),(1,2),(2,3)]
+	# 	check_pairs(control, test)
 
-	def test_update_edge_df_ids(self):
-		a = get_dummy_sg()
-		id_map = a.get_ordered_id_map()
-		a.update_edge_df_ids(id_map)
+	# def test_update_edge_df_ids(self):
+	# 	a = get_dummy_sg()
+	# 	id_map = a.get_ordered_id_map()
+	# 	a.update_edge_df_ids(id_map)
 
-		test = a.edge_df.edge_id.tolist()
-		control = [(0,1),(0,2),(2,1)]
-		check_pairs(control, test)
+	# 	test = a.edge_df.edge_id.tolist()
+	# 	control = [(0,1),(0,2),(2,1)]
+	# 	check_pairs(control, test)
 
-	def test_update_t_df_paths(self):
-		a = get_dummy_sg()
-		id_map = a.get_ordered_id_map()
-		a.update_t_df_paths(id_map)
+	# def test_update_t_df_paths(self):
+	# 	a = get_dummy_sg()
+	# 	id_map = a.get_ordered_id_map()
+	# 	a.update_t_df_paths(id_map)
 
-		test = a.t_df.path.tolist()
-		test = [tuple(path) for path in test]
-		control = [(0,2,1),(2,1),(0,2)]
-		check_pairs(control, test)		
+	# 	test = a.t_df.path.tolist()
+	# 	test = [tuple(path) for path in test]
+	# 	control = [(0,2,1),(2,1),(0,2)]
+	# 	check_pairs(control, test)		
 
-	# TODO extend this to work on multiple genes,
-	# will require a more robust test
-	def test_get_ordered_id_map(self):
-		a = get_dummy_sg()
-		id_map = a.get_ordered_id_map()
+	# # TODO extend this to work on multiple genes,
+	# # will require a more robust test
+	# def test_get_ordered_id_map(self):
+	# 	a = get_dummy_sg()
+	# 	id_map = a.get_ordered_id_map()
 
-		test = list(id_map.items())
-		control = [(0,0),(1,2),(2,1)]
-		check_pairs(control, test)
+	# 	test = list(id_map.items())
+	# 	control = [(0,0),(1,2),(2,1)]
+	# 	check_pairs(control, test)
 
 	############################################################################
 	###################### Ordering transcripts tests ##########################

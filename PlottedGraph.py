@@ -46,6 +46,10 @@ class PlottedGraph(Graph):
 
 		if gid: 
 			self.g_min, self.g_max = self.get_gene_min_max(gid)
+		if self.tid: 
+			self.path = self.get_path_from_tid(self.tid)
+		else:
+			self.path = None
 
 		## TODO is this the best way to handle browser vs. not browser graphs?
 		# if we're making a swan graph

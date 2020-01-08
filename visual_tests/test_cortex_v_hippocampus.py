@@ -5,7 +5,7 @@ lib_path = '/'.join(os.path.abspath(__file__).split('/')[0:-2])
 sys.path.append(lib_path+'/utils/')
 sys.path.append(lib_path)
 from SpliceGraph import SpliceGraph
-# from utils import *
+from utils import *
 # from plotting_tools import * 
 # from report_tools import *
 
@@ -89,8 +89,15 @@ sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 # sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/test_mapt', browser=True)
 
 # report test
-sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression')
-sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', browser=True)
+# gid = 'ENSMUSG00000018411.17'
+# counts_cols = sg.get_count_cols(['cortex', 'hippocampus'])
+# report_tids = sg.t_df.loc[(sg.t_df.gid==gid)&(sg.t_df[counts_cols].sum() > 0),
+# 			  	'tid'].tolist()
+# sg.t_df.to_csv('test_t_df.csv')	
+# print(report_tids)
+sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', tpm=True)
+# sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression')
+# sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', browser=True)
 
 
 

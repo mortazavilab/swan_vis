@@ -766,19 +766,35 @@ class SpliceGraph(Graph):
 		elif datasets:
 			report_cols = datasets
 
+		print()
+		print('report cols')
+		print(report_cols)
+		print()
+
+		# order transcripts by user's preferences
+		self.order_transcripts(order)
+
 		# if user doesn't care about datasets, just show all transcripts
 		if not datasets:
 			include_unexpressed = True
 		# user only wants transcript isoforms that appear in their data
 		if not include_unexpressed:
-			counts_cols = self.get_count_cols()
-			report_tids = self.t_df.loc[(self.t_df.gid==gid)&(sum(counts_cols) > 0),
-						  'tid'].tolist()
+
+			## TODO could also use the all(nonzero) strategy
+			counts_cols = self.get_count_cols(datasets)
+			print('counts cols')
+			print(counts_cols)
+			self.t_df['counts_sum'] = self.t_df.apply(lambda x: sum(x[counts_cols]), axis=1)
+
+			print()
+			print(self.t_df.head())
+			print()
+
+			report_tids = self.t_df.loc[(self.t_df.gid==gid)&(self.t_df.counts_sum>0),
+						  	'tid'].tolist()
+			self.t_df.drop('counts_sum', inplace=True, axis=1)
 		else:
 			report_tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
-
-		# order transcripts by user's preferences
-		self.order_transcripts(order)
 
 		# make sure our swan/browser graph args work together
 		# and plot each transcript with these settings
@@ -788,6 +804,14 @@ class SpliceGraph(Graph):
 								  indicate_novel,
 								  browser=browser)
 
+		# if we're plotting tracks, we need a scale as well
+		if not browser:
+			report_type = 'swan'
+		else:
+			self.pg.plot_browser_scale()
+			self.save_fig(prefix+'_browser_scale.png')
+			report_type = 'browser'
+
 		# create report
 		pdf_name = create_fname(prefix, 
 					 combine,
@@ -796,18 +820,11 @@ class SpliceGraph(Graph):
 					 browser,
 					 ftype='report',
 					 gid=gid)
-		# if we're plotting tracks, we need a scale as well
-		if not browser:
-			report_type = 'swan'
-		else:
-			self.pg.plot_browser_scale()
-			self.save_fig(prefix+'_browser_scale.png')
-			report_type = 'browser'
-		report = Report(prefix, report_type, datasets)
+		report = Report(prefix, report_type, report_cols)
 		report.add_page()
 
 		# loop through each transcript and add it to the report
-		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
+		for tid in report_tids:
 			entry = self.t_df.loc[tid]
 			## TODO would be faster if I didn't have to compute these names twice....
 			## ie once in plot_each_transcript and once here
