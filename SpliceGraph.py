@@ -766,11 +766,6 @@ class SpliceGraph(Graph):
 		elif datasets:
 			report_cols = datasets
 
-		print()
-		print('report cols')
-		print(report_cols)
-		print()
-
 		# order transcripts by user's preferences
 		self.order_transcripts(order)
 
@@ -782,14 +777,7 @@ class SpliceGraph(Graph):
 
 			## TODO could also use the all(nonzero) strategy
 			counts_cols = self.get_count_cols(datasets)
-			print('counts cols')
-			print(counts_cols)
 			self.t_df['counts_sum'] = self.t_df.apply(lambda x: sum(x[counts_cols]), axis=1)
-
-			print()
-			print(self.t_df.head())
-			print()
-
 			report_tids = self.t_df.loc[(self.t_df.gid==gid)&(self.t_df.counts_sum>0),
 						  	'tid'].tolist()
 			self.t_df.drop('counts_sum', inplace=True, axis=1)
