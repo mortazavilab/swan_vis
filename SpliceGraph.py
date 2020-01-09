@@ -272,7 +272,7 @@ class SpliceGraph(Graph):
 		return id_map
 
 	##########################################################################
-	############# Related to creating dfs from gtf or TALON DB ###############
+	############# Related to creating dfs from GTF or TALON DB ###############
 	##########################################################################
 
 	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
@@ -283,7 +283,6 @@ class SpliceGraph(Graph):
 		if not os.path.exists(gtf_file):
 			raise Exception('GTF file not found. Check path.')
 
-		# my way (still seems shitty, could be get_field_value?)
 		# classes to hold transcripts and edges and their associated data
 		class Transcript():
 			def __init__(self, tid, gid, gname):
@@ -292,23 +291,33 @@ class SpliceGraph(Graph):
 				self.gname = gname
 				self.exons = []
 		class Edge():
-			def __init__(self, exon_id, chrom, start, stop,
-						 strand, edge_type, tid):
+			def __init__(self, exon_id, chrom, v1, v2,
+						 strand, edge_type):
 				self.exon_id = exon_id
 				self.chrom = chrom
-				self.start = start
-				self.stop = stop
-				self.strand = strand 
-				self.tid = tid
+				self.strand = strand
+
+				# put start/stop in correct order depending on strand
+				if self.strand == '-':
+					self.start = max([v1, v2])
+					self.stop = min([v1, v2])
+				elif self.strand == '+':
+					self.start = min([v1, v2])
+					self.stop = max([v1, v2])
+
 				self.edge_type = edge_type
 
+		transcripts = {}
+		edges = {}
 
 		start_time = time.time()
-		transcripts = {}
-		exons = {}
-
+		line_num = 0 
 		with open(gtf_file) as gtf:
 			for line in gtf:
+
+				line_num += 1
+				if line_num == 200000:
+					break
 
 				# ignore header lines
 				if '##' in line:
@@ -339,24 +348,67 @@ class SpliceGraph(Graph):
 				# exon entry
 				elif entry_type == "exon":
 					attributes = get_fields(fields)
-					eid = '{}_{}_{}'.format(chrom, start, stop)
-					# try:
-					# 	eid = attributes['exon_id']
-					# except: 
-					# 	print(line)
-					# 	return
+					eid = '{}_{}_{}_{}'.format(chrom, start, stop, strand)
 					tid = attributes['transcript_id']	
 
 					# add novel exon to dictionary 
-					if eid not in exons:
-						exons[eid] = Edge(eid, chrom, start, stop, 
-										  strand, 'exon', tid)
+					if eid not in edges:
+						edges[eid] = Edge(eid, chrom, start, stop, 
+										  strand, 'exon')
 			   
 			   		# add this exon to the transcript's list of exons
 					if tid in transcripts:
 						transcripts[tid].exons.append(eid)
 
+		# once we have all transcripts, make loc_df
+		locs = []
+		for edge_id, edge in edges.items():
+			chrom = edge.chrom
+			strand = edge.strand
+			# exon start
+			locs.append({'chrom': chrom,
+						 'coord': edge.start,
+						 'strand': strand})
+			# exon end
+			locs.append({'chrom': chrom,
+						 'coord': edge.stop,
+						 'strand': strand})
+		loc_df = pd.DataFrame(locs)
+		loc_df['vertex_id'] = loc_df.index
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+		loc_df.drop_duplicates(['chrom', 'coord', 'strand'], inplace=True)
+
+		print(len(loc_df.index))
+
+		# 
+		def get_vertex_id_from_loc(x, loc_df, col):
+			return loc_df.loc[(loc_df.chrom == x.chrom)&(loc_df.coord==x[col])&(loc_df.strand==x.strand), 'vertex_id']
+
+
+		# make and flesh out edge_df from the edges/transcripts dictionary
+		for tid, transcript in transcripts.items():
+			introns = [(transcript.exons[i],transcript.exons[i+1])
+				for i in range(len(transcript.exons)-1)]
+			for intron in introns:
+				start = edges[intron[0]].stop
+				stop = edges[intron[1]].start
+				chrom = edges[intron[0]].chrom
+				strand = edges[intron[0]].strand
+				eid = '{}_{}_{}_{}'.format(chrom, start, stop, strand)
+				edges[eid] = Edge(eid, chrom, start, stop,
+								  strand, 'intron')
+		edge_df = pd.DataFrame(edges)
+		edge_df['v1'] = edge_df.apply(lambda x: get_vertex_id_from_loc(x, loc_df, 'start'), axis=1)
+		edge_df['v2'] = edge_df.apply(lambda x: get_vertex_id_from_loc(x, loc_df, 'stop'), axis=1)
+		edge_df['edge_id'] = edge_df.apply(lambda x: (x.v1, x.v2), axis=1)
+
+		print(loc_df.head())
+		print(edge_df.head())
+
+
 		print("--- %s seconds ---" % (time.time() - start_time))
+
 		return transcripts, exons
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
@@ -795,45 +847,10 @@ class SpliceGraph(Graph):
 								'not possible for browser track plotting.')
 
 
-	# # check that all datasets are in the SpliceGraph:
-	# def check_datasets(self, datasets):
-
-	# 	# make sure we have an iterable
-	# 	if type(datasets) != list:
-	# 		datasets = [datasets]
-
-	# 	sg_datasets = self.get_dataset_cols()
-	# 	for d in datasets:
-	# 		if d not in sg_datasets:
-	# 			raise Exception('Dataset {} not present in graph. '
-	# 							'Datasets in graph are {}'.format(d, sg_datasets))
-
 ##########################################################################
 ################################## Extras ################################
 ##########################################################################
 
-# # creates a file name based on input plotting arguments
-# def create_fname(prefix, combine, indicate_dataset,
-# 				 indicate_novel, browser,
-# 				 ftype='figure', tid=None, gid=None):
-# 	fname = prefix
-# 	if combine:
-# 		fname += '_combine'
-# 	if indicate_dataset:
-# 		fname += '_{}'.format(indicate_dataset)
-# 	if indicate_novel:
-# 		fname += '_novel'
-# 	if browser: 
-# 		fname += '_browser'
-# 	if tid: 
-# 		fname += '_{}'.format(tid)
-# 	if gid: 
-# 		fname += '_{}'.format(gid)
-# 	if ftype == 'figure':
-# 		fname += '.png'
-# 	elif ftype == 'report':
-# 		fname += '_report.pdf'
-# 	return fname
 
 
 
