@@ -7,7 +7,6 @@ import copy
 from collections import defaultdict
 import sqlite3
 from utils import *
-from plotting_tools import *
 from Graph import Graph
 
 class PlottedGraph(Graph):

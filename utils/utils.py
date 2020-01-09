@@ -53,6 +53,27 @@ def get_field_value(key, fields):
     else:
         return fields.split(key+' "')[1].split()[0].replace('";','')
 
+# creates a dictionary of the last field of a gtf
+# adapted from Dana Wyman
+def get_fields(fields):
+    attributes = {}
+
+    description = fields.strip()
+    description = [x.strip() for x in description.split(";")]
+    for pair in description:
+        if pair == "": continue
+
+        pair = pair.replace('"', '')
+        key, val = pair.split()
+        attributes[key] = val
+
+    # put in placeholders for important attributes (such as gene_id) if they
+    # are absent
+    if "gene_id" not in attributes:
+        attributes["gene_id"] = "NULL"
+
+    return attributes    
+
 # return a table indexed by transcript id with the appropriate 
 # abundance
 # currently only works with TALON abundance files but can easily 
