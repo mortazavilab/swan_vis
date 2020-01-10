@@ -8,9 +8,10 @@ from SpliceGraph import SpliceGraph
 from utils import *
 import cProfile
 
-gtf = '/Users/fairliereese/mortazavi_lab/ref/gencode.v24/gencode.v24.annotation.txt'
+# gtf = '/Users/fairliereese/mortazavi_lab/ref/gencode.v24/gencode.v24.annotation.txt'
 # gtf = 'input_files/hippocampus_mapt.gtf'
 # gtf = 'input_files/test_combine_2.gtf'
+gtf = 'input_files/annot.gtf'
 sg = SpliceGraph()
 
 # print('dana')
@@ -20,8 +21,10 @@ sg = SpliceGraph()
 
 # print('dana')
 # sg.create_dfs_gtf_dana(gtf)
-print('fairlie')
 sg.create_dfs_gtf(gtf)
+print(sg.loc_df)
+print(sg.edge_df)
+print(sg.t_df)
 
 # print(transcripts)
 # print(exons)

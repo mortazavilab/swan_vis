@@ -310,8 +310,8 @@ class SpliceGraph(Graph):
 				# get some fields from gtf that we care about
 				chrom = line[0]
 				entry_type = line[2]
-				start = line[3]
-				stop = line[4]
+				start = int(line[3])
+				stop = int(line[4])
 				strand = line[6]
 				fields = line[-1]
 
@@ -341,8 +341,8 @@ class SpliceGraph(Graph):
 					if eid not in exons:
 						edge = {eid: {'eid': eid,
 									  'chrom': chrom,
-									  'v1': int(start),
-									  'v2': int(stop),
+									  'v1': start,
+									  'v2': stop,
 									  'strand': strand}}
 						exons.update(edge)
 			   
@@ -397,6 +397,7 @@ class SpliceGraph(Graph):
 					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
 
 				# add exon locs to path
+				print(edge_id)
 				t['path'] += list(edge_id)
 
 				# if this isn't the last exon, we also needa add an intron
