@@ -11,7 +11,6 @@ from utils import *
 from PlottedGraph import PlottedGraph 
 from Graph import Graph
 from Report import *
-import time
 
 class SpliceGraph(Graph):
 
@@ -296,16 +295,10 @@ class SpliceGraph(Graph):
 
 		# dictionaries to hold unique edges and transcripts
 		transcripts = {}
-		edges = {}
+		exons = {}
 
-		start_time = time.time()
-		line_num = 0 
 		with open(gtf_file) as gtf:
 			for line in gtf:
-
-				line_num += 1
-				if line_num == 200000:
-					break
 
 				# ignore header lines
 				if '##' in line:
@@ -345,31 +338,22 @@ class SpliceGraph(Graph):
 					tid = attributes['transcript_id']	
 
 					# add novel exon to dictionary 
-					if eid not in edges:
+					if eid not in exons:
 						edge = {eid: {'eid': eid,
 									  'chrom': chrom,
 									  'v1': int(start),
 									  'v2': int(stop),
-									  'strand': strand,
-									  'edge_type': 'exon'}}
-						edges.update(edge)
+									  'strand': strand}}
+						exons.update(edge)
 			   
 			   		# add this exon to the transcript's list of exons
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
 
-		# gets the vertex id associated with chrom, coord, and strand info
-		def get_vertex_id_from_loc(chrom, coord, strand, loc_df):
-			v = loc_df.loc[(chrom, coord, strand), 'vertex_id']
-			return v
-
-		print('time to create dictionaries')
-		print("--- %s seconds ---" % (time.time() - start_time))
-		start_time = time.time()
-
 		# once we have all transcripts, make loc_df
-		locs = []
-		for edge_id, edge in edges.items():
+		locs = {}
+		vertex_id = 0
+		for edge_id, edge in exons.items():
 			chrom = edge['chrom']
 			strand = edge['strand']
 
@@ -377,121 +361,86 @@ class SpliceGraph(Graph):
 			v2 = edge['v2']
 
 			# exon start
-			locs.append({'chrom': chrom,
-						 'coord': v1,
-						 'strand': strand})
+			key = (chrom, v1, strand)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
 			# exon end
-			locs.append({'chrom': chrom,
-						 'coord': v2,
-						 'strand': strand})
+			key = (chrom, v2, strand)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
 
-		loc_df = pd.DataFrame(locs)
-		loc_df.drop_duplicates(['chrom', 'coord', 'strand'], inplace=True)
-
-		# sort loc_df based on genomic position
-		strand = loc_df.loc[loc_df.index[0], 'strand']
-		if strand == '+':
-			loc_df.sort_values(by='coord', 
-							   ascending=True,
-							   inplace=True)
-		elif strand == '-':
-			loc_df.sort_values(by='coord', 
-							   ascending=False, 
-							   inplace=True)
-
-		# set index to make querying table easier for populating 
-		# t_df and edge_df
-		loc_df['vertex_id'] = [i for i in range(len(loc_df.index))]
-		loc_df.set_index(['chrom', 'coord', 'strand'], inplace=True)
-
-		# testing
-		loc_df.to_csv('loc_df_test.csv')
-
-		# add loc_df-indexed path to transcripts
-		for _, t in transcripts.items():
+		# add locs-indexed path to transcripts, and populate edges
+		edges = {}
+		for _,t in transcripts.items():
 			t['path'] = []
-			for e in t['exons']:
-				exon = edges[e]
+			strand = t['strand']
+			t_exons = t['exons']
+
+			for i, exon_id in enumerate(t_exons):
+
+				# pull some information from exon dict
+				exon = exons[exon_id]
 				chrom = exon['chrom']
 				v1 = exon['v1']
 				v2 = exon['v2']
 				strand = exon['strand']
 
-				v1 = get_vertex_id_from_loc(chrom, v1, strand, loc_df)
-				v2 = get_vertex_id_from_loc(chrom, v2, strand, loc_df)
+				# add current exon and subsequent intron 
+				# (if not the last exon) for each exon to edges
+				key = (chrom, v1, v2, strand)
+				v1_key = (chrom, v1, strand)
+				v2_key = (chrom, v2, strand)
+				edge_id = (locs[v1_key], locs[v2_key])
+				if key not in edges:
+					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
 
-				t['path'].append(v1)
-				t['path'].append(v2)
+				# add exon locs to path
+				t['path'] += list(edge_id)
 
-		# add introns by iterating through transcripts
-		for tid, t in transcripts.items():
-			strand = t['strand']
-			if strand == '-':
-				t['exons'].reverse()
+				# if this isn't the last exon, we also needa add an intron
+				# this consists of v2 of the prev exon and v1 of the next exon
+				if i < len(t_exons)-1:
+					next_exon = exons[t_exons[i+1]]
+					v1 = next_exon['v1']
+					key = (chrom, v2, v1, strand)
+					v1_key = (chrom, v1, strand)
+					edge_id = (locs[v2_key], locs[v1_key])
+					if key not in edges:
+						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
 
-			# each exon-exon junction constitutes an intron
-			for i in range(len(t['exons'])-1):				
+		# turn transcripts, edges, and locs into dataframes
+		locs = [{'chrom': key[0],
+				 'coord': key[1],
+				 'strand': key[2],
+				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
+		loc_df = pd.DataFrame(locs)
 
-				intron = [t['exons'][i], t['exons'][i+1]]
-				v1 = edges[intron[0]]['v2']
-				v2 = edges[intron[1]]['v1']
-				eid = '{}_{}_{}_{}_intron'.format(chrom, v1, v2, strand)
-
-				# if we haven't seen this intron before, add it
-				if eid not in edges:
-					edge = {eid: {'eid': eid,
-							'chrom': chrom,
-							'v1': v1,
-							'v2': v2,
-							'strand': strand,
-							'edge_type': 'intron'}}
-					edges.update(edge)
-
-		# finish populating/formatting edge_df
-		edges = [edge for eid, edge in edges.items()]
+		edges = [{'v1': item['edge_id'][0],
+				  'v2': item['edge_id'][1], 
+				  'strand': key[3],
+				  'edge_id': item['edge_id'],
+				  'edge_type': item['edge_type']} for key, item in edges.items()]
 		edge_df = pd.DataFrame(edges)
-		edge_df.drop_duplicates(['chrom', 'v1', 'v2', 'strand', 'edge_type'], inplace=True)
-		# edge_df['v1'] = edge_df['v1'].apply(pd.to_numeric)
-		# edge_df['v2'] = edge_df['v2'].apply(pd.to_numeric)
-		# edge_df['v1'] = pd.to_numeric(edge_df['v1'])
-		# edge_df['v2'] = pd.to_numeric(edge_df['v2'])
 
-		print(edge_df.dtypes)
+		transcripts = [{'tid': key,
+						'gid': item['gid'],
+						'gname': item['gname'],
+						'path': item['path']} for key, item in transcripts.items()]
+		t_df = pd.DataFrame(transcripts)
 
-		# replace v1 and v2 with the actual vertex ids in edge_df
-		# and create the edge ids
-		edge_df['new_v1'] = edge_df.apply(lambda x:
-			get_vertex_id_from_loc(x.chrom, x.v1, x.strand, loc_df), axis=1)
-		edge_df['new_v2'] = edge_df.apply(lambda x: 
-			get_vertex_id_from_loc(x.chrom, x.v2, x.strand, loc_df), axis=1)
-		edge_df.drop(['v1','v2', 'eid', 'chrom'], axis=1, inplace=True)
-		edge_df.rename({'new_v1': 'v1', 'new_v2': 'v2'}, axis=1, inplace=True)
-		edge_df['edge_id'] = edge_df.apply(lambda x: (x.v1, x.v2), axis=1)
+		# final df formatting
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-		# finish populating/formatting t_df
-		transcripts = [transcript for tid, transcript in transcripts.items()]
-		t_df = pd.DataFrame(transcripts)
-		t_df.drop('exons', axis=1, inplace=True)
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
 
-		# finish formatting loc_df
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
-
-
-		print(loc_df.head())
-		print(edge_df.head())
-		print(t_df.head())
-
-		# for t in transcripts:
-		# 	print(transcripts[t]['path'])
-
-		print("--- %s seconds ---" % (time.time() - start_time))
-
-		return transcripts, edges
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def create_dfs_db(self, db):
