@@ -358,6 +358,12 @@ class SpliceGraph(Graph):
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
 
+		# gets the vertex id associated with chrom, coord, and strand info
+		def get_vertex_id_from_loc(chrom, coord, strand, loc_df):
+			v = loc_df.loc[(loc_df.chrom==chrom)&(loc_df.coord==coord)&(loc_df.strand==strand)]
+			v = v['vertex_id'].tolist()[0]
+			return v
+
 		# once we have all transcripts, make loc_df
 		locs = []
 		for edge_id, edge in edges.items():
@@ -372,12 +378,21 @@ class SpliceGraph(Graph):
 						 'coord': edge['v2'],
 						 'strand': strand})
 		loc_df = pd.DataFrame(locs)
-		loc_df['vertex_id'] = loc_df.index
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		loc_df.drop_duplicates(['chrom', 'coord', 'strand'], inplace=True)
 
-		# print(len(loc_df.index))
+		# sort loc_df based on genomic position
+		strand = loc_df.loc[loc_df.index[0], 'strand']
+		if strand == '+':
+			loc_df.sort_values(by='coord', 
+							   ascending=True,
+							   inplace=True)
+		elif strand == '-':
+			loc_df.sort_values(by='coord',
+							   ascending=False, 
+							   inplace=True)
+		loc_df['vertex_id'] = [i for i in range(len(loc_df.index))]
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
 
 		# add loc_df-indexed path to transcripts
 		for _, t in transcripts.items():
@@ -389,8 +404,8 @@ class SpliceGraph(Graph):
 				v2 = exon['v2']
 				strand = exon['strand']
 
-				v1 = loc_df.loc[(loc_df.chrom==chrom)&(loc_df.coord==v1)&(loc_df.strand==strand),'vertex_id'].tolist()[0]
-				v2 = loc_df.loc[(loc_df.chrom==chrom)&(loc_df.coord==v2)&(loc_df.strand==strand),'vertex_id'].tolist()[0]
+				v1 = get_vertex_id_from_loc(chrom, v1, strand, loc_df)
+				v2 = get_vertex_id_from_loc(chrom, v2, strand, loc_df)
 
 				t['path'].append(v1)
 				t['path'].append(v2)
@@ -423,8 +438,17 @@ class SpliceGraph(Graph):
 		edge_df = pd.DataFrame(edges)
 		edge_df.drop_duplicates(['chrom', 'v1', 'v2', 'strand', 'edge_type'], inplace=True)
 
-		# replace v1 and v2 with the actual vertex ids
-		
+		# replace v1 and v2 with the actual vertex ids in edge_df
+		# and create the edge ids
+		edge_df['new_v1'] = edge_df.apply(lambda x:
+			get_vertex_id_from_loc(x.chrom, x.v1, x.strand, loc_df), axis=1)
+		edge_df['new_v2'] = edge_df.apply(lambda x: 
+			get_vertex_id_from_loc(x.chrom, x.v2, x.strand, loc_df), axis=1)
+		edge_df.drop(['v1','v2', 'eid', 'chrom'], axis=1, inplace=True)
+		edge_df.rename({'new_v1': 'v1', 'new_v2': 'v2'}, axis=1, inplace=True)
+		edge_df['edge_id'] = edge_df.apply(lambda x: (x.v1, x.v2), axis=1)
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
 
 		# finish populating/formatting t_df
 		transcripts = [transcript for tid, transcript in transcripts.items()]

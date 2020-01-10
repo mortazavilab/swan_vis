@@ -9,6 +9,7 @@ import sqlite3
 
 # creates the duplicate index
 def create_dupe_index(df, ind_name):
+	print(ind_name)
 	df[ind_name+'_back'] = df[ind_name]
 	return df
 
