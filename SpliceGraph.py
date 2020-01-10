@@ -348,8 +348,8 @@ class SpliceGraph(Graph):
 					if eid not in edges:
 						edge = {eid: {'eid': eid,
 									  'chrom': chrom,
-									  'v1': start,
-									  'v2': stop,
+									  'v1': int(start),
+									  'v2': int(stop),
 									  'strand': strand,
 									  'edge_type': 'exon'}}
 						edges.update(edge)
@@ -360,23 +360,31 @@ class SpliceGraph(Graph):
 
 		# gets the vertex id associated with chrom, coord, and strand info
 		def get_vertex_id_from_loc(chrom, coord, strand, loc_df):
-			v = loc_df.loc[(loc_df.chrom==chrom)&(loc_df.coord==coord)&(loc_df.strand==strand)]
-			v = v['vertex_id'].tolist()[0]
+			v = loc_df.loc[(chrom, coord, strand), 'vertex_id']
 			return v
+
+		print('time to create dictionaries')
+		print("--- %s seconds ---" % (time.time() - start_time))
+		start_time = time.time()
 
 		# once we have all transcripts, make loc_df
 		locs = []
 		for edge_id, edge in edges.items():
 			chrom = edge['chrom']
 			strand = edge['strand']
+
+			v1 = edge['v1']
+			v2 = edge['v2']
+
 			# exon start
 			locs.append({'chrom': chrom,
-						 'coord': edge['v1'],
+						 'coord': v1,
 						 'strand': strand})
 			# exon end
 			locs.append({'chrom': chrom,
-						 'coord': edge['v2'],
+						 'coord': v2,
 						 'strand': strand})
+
 		loc_df = pd.DataFrame(locs)
 		loc_df.drop_duplicates(['chrom', 'coord', 'strand'], inplace=True)
 
@@ -387,12 +395,17 @@ class SpliceGraph(Graph):
 							   ascending=True,
 							   inplace=True)
 		elif strand == '-':
-			loc_df.sort_values(by='coord',
+			loc_df.sort_values(by='coord', 
 							   ascending=False, 
 							   inplace=True)
+
+		# set index to make querying table easier for populating 
+		# t_df and edge_df
 		loc_df['vertex_id'] = [i for i in range(len(loc_df.index))]
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
+		loc_df.set_index(['chrom', 'coord', 'strand'], inplace=True)
+
+		# testing
+		loc_df.to_csv('loc_df_test.csv')
 
 		# add loc_df-indexed path to transcripts
 		for _, t in transcripts.items():
@@ -412,7 +425,8 @@ class SpliceGraph(Graph):
 
 		# add introns by iterating through transcripts
 		for tid, t in transcripts.items():
-			if t['strand'] == '-':
+			strand = t['strand']
+			if strand == '-':
 				t['exons'].reverse()
 
 			# each exon-exon junction constitutes an intron
@@ -437,6 +451,12 @@ class SpliceGraph(Graph):
 		edges = [edge for eid, edge in edges.items()]
 		edge_df = pd.DataFrame(edges)
 		edge_df.drop_duplicates(['chrom', 'v1', 'v2', 'strand', 'edge_type'], inplace=True)
+		# edge_df['v1'] = edge_df['v1'].apply(pd.to_numeric)
+		# edge_df['v2'] = edge_df['v2'].apply(pd.to_numeric)
+		# edge_df['v1'] = pd.to_numeric(edge_df['v1'])
+		# edge_df['v2'] = pd.to_numeric(edge_df['v2'])
+
+		print(edge_df.dtypes)
 
 		# replace v1 and v2 with the actual vertex ids in edge_df
 		# and create the edge ids
@@ -457,9 +477,14 @@ class SpliceGraph(Graph):
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
 
-		print(loc_df)
-		print(edge_df)
-		print(t_df)
+		# finish formatting loc_df
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+
+
+		print(loc_df.head())
+		print(edge_df.head())
+		print(t_df.head())
 
 		# for t in transcripts:
 		# 	print(transcripts[t]['path'])

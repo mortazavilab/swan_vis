@@ -8,9 +8,9 @@ from SpliceGraph import SpliceGraph
 from utils import *
 import cProfile
 
-# gtf = '/Users/fairliereese/mortazavi_lab/ref/gencode.v24/gencode.v24.annotation.txt'
+gtf = '/Users/fairliereese/mortazavi_lab/ref/gencode.v24/gencode.v24.annotation.txt'
 # gtf = 'input_files/hippocampus_mapt.gtf'
-gtf = 'input_files/test_combine_2.gtf'
+# gtf = 'input_files/test_combine_2.gtf'
 sg = SpliceGraph()
 
 # print('dana')
