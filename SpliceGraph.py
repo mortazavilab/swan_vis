@@ -377,27 +377,36 @@ class SpliceGraph(Graph):
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		loc_df.drop_duplicates(['chrom', 'coord', 'strand'], inplace=True)
 
-		print(len(loc_df.index))
+		# print(len(loc_df.index))
 
-		# add introns by iterating through transcripts, and add them to the
-		# transcript's path
+		# add loc_df-indexed path to transcripts
+		for _, t in transcripts.items():
+			t['path'] = []
+			for e in t['exons']:
+				exon = edges[e]
+				chrom = exon['chrom']
+				v1 = exon['v1']
+				v2 = exon['v2']
+				strand = exon['strand']
+
+				v1 = loc_df.loc[(loc_df.chrom==chrom)&(loc_df.coord==v1)&(loc_df.strand==strand),'vertex_id'].tolist()[0]
+				v2 = loc_df.loc[(loc_df.chrom==chrom)&(loc_df.coord==v2)&(loc_df.strand==strand),'vertex_id'].tolist()[0]
+
+				t['path'].append(v1)
+				t['path'].append(v2)
+
+		# add introns by iterating through transcripts
 		for tid, t in transcripts.items():
 			if t['strand'] == '-':
 				t['exons'].reverse()
-			t['path'] = []
 
 			# each exon-exon junction constitutes an intron
-			for i in range(len(t['exons'])-1):
+			for i in range(len(t['exons'])-1):				
 
 				intron = [t['exons'][i], t['exons'][i+1]]
 				v1 = edges[intron[0]]['v2']
 				v2 = edges[intron[1]]['v1']
 				eid = '{}_{}_{}_{}_intron'.format(chrom, v1, v2, strand)
-
-				# add the first exon to the path, along with the 
-				# intron we're adding
-				t['path'].append(t['exons'][i])
-				t['path'].append(eid)
 
 				# if we haven't seen this intron before, add it
 				if eid not in edges:
@@ -409,13 +418,13 @@ class SpliceGraph(Graph):
 							'edge_type': 'intron'}}
 					edges.update(edge)
 
-			# add the last exon to the path
-			t['path'].append(t['exons'][-1])
-
 		# finish populating/formatting edge_df
 		edges = [edge for eid, edge in edges.items()]
 		edge_df = pd.DataFrame(edges)
 		edge_df.drop_duplicates(['chrom', 'v1', 'v2', 'strand', 'edge_type'], inplace=True)
+
+		# replace v1 and v2 with the actual vertex ids
+		
 
 		# finish populating/formatting t_df
 		transcripts = [transcript for tid, transcript in transcripts.items()]
