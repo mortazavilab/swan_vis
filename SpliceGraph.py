@@ -283,30 +283,18 @@ class SpliceGraph(Graph):
 		if not os.path.exists(gtf_file):
 			raise Exception('GTF file not found. Check path.')
 
-		# classes to hold transcripts and edges and their associated data
-		class Transcript():
-			def __init__(self, tid, gid, gname):
-				self.tid = tid 
-				self.gid = gid
-				self.gname = gname
-				self.exons = []
-		class Edge():
-			def __init__(self, exon_id, chrom, v1, v2,
-						 strand, edge_type):
-				self.exon_id = exon_id
-				self.chrom = chrom
-				self.strand = strand
+		# depending on the strand, determine the stard and stop
+		# coords of an intron or exon
+		def find_edge_start_stop(v1, v2, strand):
+			if strand == '-':
+				start = max([v1, v2])
+				stop = min([v1, v2])
+			elif strand == '+':
+				start = min([v1, v2])
+				stop = max([v1, v2])
+			return start, stop
 
-				# put start/stop in correct order depending on strand
-				if self.strand == '-':
-					self.start = max([v1, v2])
-					self.stop = min([v1, v2])
-				elif self.strand == '+':
-					self.start = min([v1, v2])
-					self.stop = max([v1, v2])
-
-				self.edge_type = edge_type
-
+		# dictionaries to hold unique edges and transcripts
 		transcripts = {}
 		edges = {}
 
@@ -340,38 +328,48 @@ class SpliceGraph(Graph):
 					tid = attributes['transcript_id']
 					gid = attributes['gene_id']
 					gname = attributes['gene_name']
-					transcript = Transcript(tid, gid, gname)
 
 					# add transcript to dictionary 
-					transcripts[tid] = transcript
+					transcript = {tid: {'gid': gid,
+										'gname': gname,
+										'tid': tid,
+										'strand': strand,
+										'exons': []}}
+					transcripts.update(transcript)
 					
 				# exon entry
 				elif entry_type == "exon":
 					attributes = get_fields(fields)
-					eid = '{}_{}_{}_{}'.format(chrom, start, stop, strand)
+					start, stop = find_edge_start_stop(start, stop, strand)
+					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
 					tid = attributes['transcript_id']	
 
 					# add novel exon to dictionary 
 					if eid not in edges:
-						edges[eid] = Edge(eid, chrom, start, stop, 
-										  strand, 'exon')
+						edge = {eid: {'eid': eid,
+									  'chrom': chrom,
+									  'v1': start,
+									  'v2': stop,
+									  'strand': strand,
+									  'edge_type': 'exon'}}
+						edges.update(edge)
 			   
 			   		# add this exon to the transcript's list of exons
 					if tid in transcripts:
-						transcripts[tid].exons.append(eid)
+						transcripts[tid]['exons'].append(eid)
 
 		# once we have all transcripts, make loc_df
 		locs = []
 		for edge_id, edge in edges.items():
-			chrom = edge.chrom
-			strand = edge.strand
+			chrom = edge['chrom']
+			strand = edge['strand']
 			# exon start
 			locs.append({'chrom': chrom,
-						 'coord': edge.start,
+						 'coord': edge['v1'],
 						 'strand': strand})
 			# exon end
 			locs.append({'chrom': chrom,
-						 'coord': edge.stop,
+						 'coord': edge['v2'],
 						 'strand': strand})
 		loc_df = pd.DataFrame(locs)
 		loc_df['vertex_id'] = loc_df.index
@@ -381,35 +379,61 @@ class SpliceGraph(Graph):
 
 		print(len(loc_df.index))
 
-		# 
-		def get_vertex_id_from_loc(x, loc_df, col):
-			return loc_df.loc[(loc_df.chrom == x.chrom)&(loc_df.coord==x[col])&(loc_df.strand==x.strand), 'vertex_id']
+		# add introns by iterating through transcripts, and add them to the
+		# transcript's path
+		for tid, t in transcripts.items():
+			if t['strand'] == '-':
+				t['exons'].reverse()
+			t['path'] = []
 
+			# each exon-exon junction constitutes an intron
+			for i in range(len(t['exons'])-1):
 
-		# make and flesh out edge_df from the edges/transcripts dictionary
-		for tid, transcript in transcripts.items():
-			introns = [(transcript.exons[i],transcript.exons[i+1])
-				for i in range(len(transcript.exons)-1)]
-			for intron in introns:
-				start = edges[intron[0]].stop
-				stop = edges[intron[1]].start
-				chrom = edges[intron[0]].chrom
-				strand = edges[intron[0]].strand
-				eid = '{}_{}_{}_{}'.format(chrom, start, stop, strand)
-				edges[eid] = Edge(eid, chrom, start, stop,
-								  strand, 'intron')
+				intron = [t['exons'][i], t['exons'][i+1]]
+				v1 = edges[intron[0]]['v2']
+				v2 = edges[intron[1]]['v1']
+				eid = '{}_{}_{}_{}_intron'.format(chrom, v1, v2, strand)
+
+				# add the first exon to the path, along with the 
+				# intron we're adding
+				t['path'].append(t['exons'][i])
+				t['path'].append(eid)
+
+				# if we haven't seen this intron before, add it
+				if eid not in edges:
+					edge = {eid: {'eid': eid,
+							'chrom': chrom,
+							'v1': v1,
+							'v2': v2,
+							'strand': strand,
+							'edge_type': 'intron'}}
+					edges.update(edge)
+
+			# add the last exon to the path
+			t['path'].append(t['exons'][-1])
+
+		# finish populating/formatting edge_df
+		edges = [edge for eid, edge in edges.items()]
 		edge_df = pd.DataFrame(edges)
-		edge_df['v1'] = edge_df.apply(lambda x: get_vertex_id_from_loc(x, loc_df, 'start'), axis=1)
-		edge_df['v2'] = edge_df.apply(lambda x: get_vertex_id_from_loc(x, loc_df, 'stop'), axis=1)
-		edge_df['edge_id'] = edge_df.apply(lambda x: (x.v1, x.v2), axis=1)
+		edge_df.drop_duplicates(['chrom', 'v1', 'v2', 'strand', 'edge_type'], inplace=True)
 
-		print(loc_df.head())
-		print(edge_df.head())
+		# finish populating/formatting t_df
+		transcripts = [transcript for tid, transcript in transcripts.items()]
+		t_df = pd.DataFrame(transcripts)
+		t_df.drop('exons', axis=1, inplace=True)
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
 
+		print(loc_df)
+		print(edge_df)
+		print(t_df)
+
+		# for t in transcripts:
+		# 	print(transcripts[t]['path'])
 
 		print("--- %s seconds ---" % (time.time() - start_time))
 
-		return transcripts, exons
+		return transcripts, edges
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def create_dfs_db(self, db):
