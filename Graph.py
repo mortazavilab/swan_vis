@@ -158,6 +158,26 @@ class Graph:
 		self.edge_df.sort_values(by='v1', inplace=True)
 
 	##########################################################################
+	####### Functions to switch back and forth between dfs and dicts #########
+	##########################################################################
+
+	# convert loc_df, edge_df, and t_df to dictionaries
+	def dfs_to_dicts(self):
+		self.loc_df = self.loc_df.to_dict('index')
+		self.edge_df = self.edge_df.to_dict('index')
+		self.t_df = self.t_df.to_dict('index')
+
+	# convert dictionary versions of loc_df, edge_df, and t_df to dfs
+	def dicts_to_dfs(self):
+		self.loc_df = pd.DataFrame.from_dict(self.loc_df, orient='index')
+		self.edge_df = pd.DataFrame.from_dict(self.edge_df, orient='index')
+		self.t_df = pd.DataFrame.from_dict(self.t_df, orient='index')
+
+		self.loc_df.index.names = ['vertex_id']
+		self.edge_df.index.names = ['edge_id']
+		self.t_df.index.names = ['tid']
+
+	##########################################################################
 	############################# Other utilities ############################
 	##########################################################################
 

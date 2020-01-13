@@ -574,7 +574,7 @@ class SpliceGraph(Graph):
 
 		# label each TSS and TES
 		paths = t_df.path.tolist()
-		tss = np.unique([path[0] for path in paths])
+		tss = np.unique([path[0] for path in paths])		
 		loc_df.loc[tss, 'TSS'] = True
 		tes = np.unique([path[-1] for path in paths])
 		loc_df.loc[tes, 'TES'] = True
