@@ -67,6 +67,7 @@ class Graph:
 
 	# update ids according to coordinates in loc_df, edge_df, and t_df
 	def update_ids(self):
+
 		id_map = self.get_ordered_id_map()
 		self.update_loc_df_ids(id_map)
 		self.update_edge_df_ids(id_map)
@@ -75,18 +76,21 @@ class Graph:
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
 
-		# get the strandedness of entry
-		strand = self.loc_df.loc[self.loc_df.index[0], 'strand']
+		# split loc_df into + and - strand parts
+		plus_loc_df = self.loc_df.loc[self.loc_df.strand == '+'].copy(deep=True)
+		minus_loc_df = self.loc_df.loc[self.loc_df.strand == '-'].copy(deep=True)
 
-		# sort based on coord depending on strandedness
-		if strand == '+':
-			self.loc_df.sort_values(by='coord', 
-									ascending=True,
-									inplace=True)
-		elif strand == '-':
-			self.loc_df.sort_values(by='coord',
-									ascending=False,
-									inplace=True)
+		# sort each of the dfs by chrom, coord either ascending
+		# or descending based on strand
+		plus_loc_df.sort_values(['chrom', 'coord'],
+								 ascending=[True, True],
+								 inplace=True)
+		minus_loc_df.sort_values(['chrom', 'coord'],
+								  ascending=[True, False],
+								  inplace=True)
+
+		# concatenate the two dfs
+		self.loc_df = pd.concat([plus_loc_df, minus_loc_df])
 
 		# dictionary mapping vertex_id to new_id
 		self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]

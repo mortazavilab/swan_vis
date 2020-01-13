@@ -11,6 +11,7 @@ from utils import *
 from PlottedGraph import PlottedGraph 
 from Graph import Graph
 from Report import *
+import time
 
 class SpliceGraph(Graph):
 
@@ -82,10 +83,22 @@ class SpliceGraph(Graph):
 
 		# order node ids by genomic position, add node types,
 		# and create graph
+		start_time = time.time()
 		self.update_ids()
+		print('time to update ids')
+		print(time.time()-start_time)
+		start_time = time.time()
 		self.order_edge_df()
+		print('time to order edge df')
+		print(time.time() - start_time)
+		start_time = time.time()
 		self.get_loc_types()
+		print('time to get loc types')
+		print(time.time()-start_time)
+		start_time = time.time()
 		self.create_graph_from_dfs()
+		print('time to create graph from dfs')
+		print(time.time()-start_time)
 
 		# update graph metadata
 		self.datasets.append(col)
@@ -278,6 +291,8 @@ class SpliceGraph(Graph):
 	# adapted from Dana Wyman and TALON
 	def create_dfs_gtf(self, gtf_file):
 
+		start_time = time.time()
+
 		# make sure file exists
 		if not os.path.exists(gtf_file):
 			raise Exception('GTF file not found. Check path.')
@@ -397,7 +412,6 @@ class SpliceGraph(Graph):
 					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
 
 				# add exon locs to path
-				print(edge_id)
 				t['path'] += list(edge_id)
 
 				# if this isn't the last exon, we also needa add an intron
@@ -442,6 +456,9 @@ class SpliceGraph(Graph):
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
+
+		print('time to create dfs:')
+		print(time.time()-start_time)
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def create_dfs_db(self, db):
