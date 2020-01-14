@@ -580,9 +580,6 @@ class SpliceGraph(Graph):
 		locs.drop(['coord', 'vertex_id'], axis=1, inplace=True)
 		locs = locs.to_dict('index')
 
-		t_df.reset_index(drop=True, inplace=True)
-		t_df.set_index('gid', inplace=True)
-
 		# label each TSS and TES
 		paths = t_df.path.tolist()
 		tss = np.unique([path[0] for path in paths])
@@ -592,32 +589,25 @@ class SpliceGraph(Graph):
 		internal = np.unique([n for path in paths for n in path[1:-1]])
 		locs = label_node_types(locs, internal, 'internal')
 
-		for gid in t_df.index.unique().tolist():
+		# also create a dictionary of gid: [path1, ... pathn] to speed up
+		path_dict = defaultdict(list)
+		for tid, entry in t_df.iterrows():
+			path_dict[entry.gid].append(entry.path)
 
-			gene_paths = t_df.loc[gid, 'path']
-			if type(gene_paths) != list:
-				gene_paths = gene_paths.tolist()
-			else: 
-				gene_paths = [gene_paths]
-
-			if len(gene_paths) > 1:
-				tss = [path[0] for path in gene_paths] 
-				tes = [path[-1] for path in gene_paths] 
-				if len(set(tss)) > 1:  
+		# label alt TES/TSS
+		for gid in path_dict.keys():
+			paths = path_dict[gid]
+			if len(paths) > 1:
+				tss = np.unique([path[0] for path in paths])
+				tes = np.unique([path[-1] for path in paths])
+				if len(tss) > 1:  
 					locs = label_node_types(locs, tss, 'alt_TSS')
-				if len(set(tes)) > 1:
+				if len(tes) > 1:
 					locs = label_node_types(locs, tes, 'alt_TES')
 
-		# create df from locs dict 
+		# create df from locs dict and append old loc_df with node types
 		locs = pd.DataFrame.from_dict(locs, orient='index')
-
-		# append old loc_df with node types loc_df
 		loc_df = pd.concat([loc_df, locs], axis=1)
-
-		# reformat t_df correctly
-		t_df.reset_index(inplace=True)
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
 
 		self.loc_df = loc_df
 		self.t_df = t_df
