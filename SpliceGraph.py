@@ -562,43 +562,65 @@ class SpliceGraph(Graph):
 	# add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
 	def get_loc_types(self):
 
+		def label_node_types(locs, vertex_ids, node_type):
+			for vertex_id in vertex_ids:
+				locs[vertex_id][node_type] = True
+			return locs 
+
 		loc_df = self.loc_df
 		t_df = self.t_df
 
-		# label each location as internal off the bat, and not as TSS/TES
-		loc_df['internal'] = False
-		loc_df['TSS'] = False
-		loc_df['TES'] = False
-		loc_df['alt_TSS'] = False
-		loc_df['alt_TES'] = False
+		# create a dictionary to hold loc info to speed stuff up
+		locs = loc_df.loc[:, ['vertex_id', 'coord']].copy(deep=True)
+		locs['internal'] = False
+		locs['TSS'] = False
+		locs['TES'] = False
+		locs['alt_TSS'] = False
+		locs['alt_TES'] = False
+		locs.drop(['coord', 'vertex_id'], axis=1, inplace=True)
+		locs = locs.to_dict('index')
+
+		t_df.reset_index(drop=True, inplace=True)
+		t_df.set_index('gid', inplace=True)
 
 		# label each TSS and TES
 		paths = t_df.path.tolist()
-		tss = np.unique([path[0] for path in paths])		
-		loc_df.loc[tss, 'TSS'] = True
+		tss = np.unique([path[0] for path in paths])
+		locs = label_node_types(locs, tss, 'TSS')
 		tes = np.unique([path[-1] for path in paths])
-		loc_df.loc[tes, 'TES'] = True
+		locs = label_node_types(locs, tes, 'TES')
 		internal = np.unique([n for path in paths for n in path[1:-1]])
-		loc_df.loc[internal, 'internal'] = True
+		locs = label_node_types(locs, internal, 'internal')
 
-		# label each alt TSS and alt TES for each gene
-		for g in t_df.gid.unique().tolist():
-			gene_entries = t_df.loc[t_df.gid == g]
+		for gid in t_df.index.unique().tolist():
 
-			# genes that have more than one transcript are alt TSS/TES candidates
-			if len(gene_entries.index) != 1: 
+			gene_paths = t_df.loc[gid, 'path']
+			if type(gene_paths) != list:
+				gene_paths = gene_paths.tolist()
+			else: 
+				gene_paths = [gene_paths]
 
-				paths = gene_entries.path.tolist()
-				tss = [path[0] for path in paths]
-				tes = [path[-1] for path in paths]
+			if len(gene_paths) > 1:
+				tss = [path[0] for path in gene_paths] 
+				tes = [path[-1] for path in gene_paths] 
+				if len(set(tss)) > 1:  
+					locs = label_node_types(locs, tss, 'alt_TSS')
+				if len(set(tes)) > 1:
+					locs = label_node_types(locs, tes, 'alt_TES')
 
-				# alt TSS/TES
-				if len(set(tss)) > 1: 
-					loc_df.loc[tss, 'alt_TSS'] = True
-				if len(set(tes)) > 1: 
-					loc_df.loc[tes, 'alt_TES'] = True
+		# create df from locs dict 
+		locs = pd.DataFrame.from_dict(locs, orient='index')
+
+		# append old loc_df with node types loc_df
+		loc_df = pd.concat([loc_df, locs], axis=1)
+
+		# reformat t_df correctly
+		t_df.reset_index(inplace=True)
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
 
 		self.loc_df = loc_df
+		self.t_df = t_df
 
 	# convert talon query into edge path
 	def get_db_edge_paths(self, paths):
