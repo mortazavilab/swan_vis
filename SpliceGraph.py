@@ -83,6 +83,7 @@ class SpliceGraph(Graph):
 
 		# order node ids by genomic position, add node types,
 		# and create graph
+		real_start = time.time()
 		start_time = time.time()
 		self.update_ids()
 		print('time to update ids')
@@ -99,6 +100,8 @@ class SpliceGraph(Graph):
 		self.create_graph_from_dfs()
 		print('time to create graph from dfs')
 		print(time.time()-start_time)
+		print('total time:')
+		print(time.time()-real_start)
 
 		# update graph metadata
 		self.datasets.append(col)

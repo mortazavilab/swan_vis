@@ -69,9 +69,17 @@ class Graph:
 	def update_ids(self):
 
 		id_map = self.get_ordered_id_map()
+		
+		# convert dfs into dicts for the next steps
+		self.dfs_to_dicts()
+
+		# update the ids according to id_map
 		self.update_loc_df_ids(id_map)
 		self.update_edge_df_ids(id_map)
 		self.update_t_df_paths(id_map)
+
+		# convert back to dfs
+		self.dicts_to_dfs()		
 
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
@@ -110,36 +118,36 @@ class Graph:
 	# update vertex ids in loc_df
 	def update_loc_df_ids(self, id_map):
 
-		# add new id to df and use it to update vertex id columns
-		self.loc_df['new_id'] = self.loc_df.apply(
-			lambda x: id_map[x.vertex_id], axis=1)
-		self.loc_df.vertex_id = self.loc_df.new_id
-		self.loc_df.drop('new_id', axis=1, inplace=True)
-		self.loc_df.reset_index(drop=True, inplace=True)
-		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
-		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
+		loc_df = {}
+		for old_id, new_id in id_map.items():
+			loc_df[new_id] = self.loc_df[old_id]
+			loc_df[new_id]['vertex_id'] = new_id
+		self.loc_df = loc_df
 
 	# update vertex ids in edge_df
 	def update_edge_df_ids(self, id_map):
 
-		# remove old edge_id index and replace edge_id, v1, v2 
-		# with values from id_map
-		self.edge_df.reset_index(drop=True, inplace=True)
-		self.edge_df.v1 = self.edge_df.apply(
-			lambda x: id_map[x.v1], axis=1)
-		self.edge_df.v2 = self.edge_df.apply(
-			lambda x: id_map[x.v2], axis=1)
-		self.edge_df.edge_id = self.edge_df.apply(
-			lambda x: (x.v1, x.v2), axis=1)
-
-		self.edge_df = create_dupe_index(self.edge_df, 'edge_id')
-		self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
+		edge_df = {}
+		for edge_id, item in self.edge_df.items():
+			new_id = (id_map[edge_id[0]],id_map[edge_id[1]])
+			edge_df[new_id] = item
+			edge_df[new_id]['v1'] = new_id[0]
+			edge_df[new_id]['v2'] = new_id[1]
+			edge_df[new_id]['edge_id'] = new_id
+		self.edge_df = edge_df
 
 	# update vertex ids in t_df
 	def update_t_df_paths(self, id_map):
-		# update vertex ids in the path
-		self.t_df.path = self.t_df.apply(
-			lambda x: [id_map[n] for n in x.path], axis=1)
+
+		t_df = {}
+		for tid, item in self.t_df.items():
+			path = item['path']
+			new_path = []
+			for n in path:
+				new_path.append(id_map[n])
+			t_df[tid] = item
+			t_df[tid]['path'] = new_path
+		self.t_df = t_df
 
 	# create the graph object from the dataframes
 	def create_graph_from_dfs(self):
@@ -169,12 +177,19 @@ class Graph:
 
 	# convert dictionary versions of loc_df, edge_df, and t_df to dfs
 	def dicts_to_dfs(self):
-		self.loc_df = pd.DataFrame.from_dict(self.loc_df, orient='index')
-		self.edge_df = pd.DataFrame.from_dict(self.edge_df, orient='index')
-		self.t_df = pd.DataFrame.from_dict(self.t_df, orient='index')
 
+		# loc_df
+		self.loc_df = pd.DataFrame.from_dict(self.loc_df, orient='index')
 		self.loc_df.index.names = ['vertex_id']
-		self.edge_df.index.names = ['edge_id']
+
+		# pandas interprets the tuple as a multiindex so we need to fix it
+		self.edge_df = pd.DataFrame.from_dict(self.edge_df, orient='index')
+		self.edge_df.reset_index(inplace=True)
+		self.edge_df = create_dupe_index(self.edge_df, 'edge_id')
+		self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
+
+		# t_df
+		self.t_df = pd.DataFrame.from_dict(self.t_df, orient='index')
 		self.t_df.index.names = ['tid']
 
 	##########################################################################
@@ -201,8 +216,6 @@ class Graph:
 		if datasets:
 			if type(datasets) != list:
 				datasets = [datasets]
-			print(datasets)
-			print(type(datasets))
 			self.check_abundances(datasets)
 			counts_cols = []
 			for d in datasets:
