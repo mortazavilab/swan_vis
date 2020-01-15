@@ -7,8 +7,8 @@ sys.path.append(lib_path)
 import SpliceGraph as sg
 import PlottedGraph as pg
 from utils import *
-from plotting_tools import * 
 
+class TestUtils(object):
 # tests random utilities, from the utils.py file
 	def test_process_abundance_file(self):
 		file = 'input_files/test_abundance.tsv'
@@ -28,8 +28,8 @@ from plotting_tools import *
 		print(tpm_sum)
 		assert (10**6-1) < tpm_sum < (10**6+1)
 
-	def test_get_tpm_cols(self):
-
+	# def test_get_tpm_cols(self):
+	
 
 def check_pairs(control, test):
 	print('control')

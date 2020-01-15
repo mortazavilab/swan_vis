@@ -6,7 +6,6 @@ sys.path.append('../../refactor_splice_graph/')
 import SpliceGraph as sw
 import PlottedGraph as pg
 from utils import *
-from plotting_tools import * 
 import networkx as nx
 import math
 
@@ -195,79 +194,16 @@ class TestSpliceGraph(object):
 		print('internal')
 		check_pairs(control_internal, test_internal)
 
-	# This stuff lives in test_graph.py now because these methods live there now
-	# def test_update_ids(self):
-	# 	a = get_dummy_sg()
-	# 	a.update_ids()
-
-	# 	# loc_df
-	# 	print('loc_df')
-	# 	test = a.loc_df.apply(
-	# 		lambda x: (x.vertex_id, x.coord), axis=1)
-	# 	control = [(0,1),(1,2),(2,3)]
-	# 	check_pairs(control, test)
-
-	# 	# edge_df
-	# 	print('edge_df')
-	# 	test = a.edge_df.edge_id.tolist()
-	# 	control = [(0,1),(0,2),(2,1)]
-	# 	check_pairs(control, test)
-
-	# 	# t_df
-	# 	print('t_df')
-	# 	test = a.t_df.path.tolist()
-	# 	test = [tuple(path) for path in test]
-	# 	control = [(0,2,1),(2,1),(0,2)]
-	# 	check_pairs(control, test)
-
-	# def test_update_loc_df_ids(self):
-	# 	a = get_dummy_sg()
-	# 	id_map = a.get_ordered_id_map()
-	# 	a.update_loc_df_ids(id_map)
-
-	# 	test = a.loc_df.apply(
-	# 		lambda x: (x.vertex_id, x.coord), axis=1)
-	# 	control = [(0,1),(1,2),(2,3)]
-	# 	check_pairs(control, test)
-
-	# def test_update_edge_df_ids(self):
-	# 	a = get_dummy_sg()
-	# 	id_map = a.get_ordered_id_map()
-	# 	a.update_edge_df_ids(id_map)
-
-	# 	test = a.edge_df.edge_id.tolist()
-	# 	control = [(0,1),(0,2),(2,1)]
-	# 	check_pairs(control, test)
-
-	# def test_update_t_df_paths(self):
-	# 	a = get_dummy_sg()
-	# 	id_map = a.get_ordered_id_map()
-	# 	a.update_t_df_paths(id_map)
-
-	# 	test = a.t_df.path.tolist()
-	# 	test = [tuple(path) for path in test]
-	# 	control = [(0,2,1),(2,1),(0,2)]
-	# 	check_pairs(control, test)		
-
-	# # TODO extend this to work on multiple genes,
-	# # will require a more robust test
-	# def test_get_ordered_id_map(self):
-	# 	a = get_dummy_sg()
-	# 	id_map = a.get_ordered_id_map()
-
-	# 	test = list(id_map.items())
-	# 	control = [(0,0),(1,2),(2,1)]
-	# 	check_pairs(control, test)
-
 	############################################################################
 	###################### Ordering transcripts tests ##########################
 	############################################################################
 
 	def test_order_transcripts(self):
 		a = get_dummy_sg()
-		a.t_df['a_counts'] =[0,0,12]
-		a.t_df['b_counts'] = [1,0,14]
-		a.counts = ['a_counts', 'b_counts']
+		a.t_df['a_tpm'] =[0,0,12]
+		a.t_df['b_tpm'] = [1,0,14]
+		a.t_df['a_tpm']
+		a.tpm = ['a_tpm', 'b_tpm']
 
 		# order by expression level
 		a.order_transcripts(order='expression')

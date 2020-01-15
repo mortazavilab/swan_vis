@@ -56,6 +56,7 @@ def get_field_value(key, fields):
 # creates a dictionary of the last field of a gtf
 # adapted from Dana Wyman
 def get_fields(fields):
+
     attributes = {}
 
     description = fields.strip()

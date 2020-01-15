@@ -7,7 +7,6 @@ sys.path.append('../../refactor_splice_graph/')
 from SpliceGraph import SpliceGraph
 from PlottedGraph import PlottedGraph
 from utils import *
-from plotting_tools import * 
 import networkx as nx
 import math
 

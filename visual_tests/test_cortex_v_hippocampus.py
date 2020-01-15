@@ -6,6 +6,7 @@ sys.path.append(lib_path+'/utils/')
 sys.path.append(lib_path)
 from SpliceGraph import SpliceGraph
 from utils import *
+import time
 # from plotting_tools import * 
 # from report_tools import *
 
@@ -95,7 +96,7 @@ sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 # 			  	'tid'].tolist()
 # sg.t_df.to_csv('test_t_df.csv')	
 # print(report_tids)
-sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', tpm=True)
+# sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', tpm=True)
 # sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression')
 # sg.gen_report('ENSMUSG00000018411.17', 'figures/test_mapt', order='expression', browser=True)
 

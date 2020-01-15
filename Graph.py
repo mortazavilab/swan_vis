@@ -66,10 +66,13 @@ class Graph:
 	##########################################################################
 
 	# update ids according to coordinates in loc_df, edge_df, and t_df
-	def update_ids(self):
+	def update_ids(self, id_map=None):
 
-		id_map = self.get_ordered_id_map()
-		
+		# if the user didn't already input an id map, just order
+		# according to genomic position
+		if not id_map:
+			id_map = self.get_ordered_id_map()
+
 		# convert dfs into dicts for the next steps
 		self.dfs_to_dicts()
 
@@ -163,7 +166,7 @@ class Graph:
 
 	# order edge df based on source id
 	def order_edge_df(self):
-		self.edge_df.sort_values(by='v1', inplace=True)
+		self.edge_df.sort_values(by=['v1', 'v2'], inplace=True)
 
 	##########################################################################
 	####### Functions to switch back and forth between dfs and dicts #########
@@ -184,7 +187,7 @@ class Graph:
 
 		# pandas interprets the tuple as a multiindex so we need to fix it
 		self.edge_df = pd.DataFrame.from_dict(self.edge_df, orient='index')
-		self.edge_df.reset_index(inplace=True)
+		self.edge_df.reset_index(drop=True, inplace=True)
 		self.edge_df = create_dupe_index(self.edge_df, 'edge_id')
 		self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
 

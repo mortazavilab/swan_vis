@@ -6,7 +6,6 @@ sys.path.append('../../refactor_splice_graph/')
 import SpliceGraph as sg
 import PlottedGraph as pg
 from utils import *
-from plotting_tools import * 
 import networkx as nx
 
 class TestPlottedGraph(object):

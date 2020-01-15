@@ -83,7 +83,6 @@ class SpliceGraph(Graph):
 
 		# order node ids by genomic position, add node types,
 		# and create graph
-		real_start = time.time()
 		start_time = time.time()
 		self.update_ids()
 		print('time to update ids')
@@ -100,8 +99,6 @@ class SpliceGraph(Graph):
 		self.create_graph_from_dfs()
 		print('time to create graph from dfs')
 		print(time.time()-start_time)
-		print('total time:')
-		print(time.time()-real_start)
 
 		# update graph metadata
 		self.datasets.append(col)
@@ -142,6 +139,28 @@ class SpliceGraph(Graph):
 	# merge dfs from two SpliceGraph objects
 	def merge_dfs(self, b, b_col):
 
+		# stuff I'm testing
+		# # what locations correspond between the datasets?
+		# self.merge_loc_dfs(b, b_col)
+		# id_map = self.get_merged_id_map()
+
+		# # update the ids in b to make edge_df, t_df merging easier
+		# b.update_ids(id_map=id_map)
+
+		# # merge edge_df and t_df
+		# self.merge_edge_dfs(b, b_col)
+		# self.merge_t_dfs(b, b_col)
+
+		# print(self.loc_df.head())
+		# print(self.loc_df.columns)
+		# print()
+		# print(self.edge_df.head())
+		# print(self.edge_df.columns)
+		# print()
+		# print(self.t_df.head())
+		# print(self.t_df.columns)
+
+		# old stuff that'll work but'll be slow af
 		# loc_df merging/updating 
 		self.merge_loc_dfs(b, b_col)
 		id_map = self.get_merged_id_map()
@@ -223,6 +242,10 @@ class SpliceGraph(Graph):
 		d_cols = self.datasets+[b_col]
 		edge_df[d_cols] = edge_df[d_cols].fillna(value=False, axis=1)
 
+		# remake index
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+		
 		self.edge_df = edge_df
 
 	# update loc_df vertex ids from id_map for the merged dfs
@@ -231,6 +254,10 @@ class SpliceGraph(Graph):
 			lambda x: int(x.vertex_id_a) if x.vertex_id_b not in id_map.keys()
 									else id_map[x.vertex_id_b], axis=1)
 		self.loc_df.drop(['vertex_id_a', 'vertex_id_b'], axis=1, inplace=True)
+
+		# remake index
+		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
+		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
 
 	# merge loc_dfs on coord, chrom, strand
 	def merge_loc_dfs(self, b, b_col):
@@ -241,7 +268,7 @@ class SpliceGraph(Graph):
 		self.loc_df.drop(node_types, axis=1, inplace=True)
 		self.loc_df.reset_index(drop=True, inplace=True)
 
-		b.loc_df.drop(node_types, axis=1, inplace=True)
+		# b.loc_df.drop(node_types, axis=1, inplace=True)
 		b.loc_df.reset_index(drop=True, inplace=True)
 		b.loc_df[b_col] = True
 
@@ -293,8 +320,6 @@ class SpliceGraph(Graph):
 	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
 	# adapted from Dana Wyman and TALON
 	def create_dfs_gtf(self, gtf_file):
-
-		start_time = time.time()
 
 		# make sure file exists
 		if not os.path.exists(gtf_file):
@@ -459,9 +484,6 @@ class SpliceGraph(Graph):
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
-
-		print('time to create dfs:')
-		print(time.time()-start_time)
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
 	def create_dfs_db(self, db):

@@ -103,7 +103,9 @@ class TestGraph(object):
 	def test_update_loc_df_ids(self):
 		a = get_dummy_sg()
 		id_map = a.get_ordered_id_map()
+		a.dfs_to_dicts()
 		a.update_loc_df_ids(id_map)
+		a.dicts_to_dfs()
 
 		test = a.loc_df.apply(
 			lambda x: (x.vertex_id, x.coord), axis=1)
@@ -114,7 +116,9 @@ class TestGraph(object):
 	def test_update_edge_df_ids(self):
 		a = get_dummy_sg()
 		id_map = a.get_ordered_id_map()
+		a.dfs_to_dicts()
 		a.update_edge_df_ids(id_map)
+		a.dicts_to_dfs()
 
 		test = a.edge_df.edge_id.tolist()
 		control = [(0,1),(0,2),(2,1)]
@@ -124,7 +128,9 @@ class TestGraph(object):
 	def test_update_t_df_paths(self):
 		a = get_dummy_sg()
 		id_map = a.get_ordered_id_map()
+		a.dfs_to_dicts()
 		a.update_t_df_paths(id_map)
+		a.dicts_to_dfs()
 
 		test = a.t_df.path.tolist()
 		test = [tuple(path) for path in test]
