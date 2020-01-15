@@ -6,6 +6,7 @@ import os
 import copy
 from collections import defaultdict
 import sqlite3
+import time
 
 # creates the duplicate index
 def create_dupe_index(df, ind_name):
@@ -86,14 +87,21 @@ def process_abundance_file(file, cols):
 	df = df[keep_cols]
 
 	# get the counts
-	df['counts'] = df.apply(lambda x: sum(x[cols]), axis=1)
+	start_time = time.time()
+	df['counts'] = df[cols].sum(axis=1)
+	# df['counts'] = df.apply(lambda x: sum(x[cols]), axis=1)
+	print('time to sum counts')
+	print(time.time()-start_time)
 
 	# get tpms
+	start_time = time.time()
 	for col in cols: 
 		total_counts = df[col].sum()
 		df['{}_tpm'.format(col)] = df.apply(lambda x: (x[col]*1000000)/total_counts, axis=1)
 	cols = ['{}_tpm'.format(col) for col in cols]
 	df['tpm'] = df[cols].mean(axis=1)
+	print('time to calc tpms')
+	print(time.time()-start_time)
 
 	# set up for merging
 	df.drop(cols, axis=1, inplace=True)

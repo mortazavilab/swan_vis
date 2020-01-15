@@ -76,10 +76,10 @@ sg.add_dataset('hippocampus',
 # sg.plot_graph(indicate_novel=True)
 # sg.save_fig('figures/test_mapt_novel.png')
 
-sg.plot_transcript_path('ENSMUST00000106992.9')
-sg.save_fig('figures/test_mapt_ENSMUST00000106992.9.png')
-sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
-sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
+# sg.plot_transcript_path('ENSMUST00000106992.9')
+# sg.save_fig('figures/test_mapt_ENSMUST00000106992.9.png')
+# sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
+# sg.save_fig('figures/test_mapt_ENSMUST00000106992_browser.png')
 
 # print(sg.t_df.head())
 
