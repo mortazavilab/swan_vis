@@ -18,9 +18,30 @@ class TestMergeSGs(object):
 		sg.add_dataset('b', gtf=b_gtf)
 		sg.order_transcripts()
 
-		print(sg.loc_df[['chrom', 'coord', 'strand', 'a', 'b']])
-		print(sg.edge_df[['edge_type', 'a', 'b']])
-		print(sg.t_df[['path', 'a', 'b']])
+		print(sg.loc_df.head())
+		print(sg.edge_df.head())
+		print(sg.t_df.head())
+
+		# print(sg.loc_df[['chrom', 'coord', 'strand', 'a', 'b']])
+		# print(sg.edge_df[['edge_type', 'a', 'b']])
+		# print(sg.t_df[['path', 'a', 'b']])
+
+		# check that the format of dfs are ok
+		assert sg.loc_df.index.names == ['vertex_id']
+		control = ['coord', 'chrom', 'strand', 'a', 'b', 'vertex_id',
+				   'internal', 'TSS', 'TES', 'alt_TSS', 'alt_TES'] 
+		test = sg.loc_df.columns.tolist()
+		check_pairs(control, test)
+
+		assert sg.edge_df.index.names == ['edge_id']
+		control = ['v1', 'v2', 'edge_type', 'strand', 'a', 'b', 'edge_id'] 
+		test = sg.edge_df.columns.tolist()
+		check_pairs(control, test)
+
+		assert sg.t_df.index.names == ['tid']
+		control = ['tid', 'gid', 'gname', 'path', 'a', 'b']
+		test = sg.t_df.columns.tolist()
+		check_pairs(control, test)
 
 		# test that loc_df merging happened correctly
 		# query chr, coord, strand, a and b columns
@@ -136,6 +157,16 @@ class TestMergeSGs(object):
 		print('control b presence: ')
 		print(control)
 		assert b == control
+
+def check_pairs(control, test):
+	print()
+	print('control')
+	print(control)
+	print('test')
+	print(test)
+	for t in test:
+		assert t in control
+	assert len(test) == len(control)
 
 
 

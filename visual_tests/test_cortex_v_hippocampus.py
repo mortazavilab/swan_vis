@@ -45,21 +45,31 @@ import time
 # gen_report(merged, args, 'figures/mapt', browser=True, order='tss')
 # gen_report(merged, args, 'figures/mapt', order='tss')
 
-ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
+# ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
 
+# sg = SpliceGraph()
+# sg.add_annotation(gtf='input_files/annot_mapt.gtf')
+
+
+# # with abundances, takes longer to run
+# sg.add_dataset('cortex',
+# 				gtf='input_files/cortex_mapt.gtf',
+# 			    counts_file=ab_file,
+# 			    count_cols=['PB82', 'PB84'])
+# sg.add_dataset('hippocampus',
+# 			   gtf='input_files/hippocampus_mapt.gtf',
+# 			   counts_file=ab_file,
+# 			   count_cols=['PB83', 'PB85'])
+
+# sg.save_graph('input_files/cortex_hippocampus_mapt')
 sg = SpliceGraph()
-sg.add_annotation(gtf='input_files/annot_mapt.gtf')
+sg.load_graph('input_files/cortex_hippocampus_mapt.p')
+print()
+print(sg.loc_df.head())
+print(sg.edge_df.head())
+print(sg.t_df.head())
 
 
-# with abundances, takes longer to run
-sg.add_dataset('cortex',
-				gtf='input_files/cortex_mapt.gtf',
-			    counts_file=ab_file,
-			    count_cols=['PB82', 'PB84'])
-sg.add_dataset('hippocampus',
-			   gtf='input_files/hippocampus_mapt.gtf',
-			   counts_file=ab_file,
-			   count_cols=['PB83', 'PB85'])
 
 # # without abundances, much faster to run
 # sg.add_dataset('cortex',

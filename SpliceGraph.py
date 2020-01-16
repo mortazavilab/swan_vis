@@ -7,6 +7,7 @@ import math
 import copy
 from collections import defaultdict
 import sqlite3
+import pickle
 from utils import *
 from PlottedGraph import PlottedGraph 
 from Graph import Graph
@@ -151,6 +152,9 @@ class SpliceGraph(Graph):
 		self.merge_loc_dfs(b, b_col)
 		id_map = self.get_merged_id_map()
 		self.loc_df.drop(['vertex_id_a','vertex_id_b'], axis=1, inplace=True)
+		self.loc_df['vertex_id'] = self.loc_df.index
+		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
+		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
 
 		# update the ids in b to make edge_df, t_df merging easier
 		b.update_ids(id_map=id_map)
@@ -593,6 +597,8 @@ class SpliceGraph(Graph):
 		# create df from locs dict and append old loc_df with node types
 		locs = pd.DataFrame.from_dict(locs, orient='index')
 		loc_df = pd.concat([loc_df, locs], axis=1)
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
 
 		self.loc_df = loc_df
 		self.t_df = t_df
@@ -690,6 +696,37 @@ class SpliceGraph(Graph):
 								  ascending=ascending,
 								  inplace=True)
 			self.t_df.drop('end_coord', axis=1, inplace=True)
+
+	##########################################################################
+	######################## Finding "interesting" genes #####################
+	##########################################################################
+
+	##########################################################################
+	######################## Loading/saving SpliceGraphs #####################
+	##########################################################################
+
+	# saves a splice graph object in pickle format
+	def save_graph(self, prefix):
+		picklefile = open(prefix+'.p', 'ab')
+		pickle.dump(self, picklefile)
+		picklefile.close()
+
+	# loads a splice graph object from pickle form
+	def load_graph(self, fname):
+
+		picklefile = open(fname, 'rb')
+		graph = pickle.load(picklefile)
+
+		# assign SpliceGraph fields from file to self
+		self.loc_df = graph.loc_df
+		self.edge_df = graph.edge_df
+		self.t_df = graph.t_df
+		self.datasets = self.datasets
+		self.counts = self.counts
+		self.tpm = self.tpm
+		self.pg = self.pg
+
+		picklefile.close()
 
 	##########################################################################
 	############################ Plotting utilities ##########################
