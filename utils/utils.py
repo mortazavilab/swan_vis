@@ -95,6 +95,7 @@ def process_abundance_file(file, cols):
 
 	# get tpms
 	start_time = time.time()
+	## TODO potentially use groupby here to speed things up?
 	for col in cols: 
 		total_counts = df[col].sum()
 		df['{}_tpm'.format(col)] = df.apply(lambda x: (x[col]*1000000)/total_counts, axis=1)

@@ -701,6 +701,26 @@ class SpliceGraph(Graph):
 	######################## Finding "interesting" genes #####################
 	##########################################################################
 
+	# returns a list of genes that are "interesting"
+	def find_interesting_genes(self, how):
+
+		gene_dict = {}
+
+
+		if how == 'num_novel_isoforms':
+			self.t_df['known'] = self.t_df['annotation']
+			self.t_df['novel'] = [not i for i in self.t_df['annotation'].tolist()]
+			keep_cols = ['annotation', 'known', 'novel', 'gid']
+			g_df = self.t_df[keep_cols].groupby(['gid', 'annotation']).sum()
+
+			g_df['interestingness'] = (g_df.novel/g_df.known)*(g_df.known+g_df.novel)
+			print(g_df.head())
+
+			self.t_df.drop(['known', 'novel'], axis=1, inplace=True)
+
+			
+
+
 	##########################################################################
 	######################## Loading/saving SpliceGraphs #####################
 	##########################################################################

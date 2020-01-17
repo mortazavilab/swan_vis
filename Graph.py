@@ -47,6 +47,7 @@ class Graph:
 				raise Exception('Dataset {} not present in graph. '
 								'Datasets in graph are {}'.format(d, g_datasets))
 
+
 	# check that input datasets have abundance data in the Graph:
 	def check_abundances(self, datasets):
 
