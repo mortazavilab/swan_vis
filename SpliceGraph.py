@@ -704,22 +704,38 @@ class SpliceGraph(Graph):
 	# returns a list of genes that are "interesting"
 	def find_interesting_genes(self, how):
 
-		gene_dict = {}
-
-
 		if how == 'num_novel_isoforms':
-			self.t_df['known'] = self.t_df['annotation']
-			self.t_df['novel'] = [not i for i in self.t_df['annotation'].tolist()]
+
+			# get all the datasets, make sure we're not counting transcripts 
+			# that are only in the annotation
+			if 'annotation' not in self.datasets:
+				raise Exception('No annotation data in graph. Cannot ',
+					'determine isoform novelty.')
+			datasets = self.get_dataset_cols(include_annotation=False)
+			t_df = self.t_df.copy(deep=True)
+			t_df = t_df.loc[t_df[datasets].any(axis=1)]
+
+			# how many known and novel isoforms does each gene have
+			t_df['known'] = t_df.annotation
+			t_df['novel'] = [not i for i in t_df.annotation.tolist()]
 			keep_cols = ['annotation', 'known', 'novel', 'gid']
-			g_df = self.t_df[keep_cols].groupby(['gid', 'annotation']).sum()
+			g_df = t_df[keep_cols].groupby(['gid']).sum()
 
-			g_df['interestingness'] = (g_df.novel/g_df.known)*(g_df.known+g_df.novel)
-			print(g_df.head())
+			# create 'interestingness' column ranking how many novel 
+			# compared to known isoforms there are, also ranked by 
+			# number of total isoforms
+			g_df.known = g_df.known.astype('int32')
+			g_df.novel = g_df.novel.astype('int32')
+			g_df['interestingness'] = ((g_df.novel+1)/(g_df.known+1))*(g_df.known+g_df.novel)
+			g_df.sort_values(by='interestingness', ascending=False, inplace=True)
 
-			self.t_df.drop(['known', 'novel'], axis=1, inplace=True)
+		elif how == 'abundance_novel_isoforms':
+			pass
 
-			
-
+		if len(g_df.index) < 10:
+			return g_df.index.tolist(), g_df
+		else:
+			return g_df.index.tolist()[:10], g_df
 
 	##########################################################################
 	######################## Loading/saving SpliceGraphs #####################
@@ -741,10 +757,10 @@ class SpliceGraph(Graph):
 		self.loc_df = graph.loc_df
 		self.edge_df = graph.edge_df
 		self.t_df = graph.t_df
-		self.datasets = self.datasets
-		self.counts = self.counts
-		self.tpm = self.tpm
-		self.pg = self.pg
+		self.datasets = graph.datasets
+		self.counts = graph.counts
+		self.tpm = graph.tpm
+		self.pg = graph.pg
 
 		picklefile.close()
 

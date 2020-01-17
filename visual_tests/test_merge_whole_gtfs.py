@@ -30,6 +30,7 @@ import numpy as np
 # loading the sg
 sg = SpliceGraph()
 sg.load_graph('input_files/cortex_hippocampus.p')
-sg.find_interesting_genes(how='num_novel_isoforms')
+genes = sg.find_interesting_genes(how='num_novel_isoforms')
+print(genes)
 
 
