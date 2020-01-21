@@ -309,10 +309,8 @@ class Graph:
 		edges = list(set(edges))
 		self.edge_df = self.edge_df.loc[edges]
 
-		print(self.t_df[['gid','path']])
-		print(paths)
-		print(self.loc_df['vertex_id'])
-		print(self.edge_df['edge_id'])
+		# renumber locs
+		self.update_ids()
 
 		# finally create the graph
 		self.create_graph_from_dfs()
