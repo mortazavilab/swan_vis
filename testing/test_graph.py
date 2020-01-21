@@ -329,6 +329,43 @@ class TestGraph(object):
 		assert a.get_transcript_min_max(1) == (2,3)
 		assert a.get_transcript_min_max(2) == (1,2)
 
+	# tests subset_on_gene
+	def test_subset_on_gene(self):
+		gid = 0
+		a = SpliceGraph()
+		a.t_df = pd.DataFrame({'tid': [0,1,2,3,4,5],
+							   'gid': [0,0,1,1,2,2],
+							   'path': [[0,1,2],
+							   			[2,3,4],
+							   			[5,6,7],
+							   			[6,7,8],
+							   			[9,10,11,12],
+							   			[9,11,12]]})
+		a.loc_df = pd.DataFrame({'vertex_id': [0,1,2,3,4,5,6,7,8,9,10,11,12]})
+		a.edge_df = pd.DataFrame({'edge_id': [(0,1),(1,2),(2,3),(3,4),(5,6),(6,7),
+											  (7,8),(9,10),(10,11),(11,12)]})
+		a.t_df = create_dupe_index(a.t_df, 'tid')
+		a.t_df = set_dupe_index(a.t_df, 'tid')
+		a.loc_df = create_dupe_index(a.loc_df, 'vertex_id')
+		a.loc_df = set_dupe_index(a.loc_df, 'vertex_id')
+		a.edge_df = create_dupe_index(a.edge_df, 'edge_id')
+		a.edge_df = set_dupe_index(a.edge_df, 'edge_id')
+
+		# check subsetting for gene 0 
+		a.subset_on_gene(0)
+
+		test = a.t_df['tid'].tolist() 
+		control = [0,1]
+		check_pairs(control, test)
+
+		test = a.loc_df['vertex_id'].tolist()
+		control = [0,1,2,3,4]
+		check_pairs(control, test)
+
+		test = a.edge_df['edge_id'].tolist()
+		control = [(0,1),(1,2),(2,3),(3,4)]
+		check_pairs(control, test)
+
 ##########################################################################
 ############################# Pytest utilities ###########################
 ##########################################################################
