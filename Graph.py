@@ -285,6 +285,38 @@ class Graph:
 
 		return int(min(end_coords)), int(max(end_coords))
 
+	# changes loc_df, edge_df, and t_df into only those seen in gene "gid",
+	# recreates the graph using this
+	def subset_on_gene(self, gid):
+
+		# make sure this gid is even in the SpliceGraph
+		if gid not in self.t_df.gid.tolist():
+			raise Exception('Gene id {} not found in SpliceGraph.'.format(gid))
+
+		# subset t_df first, it's the easiest
+		self.t_df = self.t_df.loc[self.t_df.gid == gid]
+
+		# subset loc_df based on all the locs that are in the paths from 
+		# the already-subset t_df
+		paths = self.t_df['path'].tolist()
+		locs = [node for path in paths for node in path]
+		locs = np.unique(locs)
+		self.loc_df = self.loc_df.loc[locs]
+
+		# subset edge_df based on all the edges that are in the paths from 
+		# the alread-subset t_df
+		edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
+		edges = list(set(edges))
+		self.edge_df = self.edge_df.loc[edges]
+
+		print(self.t_df[['gid','path']])
+		print(paths)
+		print(self.loc_df['vertex_id'])
+		print(self.edge_df['edge_id'])
+
+		# finally create the graph
+		self.create_graph_from_dfs()
+
 
 	###########################################################################
 	################################## Extras #################################
