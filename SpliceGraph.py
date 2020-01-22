@@ -731,6 +731,44 @@ class SpliceGraph(Graph):
 
 		elif how == 'abundance_novel_isoforms':
 			pass
+		elif how == 'isoform_switching':
+
+			print('not implemented yet')
+			exit()
+
+			# perform checks: are there any non-annotation datasets?
+			# do they all have associated abundance information?
+			self.check_if_any_datasets(how)
+			datasets = self.get_dataset_cols(include_annotation=False)
+			self.check_abundances(datasets)
+			tpm_cols = self.get_tpm_cols(datasets=datasets)
+			keep_cols = copy.deepcopy(tpm_cols)
+			keep_cols.append('gid')
+
+			# create a placeholder t_df to operate on
+			t_df = self.t_df.copy(deep=True)
+
+			# get gene-level expression data by creating a g_df
+			# then add the gene-level expression values to t_df
+			g_df = t_df[keep_cols].groupby('gid').sum()
+			gene_tpm_cols = {d+'_tpm': d+'_gene_tpm' for d in datasets}
+
+			g_df.rename(gene_tpm_cols, axis=1, inplace=True)
+			gene_tpm_cols = [d+'_gene_tpm' for d in datasets]
+			t_df = t_df.merge(g_df, on=['gid'])
+			t_df = create_dupe_index(t_df, 'tid')
+			t_df = set_dupe_index(t_df, 'tid')
+
+			# get isoform fraction levels for each transcript isoform
+			if_cols = [d+'_if' for d in datasets]
+			for i in range(len(datasets)):
+				t_df[if_cols[i]] = t_df[tpm_cols[i]]/t_df[gene_tpm_cols[i]]*100
+			print(t_df[if_cols].head())
+
+			# NOT DONE YET
+
+		elif how == 'differential_expression':
+			pass
 
 		if len(g_df.index) < 10:
 			return g_df.index.tolist(), g_df
@@ -761,8 +799,11 @@ class SpliceGraph(Graph):
 		self.counts = graph.counts
 		self.tpm = graph.tpm
 		self.pg = graph.pg
+		self.G = graph.G
 
 		picklefile.close()
+
+		print('Graph from {} loaded'.format(fname))
 
 	##########################################################################
 	############################ Plotting utilities ##########################
@@ -770,7 +811,7 @@ class SpliceGraph(Graph):
 
 
 	# plot the SpliceGraph object according to the user's input
-	def plot_graph(self, combine=False,
+	def plot_graph(self, gid, combine=False,
 				   indicate_dataset=False,
 				   indicate_novel=False):
 
@@ -780,7 +821,7 @@ class SpliceGraph(Graph):
 		# reinitialize based on compatibility of object 
 
 		# create PlottedGraph object and plot summary graph
-		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_novel)
+		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_novel, gid=gid)
 		self.pg.plot_graph()
 
 
@@ -810,12 +851,9 @@ class SpliceGraph(Graph):
 
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 
-		# make sure this gid is even in the SpliceGraph
-		if gid not in self.t_df.gid.tolist():
-			raise Exception('Gene id {} not found in SpliceGraph.'.format(gid))
-
 		# loop through each transcript in the SpliceGraph object
 		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
+			print(tid)
 			self.pg = PlottedGraph(self,
 								   combine,
 								   indicate_dataset,
@@ -830,6 +868,7 @@ class SpliceGraph(Graph):
 								 browser,
 								 tid=tid)
 			self.pg.plot_graph()
+			print('Saving plot for {} as {}'.format(tid, fname))
 			self.save_fig(fname)
 
 	# saves current figure named oname. clears the figure space so additional
