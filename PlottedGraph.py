@@ -27,6 +27,7 @@ class PlottedGraph(Graph):
 		self.indicate_novel = indicate_novel
 		# self.path = path
 		self.gid = gid # if we're plotting a set of transcripts belonging to a specific gene
+		               # or a summary graph of a specific gene
 		self.tid = tid
 		self.browser = browser
 
@@ -45,6 +46,7 @@ class PlottedGraph(Graph):
 			lambda x: copy.deepcopy(x.path), axis=1)
 
 		if gid: 
+			self.subset_on_gene(self.gid)
 			self.g_min, self.g_max = self.get_gene_min_max(gid)
 		if self.tid: 
 			self.path = self.get_path_from_tid(self.tid)
@@ -102,8 +104,10 @@ class PlottedGraph(Graph):
 		# get the list of datasets we should be looking at to determine
 		# node or edge uniqueness
 		dataset_cols = self.get_dataset_cols()
-		if self.indicate_dataset:
-			dataset_cols.remove(self.indicate_dataset)
+
+		# TODO use this when doing unique_to_dataset
+		# if self.indicate_dataset:
+		# 	dataset_cols.remove(self.indicate_dataset)
 
 		###############
 		#### NODES ####
@@ -189,10 +193,15 @@ class PlottedGraph(Graph):
 		# hexagonal nodes for combined nodes 
 		if x.combined:
 			shape = 'H'
-			if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols): 
+			# unique to dataset
+			# if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols): 
+			# 	shape = 'h'
+			# in dataset  TODO make these separate options in the future
+			if is_novel(self.indicate_novel) or in_dataset(self.indicate_dataset, x):
 				shape = 'h'
 		# diamond nodes for novel or inidicate_dataset nodes
-		if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
+		# if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
+		if is_novel(self.indicate_novel, x) or in_dataset(self.indicate_dataset, x):
 			shape = 'D'
 
 		return shape
@@ -284,7 +293,8 @@ class PlottedGraph(Graph):
 	def get_edge_line(self, x, dataset_cols):
 		style = None
 		# dashed if novel or unique to dataset
-		if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
+		# if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
+		if is_novel(self.indicate_novel, x) or in_dataset(self.indicate_dataset, x):
 			style = 'dashed'
 		return style
 
@@ -308,6 +318,7 @@ class PlottedGraph(Graph):
 
 	# plots swan graph of current plotted graph
 	def plot_swan_graph(self):
+		print('in plot_swan_graph')
 
 		# plotting stuff
 		plt.figure(1, figsize=(14,2.8), frameon=False)
@@ -719,6 +730,11 @@ def unique_to_dataset(dataset_name, x, dataset_cols):
 	if x[dataset_name] and not any(x[dataset_cols].tolist()):
 		return True
 	return False
+
+# is this entry in the provided dataset?
+def in_dataset(dataset_name, x):
+	if not dataset_name: return False
+	return x[dataset_name]
 
 # is this entry annotated?
 def is_novel(indicate_novel, x):
