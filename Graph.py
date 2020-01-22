@@ -62,6 +62,16 @@ class Graph:
 								'Datasets with abundance information '
 								'in graph are {}'.format(d, ab_cols))
 
+	# check if there are even any datasets
+	def check_if_any_datasets(self, task):
+		if self.datasets == None:
+			raise Exception('No datasets found in graph. '
+				'Cannot perform {}'.format(task))
+
+	# # check if the annotation is in the graph
+	# def check_annotation(self):
+	# 	datasets = self.get_dataset_cols()
+
 	##########################################################################
 	####################### Related to creating Graph ########################
 	##########################################################################
