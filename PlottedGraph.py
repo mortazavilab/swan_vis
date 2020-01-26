@@ -318,7 +318,6 @@ class PlottedGraph(Graph):
 
 	# plots swan graph of current plotted graph
 	def plot_swan_graph(self):
-		print('in plot_swan_graph')
 
 		# plotting stuff
 		plt.figure(1, figsize=(14,2.8), frameon=False)
@@ -346,7 +345,7 @@ class PlottedGraph(Graph):
 				width=self.edge_width,
 				edge_color=entry.color,
 				connectionstyle=entry.curve,
-				linestyle=entry.line)
+				style=entry.line)
 
 	# plots nodes from loc_df
 	def plot_nodes(self):
