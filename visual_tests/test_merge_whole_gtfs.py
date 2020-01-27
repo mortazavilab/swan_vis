@@ -33,8 +33,11 @@ sg.load_graph('input_files/cortex_hippocampus.p')
 
 
 # finding "interesting" genes
-genes = sg.find_interesting_genes(how='isoform_switching')
+# genes = sg.find_interesting_genes(how='isoform_switching')
 # print(genes)
+
+# plot the summary graph 
+sg.plot_graph('ENSMUSG00000018411.17', indicate_dataset='cortex')
 
 
 
