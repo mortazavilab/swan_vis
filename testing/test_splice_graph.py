@@ -2,7 +2,7 @@ import pytest
 import sys
 import numpy as np
 sys.path.append('../utils/')
-sys.path.append('../../refactor_splice_graph/')
+sys.path.append('../../swan/')
 import SpliceGraph as sw
 import PlottedGraph as pg
 from utils import *
@@ -29,12 +29,10 @@ class TestSpliceGraph(object):
 	def test_merge_dfs(self):
 
 		a,b = get_dummy_merge_sgs()
+		print(a.loc_df)
+		print(b.loc_df)
 
 		a.merge_dfs(b, 'b')
-
-		print(a.loc_df)
-		print(a.edge_df)
-		print(a.t_df)
 
 		# loc_df
 		print('loc_df')
@@ -85,74 +83,6 @@ class TestSpliceGraph(object):
 		control = [(1,0),(2,1),(3,4),(4,5),(5,6)]
 		check_pairs(control, test)
 
-	def test_update_loc_df_ids_merge(self):
-		a,b = get_dummy_merge_sgs()
-		a.merge_loc_dfs(b, 'b')
-		id_map = a.get_merged_id_map()
-		a.update_loc_df_ids_merge(id_map)
-
-		test = a.loc_df.apply(
-			lambda x: (x.vertex_id, x.a, x.b), axis=1)
-		control = [(0,True,True),(1,True,True),(2,True,False),
-				   (3,True,False),(4,False,True),(5,False,True),
-				   (6,False,True)]
-		check_pairs(control, test)
-
-	def test_update_edge_df_ids_merge(self):
-		a,b = get_dummy_merge_sgs()
-		a.merge_loc_dfs(b, 'b')
-		id_map = a.get_merged_id_map()
-		a.update_loc_df_ids_merge(id_map)
-		b.update_edge_df_ids_merge(id_map)
-
-		test = b.edge_df.edge_id.tolist()
-		control = [(0,1),(0,4),(1,5),(4,5)]
-		check_pairs(control, test)
-
-	def test_merge_edge_dfs(self):
-		a,b = get_dummy_merge_sgs()
-		a.merge_loc_dfs(b, 'b')
-		id_map = a.get_merged_id_map()
-		a.update_loc_df_ids_merge(id_map)
-		b.update_edge_df_ids_merge(id_map)
-		a.merge_edge_dfs(b, 'b')
-
-		test = a.edge_df.apply(
-			lambda x: (x.edge_id, x.a, x.b), axis=1)
-		control = [((0,1),True,True),((1,2),True, False),((0,2),True,False),
-			       ((2,3),True,False),((0,4),False,True),((1,5),False,True),
-				   ((4,5),False,True)]
-		check_pairs(control, test)
-
-	def test_update_t_df_paths_merge(self):
-		a,b = get_dummy_merge_sgs()
-		a.merge_loc_dfs(b, 'b')
-		id_map = a.get_merged_id_map()
-		a.update_loc_df_ids_merge(id_map)
-		b.update_edge_df_ids_merge(id_map)
-		a.merge_edge_dfs(b, 'b')
-		b.update_t_df_paths_merge(id_map)
-
-		test = b.t_df.path.tolist()
-		test = [tuple(path) for path in test]
-		control = [(0,1),(0,1,5),(0,1,4)]
-		check_pairs(control, test)
-
-	def test_merge_t_dfs(self):
-		a,b = get_dummy_merge_sgs()
-		a.merge_loc_dfs(b, 'b')
-		id_map = a.get_merged_id_map()
-		a.update_loc_df_ids_merge(id_map)
-		b.update_edge_df_ids_merge(id_map)
-		a.merge_edge_dfs(b, 'b')
-		b.update_t_df_paths_merge(id_map)
-		a.merge_t_dfs(b, 'b')
-
-		test = a.t_df.apply(
-				lambda x: (x.tid, x.a, x.b), axis=1)
-		control = [(0,True,True),(1,True,False),(2,False,True),
-				   (3,True,False),(4,False,True)]
-		check_pairs(control, test)
 
 	############################################################################
 	####################### Creation utility tests #############################
