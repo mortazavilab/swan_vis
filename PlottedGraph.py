@@ -197,7 +197,7 @@ class PlottedGraph(Graph):
 			# if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols): 
 			# 	shape = 'h'
 			# in dataset  TODO make these separate options in the future
-			if is_novel(self.indicate_novel) or in_dataset(self.indicate_dataset, x):
+			if is_novel(self.indicate_novel, x) or in_dataset(self.indicate_dataset, x):
 				shape = 'h'
 		# diamond nodes for novel or inidicate_dataset nodes
 		# if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
