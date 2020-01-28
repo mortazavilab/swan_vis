@@ -72,6 +72,12 @@ class Graph:
 	# def check_annotation(self):
 	# 	datasets = self.get_dataset_cols()
 
+	# check if gid is in SpliceGraph
+	def check_gene(self, gid):
+		if gid not in self.t_df.gid.tolist():
+			raise Exception('Gene {} not found in SpliceGraph.'.format(gid))
+
+
 	##########################################################################
 	####################### Related to creating Graph ########################
 	##########################################################################
@@ -238,7 +244,7 @@ class Graph:
 		if datasets:
 			if type(datasets) != list:
 				datasets = [datasets]
-			self.check_abundances(datasets)
+			# self.check_abundances(datasets)
 			counts_cols = []
 			for d in datasets:
 				counts_cols.append('{}_counts'.format(d))

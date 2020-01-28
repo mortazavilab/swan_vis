@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 import math
 import copy
@@ -655,8 +656,7 @@ class SpliceGraph(Graph):
 
 			# make sure there are counts in the graph at all
 			if tpm_cols:
-				self.t_df['tpm_sum'] = self.t_df.apply(lambda x:
-					sum(x[tpm_cols]), axis=1)
+				self.t_df['tpm_sum'] = self.t_df[tpm_cols].sum(axis=1)
 				self.t_df.sort_values(by='tpm_sum', 
 									  ascending=False, 
 									  inplace=True)
@@ -853,7 +853,6 @@ class SpliceGraph(Graph):
 
 		# loop through each transcript in the SpliceGraph object
 		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
-			print(tid)
 			self.pg = PlottedGraph(self,
 								   combine,
 								   indicate_dataset,
@@ -883,12 +882,12 @@ class SpliceGraph(Graph):
 	##########################################################################
 	############################### Report stuff #############################
 	##########################################################################
-
 	# creates a report for each transcript model for a gene according to user input
 	def gen_report(self,
-				   gid,
+				   gids,
 				   prefix,
 				   datasets='all',
+				   heatmap=False,
 				   tpm=False,
 				   include_unexpressed=False,
 				   combine=False,
@@ -897,80 +896,103 @@ class SpliceGraph(Graph):
 				   browser=False,
 				   order='expression'):
 
+		# check to see if input genes are in the graph
+		if type(gids) != list:
+			gids = [gids]
+		for gid in gids:
+			self.check_gene(gid)
+
+		print(gids)
+
+		# check to see if these plotting settings will play together
+		self.check_plotting_args(combine, indicate_dataset,
+			indicate_novel, browser)
+
 		# make sure all input datasets are present in graph
 		if datasets == 'all':
-			datasets = copy.deepcopy(self.datasets)
-			datasets.remove('annotation')
+			datasets = self.get_dataset_cols(include_annotation=False)
 		elif not datasets:
 			datasets = []
-		self.check_datasets(datasets)
+		else:
+			self.check_datasets(datasets)
 
 		# now check to make sure abundance data is there for the
 		# query columns, if user is asking
-		if tpm:
+		if tpm or heatmap:
 			self.check_abundances(datasets)
-			report_cols = self.get_tpm_cols(datasets)
+			tpm_cols = self.get_tpm_cols(datasets)
+			report_cols = copy.deepcopy(tpm_cols)
 		elif datasets:
 			report_cols = datasets
 
-		# order transcripts by user's preferences
+		# order transcripts by user's preferences 
 		self.order_transcripts(order)
 
-		# if user doesn't care about datasets, just show all transcripts
-		if not datasets:
-			include_unexpressed = True
-		# user only wants transcript isoforms that appear in their data
-		if not include_unexpressed:
+		# loop through each gid and create the report
+		for gid in gids:
 
-			## TODO could also use the all(nonzero) strategy
-			counts_cols = self.get_count_cols(datasets)
-			self.t_df['counts_sum'] = self.t_df.apply(lambda x: sum(x[counts_cols]), axis=1)
-			report_tids = self.t_df.loc[(self.t_df.gid==gid)&(self.t_df.counts_sum>0),
-						  	'tid'].tolist()
-			self.t_df.drop('counts_sum', inplace=True, axis=1)
-		else:
-			report_tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
+			# subset based on gid
+			t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
 
-		# make sure our swan/browser graph args work together
-		# and plot each transcript with these settings
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
-		self.plot_each_transcript(gid, prefix, combine,
-								  indicate_dataset,
-								  indicate_novel,
-								  browser=browser)
+			# if user doesn't care about datasets, just show all transcripts
+			if not datasets:
+				include_unexpressed = True
+			# user only wants transcript isoforms that appear in their data
+			if not include_unexpressed:
+				counts_cols = self.get_count_cols(datasets)
+				report_tids = t_df.loc[t_df[counts_cols].sum(axis=1)>0, 'tid']
+			else:
+				report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
 
-		# if we're plotting tracks, we need a scale as well
-		if not browser:
-			report_type = 'swan'
-		else:
-			self.pg.plot_browser_scale()
-			self.save_fig(prefix+'_browser_scale.png')
-			report_type = 'browser'
+			# plot each transcript with these settings
+			self.plot_each_transcript(gid, prefix, combine,
+									  indicate_dataset,
+									  indicate_novel,
+									  browser=browser)
 
-		# create report
-		pdf_name = create_fname(prefix, 
-					 combine,
-					 indicate_dataset,
-					 indicate_novel,
-					 browser,
-					 ftype='report',
-					 gid=gid)
-		report = Report(prefix, report_type, report_cols)
-		report.add_page()
+			# if we're plotting tracks, we need a scale as well
+			if not browser:
+				report_type = 'swan'
+			else:
+				self.pg.plot_browser_scale()
+				self.save_fig(prefix+'_browser_scale.png')
+				report_type = 'browser'
 
-		# loop through each transcript and add it to the report
-		for tid in report_tids:
-			entry = self.t_df.loc[tid]
-			## TODO would be faster if I didn't have to compute these names twice....
-			## ie once in plot_each_transcript and once here
-			fname = create_fname(prefix,
-								 combine,
-								 indicate_dataset,
-								 indicate_novel, 
-								 browser,
-								 tid=entry.tid)
-			report.add_transcript(entry, fname)
-		report.write_pdf(pdf_name)
+			# if we're making a heatmap, need to first log and normalize 
+			# tpm values
+			if heatmap:
+				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
+				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
+				t_df[log_cols] = np.log2(t_df[tpm_cols]+1)
+				max_val = max(t_df[log_cols].max().tolist())
+				min_val = min(t_df[log_cols].min().tolist())
+				t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
+				report_cols = norm_log_cols
+
+			# create report
+			pdf_name = create_fname(prefix, 
+						 combine,
+						 indicate_dataset,
+						 indicate_novel,
+						 browser,
+						 ftype='report',
+						 gid=gid)
+			report = Report(prefix, report_type, report_cols)
+			report.add_page()
+
+			# loop through each transcript and add it to the report
+			for tid in report_tids:
+				entry = t_df.loc[tid]
+				## TODO would be faster if I didn't have to compute these names twice....
+				## ie once in plot_each_transcript and once here
+				fname = create_fname(prefix,
+									 combine,
+									 indicate_dataset,
+									 indicate_novel, 
+									 browser,
+									 tid=entry.tid)
+				report.add_transcript(entry, fname, heatmap=heatmap)
+			report.write_pdf(pdf_name)
 
 	##########################################################################
 	############################# Error handling #############################
