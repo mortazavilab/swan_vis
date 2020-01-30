@@ -1,5 +1,6 @@
 from utils import *
 from fpdf import FPDF
+import matplotlib.pyplot as pyplot
 
 # report for genes - extension of FPDF class
 class Report(FPDF):
@@ -22,6 +23,9 @@ class Report(FPDF):
 
 		# prefix for files that we'll pull from 
 		self.prefix = prefix
+
+		# color map in case we're making a heatmap
+		self.cmap = plt.get_cmap('Spectral_r')
 
 	# header - should differ based on whether it's a browser report or
 	# a swan report
@@ -52,24 +56,45 @@ class Report(FPDF):
 		self.ln()
 
 	# add a transcript model to the report
-	def add_transcript(self, entry, oname):
+	def add_transcript(self, entry, oname, heatmap=False):
 		self.set_font('Arial', '', 10)
 		self.cell(50, 20, entry['tid'], border=True, align='C')
 		for col in self.report_cols:
-			if '_tpm' in col:
+
+			# heat map coloring
+			if heatmap:
+				color = self.cmap(entry[col])
+				r = color[0]*255
+				b = color[1]*255
+				g = color[2]*255
+				self.set_fill_color(r,b,g)
+				border = False
+				fill = True
+				text = ''
+			# TPM	
+			elif '_tpm' in col:
 				print()
 				print(col)
 				text = str(round(entry[col],2))
+				border = True
+				fill = False
+			# presence/absence
 			else:
 				text = entry[col]
 				if text == True:
 					text = 'Yes'
 				elif text == False:
 					text = 'No'
-					
-			self.cell(50, 20, text, border=True, align='C')	
+				border = True
+				fill = False 
+			self.cell(50, 20, text, border=border, align='C', fill=fill)	
 		x = self.get_x()
 		y = self.get_y()
+
+		# reset color to white
+		self.set_fill_color(255,255,255)
+
+		# embed transcript model
 		self.cell(100, 20, '', border=True)
 		self.image(oname, x=x, y=y, w=100, h=20)
 		self.ln()

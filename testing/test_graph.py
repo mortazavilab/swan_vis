@@ -2,7 +2,7 @@ import pytest
 import sys
 import numpy as np
 sys.path.append('../utils/')
-sys.path.append('../../refactor_splice_graph/')
+sys.path.append('../../swan/')
 from SpliceGraph import SpliceGraph
 from PlottedGraph import PlottedGraph
 from utils import *
@@ -341,7 +341,10 @@ class TestGraph(object):
 							   			[6,7,8],
 							   			[9,10,11,12],
 							   			[9,11,12]]})
-		a.loc_df = pd.DataFrame({'vertex_id': [0,1,2,3,4,5,6,7,8,9,10,11,12]})
+		a.loc_df = pd.DataFrame({'vertex_id': [0,1,2,3,4,5,6,7,8,9,10,11,12], 
+								 'strand': ['+','+','+','+','+','-','-','-','-','-','-','-','-'],
+								 'chrom': [1,1,1,1,1,2,2,2,2,2,2,2,2],
+								 'coord': [0,1,2,3,4,5,6,7,8,9,10,11,12]})
 		a.edge_df = pd.DataFrame({'edge_id': [(0,1),(1,2),(2,3),(3,4),(5,6),(6,7),
 											  (7,8),(9,10),(10,11),(11,12)]})
 		a.t_df = create_dupe_index(a.t_df, 'tid')
