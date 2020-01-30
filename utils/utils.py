@@ -6,7 +6,6 @@ import os
 import copy
 from collections import defaultdict
 import sqlite3
-import time
 
 # creates the duplicate index
 def create_dupe_index(df, ind_name):
@@ -82,31 +81,27 @@ def get_fields(fields):
 # be updated to work with more types of abundance files
 def process_abundance_file(file, cols):
 
+	if type(cols) != list: cols = [cols]
+
 	df = pd.read_csv(file, sep='\t')
-	keep_cols = ['annot_transcript_id']+cols
+	keep_cols = ['annot_transcript_id', 'annot_gene_id']+cols
 	df = df[keep_cols]
 
 	# get the counts
-	start_time = time.time()
 	df['counts'] = df[cols].sum(axis=1)
-	# df['counts'] = df.apply(lambda x: sum(x[cols]), axis=1)
-	print('time to sum counts')
-	print(time.time()-start_time)
 
 	# get tpms
-	start_time = time.time()
-	## TODO potentially use groupby here to speed things up?
 	for col in cols: 
 		total_counts = df[col].sum()
-		df['{}_tpm'.format(col)] = df.apply(lambda x: (x[col]*1000000)/total_counts, axis=1)
+		df['{}_tpm'.format(col)] = (df[col]*1000000)/total_counts
 	cols = ['{}_tpm'.format(col) for col in cols]
 	df['tpm'] = df[cols].mean(axis=1)
-	print('time to calc tpms')
-	print(time.time()-start_time)
 
 	# set up for merging
 	df.drop(cols, axis=1, inplace=True)
 	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
+
+	print('in process_abundance_file')
 	return df
 
 # creates a file name based on input plotting arguments

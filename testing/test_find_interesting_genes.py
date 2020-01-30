@@ -2,7 +2,7 @@ import pytest
 import sys
 import numpy as np
 sys.path.append('../utils/')
-sys.path.append('../../refactor_splice_graph/')
+sys.path.append('../../swan/')
 from SpliceGraph import SpliceGraph
 from utils import *
 
@@ -20,7 +20,7 @@ class TestFindInterestingGenes(object):
 		sg.t_df = set_dupe_index(sg.t_df, 'tid')
 		sg.datasets = ['annotation', 'a', 'b']
 
-		genes, g_df = sg.find_interesting_genes(how='num_novel_isoforms')
+		genes, g_df = sg.find_genes_with_novel_isoforms()
 
 		# check that the genes were returned in the right order
 		print(genes)
@@ -46,38 +46,33 @@ class TestFindInterestingGenes(object):
 		assert novel_models == novel_control
 
 		known_models = g_df.loc[1, 'known']
-		print('gene 0 num known:')
+		print('gene 1 num known:')
 		print(known_models)
 		known_control = 1
 		novel_models = g_df.loc[1, 'novel']
-		print('gene 0 num novel:')
+		print('gene 1 num novel:')
 		print(novel_models)
 		novel_control = 1
 		assert known_models == known_control
 		assert novel_models == novel_control
 
 		known_models = g_df.loc[2, 'known']
-		print('gene 0 num known:')
+		print('gene 2 num known:')
 		print(known_models)
 		known_control = 1
 		novel_models = g_df.loc[2, 'novel']
-		print('gene 0 num novel:')
+		print('gene 2 num novel:')
 		print(novel_models)
 		novel_control = 5
 		assert known_models == known_control
 		assert novel_models == novel_control
-
-		# make sure when there's more than 10 genes we are only returning 10 genes
-		sg.t_df.gid = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-		genes, g_df = sg.find_interesting_genes(how='num_novel_isoforms')
-		assert len(genes) == 10
 
 		# make sure that when we're trying this w/o an annotation,
 		# we raise the error
 		sg.t_df.drop('annotation', axis=1, inplace=True)
 		sg.datasets.remove('annotation')
 		with pytest.raises(Exception) as excinfo:
-			genes, g_df = sg.find_interesting_genes(how='num_novel_isoforms')
+			genes, g_df = sg.find_genes_with_novel_isoforms()
 		assert 'No annotation data' in str(excinfo.value)
 
 

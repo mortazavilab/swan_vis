@@ -81,30 +81,15 @@ class SpliceGraph(Graph):
 				temp.create_dfs_gtf(gtf)
 			elif db:
 				temp.create_dfs_db(db)
-			start_time = time.time()
 			self.merge_dfs(temp, col)
-			print('time to merge dfs')
-			print(time.time()-start_time)
 
 		# order node ids by genomic position, add node types,
 		# and create graph
-		start_time = time.time()
 		self.update_ids()
-		print('time to update ids')
-		print(time.time()-start_time)
-		start_time = time.time()
+
 		self.order_edge_df()
-		print('time to order edge df')
-		print(time.time() - start_time)
-		start_time = time.time()
 		self.get_loc_types()
-		print('time to get loc types')
-		print(time.time()-start_time)
-		start_time = time.time()
 		self.create_graph_from_dfs()
-		print('time to create graph from dfs')
-		print(time.time()-start_time)
-		print()
 
 		# update graph metadata
 		self.datasets.append(col)
@@ -132,14 +117,14 @@ class SpliceGraph(Graph):
 
 		# merge on transcript id (tid) with t_df and make sure it's 
 		# formatted correctly
-		start_time = time.time()
 		self.t_df.reset_index(drop=True, inplace=True)
 		self.t_df = self.t_df.merge(abundance_df, on='tid', how='left')
 		self.t_df.fillna(value=0, inplace=True)
 		self.t_df = create_dupe_index(self.t_df, 'tid')
 		self.t_df = set_dupe_index(self.t_df, 'tid')
-		print('time to merge abundance with t_df')
-		print(time.time()-start_time)
+
+		# testing
+		print(self.t_df.columns)
 
 		# finally update object's metadata
 		self.counts.append('{}_counts'.format(dataset_name))
@@ -152,10 +137,13 @@ class SpliceGraph(Graph):
 		# what locations correspond between the datasets?
 		self.merge_loc_dfs(b, b_col)
 		id_map = self.get_merged_id_map()
+
 		self.loc_df.drop(['vertex_id_a','vertex_id_b'], axis=1, inplace=True)
 		self.loc_df['vertex_id'] = self.loc_df.index
 		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
 		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
+		b.loc_df = create_dupe_index(b.loc_df, 'vertex_id')
+		b.loc_df = set_dupe_index(b.loc_df, 'vertex_id')
 
 		# update the ids in b to make edge_df, t_df merging easier
 		b.update_ids(id_map=id_map)
@@ -535,11 +523,6 @@ class SpliceGraph(Graph):
 				 self.get_db_strand(x, edge_df), axis=1)
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		loc_df['internal'] = False
-		loc_df['TSS'] = False
-		loc_df['alt_TSS'] = False
-		loc_df['TES'] = False
-		loc_df['alt_TES'] = False
 
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
 		edge_df = create_dupe_index(edge_df, 'edge_id')
@@ -702,78 +685,80 @@ class SpliceGraph(Graph):
 	##########################################################################
 
 	# returns a list of genes that are "interesting"
-	def find_interesting_genes(self, how):
+	def find_genes_with_novel_isoforms(self):
 
-		if how == 'num_novel_isoforms':
+		# get all the datasets, make sure we're not counting transcripts 
+		# that are only in the annotation
+		if 'annotation' not in self.datasets:
+			raise Exception('No annotation data in graph. Cannot ',
+				'determine isoform novelty.')
+		datasets = self.get_dataset_cols(include_annotation=False)
+		t_df = self.t_df.copy(deep=True)
+		t_df = t_df.loc[t_df[datasets].any(axis=1)]
 
-			# get all the datasets, make sure we're not counting transcripts 
-			# that are only in the annotation
-			if 'annotation' not in self.datasets:
-				raise Exception('No annotation data in graph. Cannot ',
-					'determine isoform novelty.')
-			datasets = self.get_dataset_cols(include_annotation=False)
-			t_df = self.t_df.copy(deep=True)
-			t_df = t_df.loc[t_df[datasets].any(axis=1)]
+		# how many known and novel isoforms does each gene have
+		t_df['known'] = t_df.annotation
+		t_df['novel'] = [not i for i in t_df.annotation.tolist()]
+		keep_cols = ['annotation', 'known', 'novel', 'gid']
+		g_df = t_df[keep_cols].groupby(['gid']).sum()
 
-			# how many known and novel isoforms does each gene have
-			t_df['known'] = t_df.annotation
-			t_df['novel'] = [not i for i in t_df.annotation.tolist()]
-			keep_cols = ['annotation', 'known', 'novel', 'gid']
-			g_df = t_df[keep_cols].groupby(['gid']).sum()
+		# create 'interestingness' column ranking how many novel 
+		# compared to known isoforms there are, also ranked by 
+		# number of total isoforms
+		g_df.known = g_df.known.astype('int32')
+		g_df.novel = g_df.novel.astype('int32')
+		g_df['interestingness'] = ((g_df.novel+1)/(g_df.known+1))*(g_df.known+g_df.novel)
+		g_df.sort_values(by='interestingness', ascending=False, inplace=True)
 
-			# create 'interestingness' column ranking how many novel 
-			# compared to known isoforms there are, also ranked by 
-			# number of total isoforms
-			g_df.known = g_df.known.astype('int32')
-			g_df.novel = g_df.novel.astype('int32')
-			g_df['interestingness'] = ((g_df.novel+1)/(g_df.known+1))*(g_df.known+g_df.novel)
-			g_df.sort_values(by='interestingness', ascending=False, inplace=True)
+		# top 10 in case the user doesn't care about whole df
+		genes = g_df.index.tolist()[:10]
 
-		elif how == 'abundance_novel_isoforms':
-			pass
-		elif how == 'isoform_switching':
+		return genes, g_df
 
-			print('not implemented yet')
-			exit()
+	# TODO find genes with higher expression in novel than known isoforms
+	def find_genes_with_high_novel_expression():
+		pass
 
-			# perform checks: are there any non-annotation datasets?
-			# do they all have associated abundance information?
-			self.check_if_any_datasets(how)
-			datasets = self.get_dataset_cols(include_annotation=False)
-			self.check_abundances(datasets)
-			tpm_cols = self.get_tpm_cols(datasets=datasets)
-			keep_cols = copy.deepcopy(tpm_cols)
-			keep_cols.append('gid')
+	# find differentially expressed genes
+	# d1 = list or string containing first set of datasets to analyze
+	# d2 = list or string containing second set of datasets to analyze
+	# the above two will be compared for differential experssion
+	def find_differentially_expressed_genes(self, d1, d2):
 
-			# create a placeholder t_df to operate on
-			t_df = self.t_df.copy(deep=True)
+		# first check to see if the queried expression data is in the graph
+		if type(d1) != list: d1 = [d1]
+		if type(d2) != list: d2 = [d2]
+		datasets = d1+d2
+		self.check_abundances(datasets)
 
-			# get gene-level expression data by creating a g_df
-			# then add the gene-level expression values to t_df
-			g_df = t_df[keep_cols].groupby('gid').sum()
-			gene_tpm_cols = {d+'_tpm': d+'_gene_tpm' for d in datasets}
+		# group t_df into gene df and sum up abundances
+		# both across genes and across datasets
+		t_df = self.t_df.copy(deep=True)
+		d1_cols = self.get_tpm_cols(d1)
+		d2_cols = self.get_tpm_cols(d2)
+		keep_cols = d1_cols+d2_cols+['gid']
+		g_df = t_df[keep_cols].groupby('gid').sum()
+		g_df['d1_tpm'] = g_df[d1_cols].sum(axis=1)
+		g_df['d2_tpm'] = g_df[d2_cols].sum(axis=1)
 
-			g_df.rename(gene_tpm_cols, axis=1, inplace=True)
-			gene_tpm_cols = [d+'_gene_tpm' for d in datasets]
-			t_df = t_df.merge(g_df, on=['gid'])
-			t_df = create_dupe_index(t_df, 'tid')
-			t_df = set_dupe_index(t_df, 'tid')
+		# add pseudocounts for each gene
+		g_df.d1_tpm = g_df.d1_tpm + 1
+		g_df.d2_tpm = g_df.d2_tpm + 1
 
-			# get isoform fraction levels for each transcript isoform
-			if_cols = [d+'_if' for d in datasets]
-			for i in range(len(datasets)):
-				t_df[if_cols[i]] = t_df[tpm_cols[i]]/t_df[gene_tpm_cols[i]]*100
-			print(t_df[if_cols].head())
+		# calculate log2 fold change and order g_df based on magnitude
+		# of fold change
+		g_df['log_fold_change'] = np.log2(g_df.d1_tpm/g_df.d2_tpm)
+		g_df['abs_log_fold_change'] = np.absolute(g_df.log_fold_change)
+		g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
 
-			# NOT DONE YET
+		# top 10 in case the user doesn't care about whole df
+		genes = g_df.index.tolist()[:10]
 
-		elif how == 'differential_expression':
-			pass
+		return genes, g_df
 
-		if len(g_df.index) < 10:
-			return g_df.index.tolist(), g_df
-		else:
-			return g_df.index.tolist()[:10], g_df
+	# find differentially expressed transcripts
+	def find_differentially_expressed_transcripts():
+		pass
 
 	##########################################################################
 	######################## Loading/saving SpliceGraphs #####################
@@ -902,8 +887,6 @@ class SpliceGraph(Graph):
 		for gid in gids:
 			self.check_gene(gid)
 
-		print(gids)
-
 		# check to see if these plotting settings will play together
 		self.check_plotting_args(combine, indicate_dataset,
 			indicate_novel, browser)
@@ -913,6 +896,7 @@ class SpliceGraph(Graph):
 			datasets = self.get_dataset_cols(include_annotation=False)
 		elif not datasets:
 			datasets = []
+			order = 'tid'
 		else:
 			self.check_datasets(datasets)
 
@@ -958,8 +942,8 @@ class SpliceGraph(Graph):
 				self.save_fig(prefix+'_browser_scale.png')
 				report_type = 'browser'
 
-			# if we're making a heatmap, need to first log and normalize 
-			# tpm values
+			# if we're making a heatmap, need to first 
+			# add pseudocount, log and normalize tpm values
 			if heatmap:
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
 				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
