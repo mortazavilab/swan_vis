@@ -117,13 +117,13 @@ There are a ton of plotting options you have when visualizing your transcript is
 
 Firstly, I'll demonstrate what the heck you're even looking at, because the graphs are difficult to interpret without some prior explanation. 
 
-<img align="left" width="800" src="figures/teaching_1.png">
+<img align="center" width="800" src="figures/teaching_1.png">
 
 
 Here is a toy example of two transcript models
 
 
-<img align="left" width="800" src="figures/teaching_2.png">
+<img align="center" width="800" src="figures/teaching_2.png">
 
 
 And what the basic resultant visual Swan graph would look like from it. 
