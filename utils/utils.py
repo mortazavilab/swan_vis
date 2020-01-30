@@ -84,7 +84,7 @@ def process_abundance_file(file, cols):
 	if type(cols) != list: cols = [cols]
 
 	df = pd.read_csv(file, sep='\t')
-	keep_cols = ['annot_transcript_id', 'annot_gene_id']+cols
+	keep_cols = ['annot_transcript_id']+cols
 	df = df[keep_cols]
 
 	# get the counts
