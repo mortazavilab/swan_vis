@@ -122,6 +122,8 @@ Firstly, I'll demonstrate what the heck you're even looking at, because the grap
 
 Here is a toy example of two transcript models
 
+
+
 <img align="left" width="400" src="figures/teaching_2.png">
 
 
