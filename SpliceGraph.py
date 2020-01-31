@@ -958,7 +958,7 @@ class SpliceGraph(Graph):
 						 browser,
 						 ftype='report',
 						 gid=gid)
-			report = Report(prefix, report_type, report_cols)
+			report = Report(prefix, report_type, report_cols, datasets)
 			report.add_page()
 
 			# loop through each transcript and add it to the report

@@ -4,7 +4,7 @@ Welcome to Swan, a tool for visualizing and interpreting transcript isoforms gra
 
 ## 1: Setting up your environment
  
-Ya gurl is not classically trained in Python development so right now getting things to work is a little clunky. But doable! Create a new Python file to serve as your "driver" script in the swan directory. Add the following header to your file:
+Create a new Python file to serve as your "driver" script in the swan directory. Add the following header to your file:
 
 ```py
 from SpliceGraph import SpliceGraph
@@ -146,7 +146,7 @@ sg.plot_graph('ENSMUSG00000018411.17')
 sg.save_fig('figures/ENSMUSG00000018411.17_summary.png')
 ```
 
-<img align="center" width="500" src="figures/ENSMUSG00000018411.17_summary.png">
+<img align="center" width="800" src="figures/ENSMUSG00000018411.17_summary.png">
 
 Currently, this command only accepts the gene id in terms of the id taken from GTF, in my case, the ENSEMBL ID.
 
@@ -163,7 +163,7 @@ sg.plot_transcript_path('ENSMUST00000106992.9')
 sg.save_fig('figures/ENSMUST00000106992.9.png')
 ```
 
-<img align="center" width="500" src="figures/ENSMUST00000106992.9.png">
+<img align="center" width="800" src="figures/ENSMUST00000106992.9.png">
 
 ### 5.c: Plot all transcript paths through a gene
 
@@ -173,11 +173,11 @@ Sometimes (okay probably most of the time) you don't know what exact isoform you
 sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 ```
 
-<img align="center" width="500" src="figures/wt_5xFAD_ENSMUST00000106993.9.png">
+<img align="center" width="800" src="figures/wt_5xFAD_ENSMUST00000106993.9.png">
 .
 .
 .
-<img align="center" width="500" src="figures/wt_5xFAD_TALONT000593679.png">
+<img align="center" width="800" src="figures/wt_5xFAD_TALONT000593679.png">
 
 The first argument here is the gene's ENSEMBL ID, as we called the plotting functions in 5.a and 5.b. The second argument is a prefix for the output files to be saved. In contrast to the plotting functions in 5.a and 5.b, plot_each_transcript automatically saves each transcript's plot with the input prefix and the transcript's ID in each of the output file names.
 
@@ -194,41 +194,41 @@ And the options you can add to each plotting function are as follows
 
 * **combine:** Combine all non-branching paths within a gene. The goal of this argument is to reduce the visual complexity of the graph to make it easier to interpret. Resultant "combined" nodes will be hexagonal and be labelled as "c#". 
 
-   ```py 
-   sg.plot_graph('ENSMUSG00000018411.17', combine=True)
-   sg.save_fig('figures/ENSMUSG00000018411.17_combined.png')
-   ```
+    ```py 
+    sg.plot_graph('ENSMUSG00000018411.17', combine=True)
+    sg.save_fig('figures/ENSMUSG00000018411.17_combined.png')
+    ```
 
-<img align="center" width="500" src="figures/ENSMUSG00000018411.17_combined.png">
+<img align="center" width="800" src="figures/ENSMUSG00000018411.17_combined.png">
 
-   - This option can be used with either of the following options, **indicate_dataset** or **indicate_novel**
+    - This option can be used with either of the following options, **indicate_dataset** or **indicate_novel**
 
 * **indicate_novel:** "Highlight" novel nodes and edges in the graph. Novel nodes and edges correspond to splice junctions, exons, or introns that are not seen in the annotation. Resultant novel nodes will be diamond shaped, and novel exons/introns will be dashed edges.
 
-   ```py
-   sg.plot_graph('ENSMUSG00000018411.17', indicate_novel=True)
-   sg.save_fig('figures/ENSMUSG00000018411.17_novel.png')
-   ```
+    ```py
+    sg.plot_graph('ENSMUSG00000018411.17', indicate_novel=True)
+    sg.save_fig('figures/ENSMUSG00000018411.17_novel.png')
+    ```
 
-<img align="center" width="500" src="figures/ENSMUSG00000018411.17_wt_1.png">
+<img align="center" width="800" src="figures/ENSMUSG00000018411.17_wt_1.png">
 
 
-   - **This option requires that an annotation has been loaded into the graph with *add_annotation***
-   - **This option cannot be used with the *indicate_dataset* option**
-   - This option can be used with the *combine* option
+    - **This option requires that an annotation has been loaded into the graph with *add_annotation***
+    - **This option cannot be used with the *indicate_dataset* option**
+    - This option can be used with the *combine* option
 
 * **indicate_dataset:** "Highlight" nodes that come from the user-specified dataset name. Highlighted nodes and edges correspond to splice junctions, exons, and introns that have been observed in the dataset that the user specifies. As with *indicate_novel*, nodes that are in the input dataset will be diamond-shaped and exons/introns observed in the dataset will be dashed edges.
 
-   ```py
-   sg.plot_graph('ENSMUSG00000018411.17', indicate_dataset='wt_1')
-   sg.save_fig('figures/ENSMUSG00000018411.17_wt_1.png')
-   ```
+    ```py
+    sg.plot_graph('ENSMUSG00000018411.17', indicate_dataset='wt_1')
+    sg.save_fig('figures/ENSMUSG00000018411.17_wt_1.png')
+    ```
 
-<img align="center" width="500" src="figures/ENSMUSG00000018411.17_wt_1.png">
+<img align="center" width="800" src="figures/ENSMUSG00000018411.17_wt_1.png">
 
 
-   - **This option cannot be used with the *indicate_dataset* option**
-   - This option can be used with the *combine* option
+    - **This option cannot be used with the *indicate_dataset* option**
+    - This option can be used with the *combine* option
 
 ## 6: Plotting browser track-style transcript model
 
@@ -241,7 +241,7 @@ sg.save_fig('figures/ENSMUST00000106992.9_browser.png')
 sg.plot_each_transcript('ENSMUSG00000018411.17', browser=True)
 ```
 
-<img align="center" width="500" src="figures/ENSMUSG00000018411.17_wt_1.png">
+<img align="center" width="800" src="figures/ENSMUSG00000018411.17_wt_1.png">
 
 
 * Note that the browser=True argument **is not compatible** with the options *combine*, *indicate_novel* or *indicate_dataset*
@@ -262,30 +262,30 @@ sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 sg.gen_report(['ENSMUSG00000018411.17', 'ENSMUSG00000051951.5'], 'figures/wt_5xFAD')
 ```
 
-<img align="center" width="500" src="figures/report.png">
+<img align="center" width="800" src="figures/report.png">
 
 
 #### 7.a.i: Swan graph report options
 
 Options that are only applicable when making a swan graph report include:
 * **combine:** as described in 5.d
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', combine=True)
-   ```
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', combine=True)
+    ```
 
-<img align="center" width="500" src="figures/report_combine.png">
+<img align="center" width="800" src="figures/report_combine.png">
 
 * **indicate_novel:** as described in 5.d (all restrictions ie cannot be called with *indicate_dataset* apply here too)
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', indicate_novel=True)
-   ```
-<img align="center" width="500" src="figures/report_novel.png">
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', indicate_novel=True)
+    ```
+<img align="center" width="800" src="figures/report_novel.png">
 
  * **indicate_dataset:** as described in 5.d (all restrictions ie cannot be called with *indicate_novel* apply here too)
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', indicate_dataset='wt_1')
-   ```
- <img align="center" width="500" src="figures/report_wt_1.png">
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', indicate_dataset='wt_1')
+    ```
+ <img align="center" width="800" src="figures/report_wt_1.png">
 
 
 ### 7.b: Browser track-style report 
@@ -295,51 +295,66 @@ You can also generate a browser-style report with the browser option as follows.
 ```py
 sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', browser=True)
 ```
+ <img align="center" width="800" src="figures/report_browser.png">
 
 As with the other browser plotting scripts, this is incompatible with the swan graph options *combine*, *indicate_novel*, and *indicate_dataset*.
 
 ### 7.c: General report options (compatible with both swan and browser reports)
 
 * **datasets:** choose which datasets to include in the report, default is every dataset that has been added to the graph
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', datasets=['wt_1', '5xFAD_1'])
-   ```
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', datasets=['wt_1', '5xFAD_1'])
+    ```
+ <img align="center" width="800" src="figures/report_datasets.png">
+
 * **tpm:** instead of including presence/absence of a transcript model for each dataset in the report, give the TPM value
   * **requires abundance data to have been added to the graph**
   * **incompatible with *heatmap* option**
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', tpm=True)
-   ```
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', tpm=True)
+    ```
+ <img align="center" width="800" src="figures/report_tpm.png">
+
 * **heatmap:** instead of using the TPM value, display expression data as a heatmap for each dataset. 
-    -*requires abundance data to have been added to the graph**
-   - **incompatible with *tpm* option**
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', heatmap=True)
-   ```
-* **include_unexpressed:** by default, swan removes transcripts that are not observed in at least one dataset from the report. If, for whatever reason, you want to keep these in, use this option.
-   - if you haven't loaded any datasets into the graph but have loaded an annotation in, this will change to True, because otherwise your report will be completely empty.
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', include_unexpressed=True)
-   ```
+     -**requires abundance data to have been added to the graph**
+    - **incompatible with *tpm* option**
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', heatmap=True)
+    ```
+ <img align="center" width="800" src="figures/report_heatmap.png">
 
 * **order:** specify the ordering of transcript models from top to bottom of the report
-   - **expression (default if abundance data has been incorporated):** orders transcript models by cumulative expression across all added datasets. Maybe I should make an option to order by expression in one or more specified datasets?
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='expression', tpm=True)
-   ```
-   - **tid (default if no abundance data has been incorporated):** orders transcript models alphanumerically by transcript ID
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid')
-   ```
-   - **tss:** orders transcript models by the genomic location of the TSS
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tss')
-   ```
+    - **expression (default if abundance data has been incorporated):** orders transcript models by cumulative expression across all added datasets. Maybe I should make an option to order by expression in one or more specified datasets?
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='expression', heatmap=True)
+    ```
+   <img align="center" width="800" src="figures/report_heatmap.png">
 
-   - **tes:** orders transcript models by the genomic location of the TES
-   ```py
-   sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tes')
-   ```
+    - **tid (default if no abundance data has been incorporated):** orders transcript models alphanumerically by transcript ID
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', heatmap=True)
+    ```
+    <img align="center" width="800" src="figures/report_order_tid.png">
+
+    - **tss:** orders transcript models by the genomic location of the TSS
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tss', heatmap=True)
+      ```
+    <img align="center" width="800" src="figures/report_order_tss.png">
+
+    - **tes:** orders transcript models by the genomic location of the TES
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tes', heatmap=True)
+    ```
+    <img align="center" width="800" src="figures/report_order_tes.png">
+
+* **include_unexpressed:** by default, swan removes transcripts that are not observed in at least one dataset from the report. If, for whatever reason, you want to keep these in, use this option.
+    - if you haven't loaded any datasets into the graph but have loaded an annotation in, this will change to True, because otherwise your report will be completely empty.
+    ```py
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', tpm=True, include_unexpressed=True)
+    ```
+    <img align="center" width="800" src="figures/report_include_unexpressed.png">
+
 
 ## 8: Finding interesting genes to plot
 

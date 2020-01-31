@@ -5,7 +5,7 @@ import matplotlib.pyplot as pyplot
 # report for genes - extension of FPDF class
 class Report(FPDF):
 
-	def __init__(self, prefix, report_type, report_cols):
+	def __init__(self, prefix, report_type, report_cols, header_cols):
 		super().__init__(orientation='L')
 
 		# set report type, 'browser' or 'swan'
@@ -16,6 +16,7 @@ class Report(FPDF):
 
 		# the columns that we'll include
 		self.report_cols = report_cols
+		self.header_cols = header_cols
 		print('in report constructor')
 		print('report cols:')
 		print(self.report_cols)
@@ -39,7 +40,7 @@ class Report(FPDF):
 			header_height = 20
 
 		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
-		for col in self.report_cols:
+		for col in self.header_cols:
 			self.cell(25, header_height, col,
 					  border=True, align='C')
 
@@ -73,8 +74,6 @@ class Report(FPDF):
 				text = ''
 			# TPM	
 			elif '_tpm' in col:
-				print()
-				print(col)
 				text = str(round(entry[col],2))
 				border = True
 				fill = False
