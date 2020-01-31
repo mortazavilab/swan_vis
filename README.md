@@ -179,7 +179,7 @@ sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 .
 <img align="center" width="800" src="figures/wt_5xFAD_TALONT000593679.png">
 
-The first argument here is the gene's ENSEMBL ID, as we called the plotting functions in 5.a and 5.b. The second argument is a prefix for the output files to be saved. In contrast to the plotting functions in 5.a and 5.b, plot_each_transcript automatically saves each transcript's plot with the input prefix and the transcript's ID in each of the output file names.
+The first argument here is the gene's ENSEMBL ID, as we called the plotting functions in 5.a and 5.b. The second argument is a prefix for the output files to be saved. In contrast to the plotting functions in 5.a and 5.b, *plot_each_transcript* automatically saves each transcript's plot with the input prefix and the transcript's ID in each of the output file names.
 
 
 ### 5.d: Swan graph plotting settings
@@ -241,7 +241,7 @@ sg.save_fig('figures/ENSMUST00000106992.9_browser.png')
 sg.plot_each_transcript('ENSMUSG00000018411.17', browser=True)
 ```
 
-<img align="center" width="800" src="figures/ENSMUSG00000018411.17_wt_1.png">
+<img align="center" width="800" src="figures/ENSMUSG00000018411.17_browser.png">
 
 
 * Note that the browser=True argument **is not compatible** with the options *combine*, *indicate_novel* or *indicate_dataset*
