@@ -241,7 +241,7 @@ sg.save_fig('figures/ENSMUST00000106992.9_browser.png')
 sg.plot_each_transcript('ENSMUSG00000018411.17', browser=True)
 ```
 
-<img align="center" width="800" src="figures/ENSMUSG00000018411.17_browser.png">
+<img align="center" width="800" src="figures/ENSMUST00000106992.9_browser.png">
 
 
 * Note that the browser=True argument **is not compatible** with the options *combine*, *indicate_novel* or *indicate_dataset*
