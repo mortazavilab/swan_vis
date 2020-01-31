@@ -329,19 +329,16 @@ As with the other browser plotting scripts, this is incompatible with the swan g
     sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='expression', heatmap=True)
     ```
    <img align="center" width="800" src="figures/report_heatmap.png">
-
     - **tid (default if no abundance data has been incorporated):** orders transcript models alphanumerically by transcript ID
     ```py
     sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', heatmap=True)
     ```
     <img align="center" width="800" src="figures/report_order_tid.png">
-
     - **tss:** orders transcript models by the genomic location of the TSS
     ```py
     sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tss', heatmap=True)
       ```
     <img align="center" width="800" src="figures/report_order_tss.png">
-
     - **tes:** orders transcript models by the genomic location of the TES
     ```py
     sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tes', heatmap=True)
@@ -351,7 +348,8 @@ As with the other browser plotting scripts, this is incompatible with the swan g
 * **include_unexpressed:** by default, swan removes transcripts that are not observed in at least one dataset from the report. If, for whatever reason, you want to keep these in, use this option.
     - if you haven't loaded any datasets into the graph but have loaded an annotation in, this will change to True, because otherwise your report will be completely empty.
     ```py
-    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', tpm=True, include_unexpressed=True)
+    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', \
+      tpm=True, include_unexpressed=True)
     ```
     <img align="center" width="800" src="figures/report_include_unexpressed.png">
 
