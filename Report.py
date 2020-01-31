@@ -40,7 +40,7 @@ class Report(FPDF):
 
 		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
 		for col in self.report_cols:
-			self.cell(50, header_height, col,
+			self.cell(25, header_height, col,
 					  border=True, align='C')
 
 		# in case we need to add the browser models
@@ -87,7 +87,7 @@ class Report(FPDF):
 					text = 'No'
 				border = True
 				fill = False 
-			self.cell(50, 20, text, border=border, align='C', fill=fill)	
+			self.cell(25, 20, text, border=border, align='C', fill=fill)	
 		x = self.get_x()
 		y = self.get_y()
 

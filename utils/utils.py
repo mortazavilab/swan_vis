@@ -84,7 +84,7 @@ def process_abundance_file(file, cols):
 	if type(cols) != list: cols = [cols]
 
 	df = pd.read_csv(file, sep='\t')
-	keep_cols = ['annot_transcript_id']+cols
+	keep_cols = ['annot_transcript_id']+cols	
 	df = df[keep_cols]
 
 	# get the counts
@@ -101,7 +101,6 @@ def process_abundance_file(file, cols):
 	df.drop(cols, axis=1, inplace=True)
 	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
 
-	print('in process_abundance_file')
 	return df
 
 # creates a file name based on input plotting arguments

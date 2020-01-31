@@ -123,9 +123,6 @@ class SpliceGraph(Graph):
 		self.t_df = create_dupe_index(self.t_df, 'tid')
 		self.t_df = set_dupe_index(self.t_df, 'tid')
 
-		# testing
-		print(self.t_df.columns)
-
 		# finally update object's metadata
 		self.counts.append('{}_counts'.format(dataset_name))
 		self.tpm.append('{}_tpm'.format(dataset_name))
@@ -766,7 +763,7 @@ class SpliceGraph(Graph):
 
 	# saves a splice graph object in pickle format
 	def save_graph(self, prefix):
-		picklefile = open(prefix+'.p', 'ab')
+		picklefile = open(prefix+'.p', 'wb')
 		pickle.dump(self, picklefile)
 		picklefile.close()
 

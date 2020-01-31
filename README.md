@@ -146,9 +146,11 @@ sg.plot_graph('ENSMUSG00000018411.17')
 sg.save_fig('figures/ENSMUSG00000018411.17_summary.png')
 ```
 
+<img align="center" width="500" src="figures/ENSMUSG00000018411.17_summary.png">
+
 Currently, this command only accepts the gene id in terms of the id taken from GTF, in my case, the ENSEMBL ID.
 
-**Note:** for graphs produced with plot_graph or plot_transcript_path, currently you must call save_fig to save a copy of a figure. This is as opposed to gen_report and plot_each_transcript, which will automatically save the figures. The rationale behind the save_fig call is to allow the user to decide what the figure is called, whereas the latter functions generate filenames for the user.
+**Note:** for graphs produced with *plot_graph* or *plot_transcript_path*, currently you must call *save_fig* to save a copy of a figure. This is as opposed to *gen_report* and *plot_each_transcript*, which will automatically save the figures. The rationale behind the save_fig call is to allow the user to decide what the figure is called, whereas the latter functions generate filenames for the user.
 
 ### 5.b: Plotting a transcript's path through a swan graph
  
@@ -157,19 +159,28 @@ You also may want to visualize the path that a specific transcript isoform takes
 Don't forget to call save_fig after rendering the plot!
 
 ```py
-sg.plot_transcript_path('ENSMUST00000159265.1')
-sg.save_fig('figures/ENSMUST00000159265.1.png')
+sg.plot_transcript_path('ENSMUST00000106992.9')
+sg.save_fig('figures/ENSMUST00000106992.9.png')
 ```
+
+<img align="center" width="500" src="figures/ENSMUST00000106992.9.png">
 
 ### 5.c: Plot all transcript paths through a gene
 
 Sometimes (okay probably most of the time) you don't know what exact isoform you want to look at from a gene, and instead just want to understand the differences in transcript splicing within a gene, in the form of generating a plot from 5.b for every transcript in a gene. To do this, use the following command: 
 
 ```py
-sg.plot_each_transcript('ENSMUSG00000018411.17', 'input_files/wt_5xFAD')
+sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 ```
 
+<img align="center" width="500" src="figures/wt_5xFAD_ENSMUST00000106993.9.png">
+.
+.
+.
+<img align="center" width="500" src="figures/wt_5xFAD_TALONT000593679.png">
+
 The first argument here is the gene's ENSEMBL ID, as we called the plotting functions in 5.a and 5.b. The second argument is a prefix for the output files to be saved. In contrast to the plotting functions in 5.a and 5.b, plot_each_transcript automatically saves each transcript's plot with the input prefix and the transcript's ID in each of the output file names.
+
 
 ### 5.d: Swan graph plotting settings
 
@@ -188,6 +199,8 @@ And the options you can add to each plotting function are as follows
    sg.save_fig('figures/ENSMUSG00000018411.17_combined.png')
    ```
 
+<img align="center" width="500" src="figures/ENSMUSG00000018411.17_combined.png">
+
    - This option can be used with either of the following options, **indicate_dataset** or **indicate_novel**
 
 * **indicate_novel:** "Highlight" novel nodes and edges in the graph. Novel nodes and edges correspond to splice junctions, exons, or introns that are not seen in the annotation. Resultant novel nodes will be diamond shaped, and novel exons/introns will be dashed edges.
@@ -196,6 +209,10 @@ And the options you can add to each plotting function are as follows
    sg.plot_graph('ENSMUSG00000018411.17', indicate_novel=True)
    sg.save_fig('figures/ENSMUSG00000018411.17_novel.png')
    ```
+
+<img align="center" width="500" src="figures/ENSMUSG00000018411.17_wt_1.png">
+
+
    - **This option requires that an annotation has been loaded into the graph with *add_annotation***
    - **This option cannot be used with the *indicate_dataset* option**
    - This option can be used with the *combine* option
@@ -206,6 +223,10 @@ And the options you can add to each plotting function are as follows
    sg.plot_graph('ENSMUSG00000018411.17', indicate_dataset='wt_1')
    sg.save_fig('figures/ENSMUSG00000018411.17_wt_1.png')
    ```
+
+<img align="center" width="500" src="figures/ENSMUSG00000018411.17_wt_1.png">
+
+
    - **This option cannot be used with the *indicate_dataset* option**
    - This option can be used with the *combine* option
 
@@ -214,11 +235,14 @@ And the options you can add to each plotting function are as follows
 In order to be able to compare the swan graph models with more traditional representations of transcript models, there is also an option to plot the browser track-style for plotting one transcript at a time. In these visualizations, genomic location is to scale. You can plot browser-style tracks in both *plot_transcript_path* and *plot_each_transcript* as follows:
 
 ```py
-sg.plot_transcript_path('ENSMUST00000159265.1', browser=True)
-sg.save_fig('figures/ENSMUST00000159265.1_browser.png')
+sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
+sg.save_fig('figures/ENSMUST00000106992.9_browser.png')
 
 sg.plot_each_transcript('ENSMUSG00000018411.17', browser=True)
 ```
+
+<img align="center" width="500" src="figures/ENSMUSG00000018411.17_wt_1.png">
+
 
 * Note that the browser=True argument **is not compatible** with the options *combine*, *indicate_novel* or *indicate_dataset*
 
@@ -238,6 +262,9 @@ sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 sg.gen_report(['ENSMUSG00000018411.17', 'ENSMUSG00000051951.5'], 'figures/wt_5xFAD')
 ```
 
+<img align="center" width="500" src="figures/report.png">
+
+
 #### 7.a.i: Swan graph report options
 
 Options that are only applicable when making a swan graph report include:
@@ -245,14 +272,21 @@ Options that are only applicable when making a swan graph report include:
    ```py
    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', combine=True)
    ```
+
+<img align="center" width="500" src="figures/report_combine.png">
+
 * **indicate_novel:** as described in 5.d (all restrictions ie cannot be called with *indicate_dataset* apply here too)
    ```py
    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', indicate_novel=True)
    ```
+<img align="center" width="500" src="figures/report_novel.png">
+
  * **indicate_dataset:** as described in 5.d (all restrictions ie cannot be called with *indicate_novel* apply here too)
    ```py
    sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', indicate_dataset='wt_1')
    ```
+ <img align="center" width="500" src="figures/report_wt_1.png">
+
 
 ### 7.b: Browser track-style report 
 

@@ -49,6 +49,9 @@ class PlottedGraph(Graph):
 			self.subset_on_gene(self.gid)
 			self.g_min, self.g_max = self.get_gene_min_max(gid)
 		if self.tid: 
+			gid = self.get_gid_from_tid(self.tid)
+			self.gid = gid
+			self.subset_on_gene(gid)
 			self.path = self.get_path_from_tid(self.tid)
 		else:
 			self.path = None
@@ -215,12 +218,16 @@ class PlottedGraph(Graph):
 			self.path = self.get_path_from_tid(self.tid)
 			if x.vertex_id == self.path[0]:
 				x['color'] = color_dict['alt_TSS']
+				x['sub_color'] = color_dict['alt_TSS']
 			elif x.vertex_id == self.path[-1]:
 				x['color'] = color_dict['alt_TES']
+				x['sub_color'] = color_dict['alt_TES']
 			elif x.vertex_id in self.path:
 				x['color'] = color_dict['internal']
+				x['sub_color'] = color_dict['internal']	
 			else:
 				x['color'] = color_dict['gray']
+				x['sub_color'] = color_dict['gray']	
 
 		# combined nodes
 		elif x.combined:
@@ -228,6 +235,7 @@ class PlottedGraph(Graph):
 
 			# did one or two types of node go into this node?
 			if len(types) == 2:
+
 				x['sub_color'] = color_dict[types[0]]
 				x['color'] = color_dict[types[1]]
 			else: 
