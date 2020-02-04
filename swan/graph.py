@@ -1,13 +1,8 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import os
-import math
 import copy
-from collections import defaultdict
-import sqlite3
-from utils import *
+from swan.utils import *
 
 # super class that both SpliceGraph and PlottedGraph inherit from.
 # all functions that both subclasses will use are in here.

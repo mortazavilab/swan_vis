@@ -1,0 +1,12 @@
+
+# compliation
+__pycache__/
+*/__pycache__/
+
+# figures
+figures/
+visual_tests/figures/
+
+# other 
+.DS_Store
+

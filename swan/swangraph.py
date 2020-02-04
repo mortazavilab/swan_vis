@@ -2,20 +2,17 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 import math
 import copy
 from collections import defaultdict
 import sqlite3
 import pickle
-from utils import *
-from PlottedGraph import PlottedGraph 
-from Graph import Graph
-from Report import *
-import time
+from swan.utils import *
+from swan.graph import Graph
+from swan.plottedgraph import PlottedGraph
 
-class SpliceGraph(Graph):
+class SwanGraph(Graph):
 
 	def __init__(self):
 		super().__init__()

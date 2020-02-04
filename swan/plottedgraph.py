@@ -6,9 +6,8 @@ import os
 import copy
 from collections import defaultdict
 import matplotlib.patches as pch
-import sqlite3
-from utils import *
-from Graph import Graph
+from swan.utils import *
+from swan.graph import Graph
 
 class PlottedGraph(Graph):
 
