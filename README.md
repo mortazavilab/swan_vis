@@ -21,7 +21,7 @@ sg = sw.SwanGraph()
 To keep things flexible, you don't *technically* need to add an annotation, however for my purposes, I always have found it useful to have an annotation to compare things to. Here, I'll be using the gencode vM21 annotation (for mouse). 
 
 ```py
-sg.add_annotation(gtf='input_files/gencode.vM21.annotation.gtf')
+sg.add_annotation('input_files/gencode.vM21.annotation.gtf')
 ```
 
 ## 3: Adding transcript models from your transcripts
@@ -30,10 +30,10 @@ sg.add_annotation(gtf='input_files/gencode.vM21.annotation.gtf')
 
 These transcript models should be those that come from your RNA-seq dataset, in GTF format. You will give your dataset a name so that the program can record what transcripts are seen in what dataset. Here, I'm adding 2 replicates each of wildtype mouse cortex, and 5xFAD (Alzheimer's model) mouse cortex. In each call, the first argument is the name of the dataset (each name added to the SwanGraph must be unique!), and the second argument is the GTF file in which the transcript models associated with the dataset are stored.
 ```py
-sg.add_dataset('wt_1', gtf='input_files/wt_1_filtered_talon.gtf')
-sg.add_dataset('wt_2', gtf='input_files/wt_2_filtered_talon.gtf')
-sg.add_dataset('5xFAD_1', gtf='input_files/5xFAD_1_filtered_talon.gtf')
-sg.add_dataset('5xFAD_2', gtf='input_files/5xFAD_2_filtered_talon.gtf')
+sg.add_dataset('wt_1', 'input_files/wt_1_filtered_talon.gtf')
+sg.add_dataset('wt_2', 'input_files/wt_2_filtered_talon.gtf')
+sg.add_dataset('5xFAD_1', 'input_files/5xFAD_1_filtered_talon.gtf')
+sg.add_dataset('5xFAD_2', 'input_files/5xFAD_2_filtered_talon.gtf')
 ```
 
 ### 3.b: (Alternative to 3.a) Adding transcript models to your SwanGraph with expression data
@@ -48,23 +48,23 @@ The input to add_dataset now just includes the counts_file argument and the coun
 * 5xFAD_1: PB130
 * 5xFAD_2: PB131
 ```py
-sg.add_dataset('wt_1', gtf='input_files/wt_1_filtered_talon.gtf',
+sg.add_dataset('wt_1', 'input_files/wt_1_filtered_talon.gtf',
   counts_file='input_files/wt_5xFAD_filtered_talon_abundance.tsv',
   counts_cols='PB132')
-sg.add_dataset('wt_2', gtf='input_files/wt_2_filtered_talon.gtf',
+sg.add_dataset('wt_2', 'input_files/wt_2_filtered_talon.gtf',
   counts_file='input_files/wt_5xFAD_filtered_talon_abundance.tsv',
   counts_cols='PB133')
-sg.add_dataset('5xFAD_1', gtf='input_files/5xFAD_1_filtered_talon.gtf',
+sg.add_dataset('5xFAD_1', 'input_files/5xFAD_1_filtered_talon.gtf',
   counts_file='input_files/wt_5xFAD_filtered_talon_abundance.tsv',
   counts_cols='PB130')
-sg.add_dataset('5xFAD_2', gtf='input_files/5xFAD_2_filtered_talon.gtf',
+sg.add_dataset('5xFAD_2', 'input_files/5xFAD_2_filtered_talon.gtf',
   counts_file='input_files/wt_5xFAD_filtered_talon_abundance.tsv',
   counts_cols='PB131')
 ```
 
 If you did have more than one column you want to use for counts, the syntax would look as follows:
 ```py
-sg.add_dataset('wt', gtf='input_files/wt_1_filtered_talon.gtf',
+sg.add_dataset('wt', 'input_files/wt_1_filtered_talon.gtf',
   counts_file='input_files/wt_5xFAD_filtered_talon_abundance.tsv',
   counts_cols=['PB132', 'PB133'])
 ```
@@ -76,10 +76,10 @@ Also alternatively, you can add your abundance information to your SwanGraph aft
 
 ```py
 # add the datasets first (3a)
-sg.add_dataset('wt_1', gtf='input_files/wt_1_filtered_talon.gtf')
-sg.add_dataset('wt_2', gtf='input_files/wt_2_filtered_talon.gtf')
-sg.add_dataset('5xFAD_1', gtf='input_files/5xFAD_1_filtered_talon.gtf')
-sg.add_dataset('5xFAD_2', gtf='input_files/5xFAD_2_filtered_talon.gtf')
+sg.add_dataset('wt_1', 'input_files/wt_1_filtered_talon.gtf')
+sg.add_dataset('wt_2', 'input_files/wt_2_filtered_talon.gtf')
+sg.add_dataset('5xFAD_1', 'input_files/5xFAD_1_filtered_talon.gtf')
+sg.add_dataset('5xFAD_2', 'input_files/5xFAD_2_filtered_talon.gtf')
 
 # add the abundances
 sg.add_abundance('input_files/wt_5xFAD_filtered_talon_abundance.tsv', 'PB132', 'wt_1')

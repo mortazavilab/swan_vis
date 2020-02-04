@@ -126,6 +126,16 @@ def create_fname(prefix, combine, indicate_dataset,
 		fname += '_report.pdf'
 	return fname
 
+# checks if a file is a gtf or a db
+def gtf_or_db(fname):
+	ext = fname.split('.')[-1]
+	if ext == 'gtf': return 'gtf'
+	elif ext == 'db': return 'db'
+	else:
+		raise Exception('File type must be gtf or db. '
+			'Type received is {}'.format(ext))
+
+
 
 	
 

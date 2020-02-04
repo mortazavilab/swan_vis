@@ -22,23 +22,16 @@ class SwanGraph(Graph):
 	###########################################################################
 
 	# add annotation to graph 
-	def add_annotation(self, gtf=None, db=None):
-
-		# neither gtf nor db given
-		if not gtf and not db: 
-			raise Exception('Provide a GTF or TALON db')
+	def add_annotation(self, fname):
 
 		# column name for annotation 
 		col = 'annotation'
 
 		# use the add_dataset function to add stuff to graph
-		if gtf:
-			self.add_dataset(col, gtf=gtf)
-		elif db:
-			self.add_dataset(col, db=db)
+		self.add_dataset(col, fname)
 
 	# add dataset into graph from gtf
-	def add_dataset(self, col, gtf=None, db=None,
+	def add_dataset(self, col, fname, db=None,
 					counts_file=None, count_cols=None):
 
 		# make sure that input dataset name is not
@@ -56,14 +49,17 @@ class SwanGraph(Graph):
 			raise Exception('Dataset name {} conflicts with preexisting '
 				'column in t_df. Choose a different name.'.format(col))
 
+		# are we dealing with a gtf or a db?
+		ftype = gtf_or_db(fname)
+
 		# first entry is easy 
 		if self.is_empty():
 
 			# get loc_df, edge_df, t_df
-			if gtf:
-				self.create_dfs_gtf(gtf)
-			elif db:
-				self.create_dfs_db(db)
+			if ftype == 'gtf':
+				self.create_dfs_gtf(fname)
+			elif ftype == 'db':
+				self.create_dfs_db(fname)
 
 			# add column to each df to indicate where data came from
 			self.loc_df[col] = True
@@ -74,10 +70,10 @@ class SwanGraph(Graph):
 		# SwanGraph objects
 		else:
 			temp = SwanGraph()
-			if gtf:
-				temp.create_dfs_gtf(gtf)
-			elif db:
-				temp.create_dfs_db(db)
+			if ftype == 'gtf':
+				temp.create_dfs_gtf(fname)
+			elif ftype == 'db':
+				temp.create_dfs_db(fname)
 			self.merge_dfs(temp, col)
 
 		# order node ids by genomic position, add node types,
