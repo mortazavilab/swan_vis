@@ -4,7 +4,7 @@ import pandas as pd
 import copy
 from swan.utils import *
 
-# super class that both SpliceGraph and PlottedGraph inherit from.
+# super class that both SwanGraph and PlottedGraph inherit from.
 # all functions that both subclasses will use are in here.
 class Graph:
 	def __init__(self):
@@ -67,10 +67,10 @@ class Graph:
 	# def check_annotation(self):
 	# 	datasets = self.get_dataset_cols()
 
-	# check if gid is in SpliceGraph
+	# check if gid is in SwanGraph
 	def check_gene(self, gid):
 		if gid not in self.t_df.gid.tolist():
-			raise Exception('Gene {} not found in SpliceGraph.'.format(gid))
+			raise Exception('Gene {} not found in SwanGraph.'.format(gid))
 
 
 	##########################################################################
@@ -300,9 +300,9 @@ class Graph:
 	# recreates the graph using this
 	def subset_on_gene(self, gid):
 
-		# make sure this gid is even in the SpliceGraph
+		# make sure this gid is even in the SwanGraph
 		if gid not in self.t_df.gid.tolist():
-			raise Exception('Gene id {} not found in SpliceGraph.'.format(gid))
+			raise Exception('Gene id {} not found in SwanGraph.'.format(gid))
 
 		# subset t_df first, it's the easiest
 		self.t_df = self.t_df.loc[self.t_df.gid == gid]
