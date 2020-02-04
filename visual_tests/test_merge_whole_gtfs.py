@@ -1,11 +1,7 @@
 import sys
 import os
 from collections import defaultdict
-lib_path = '/'.join(os.path.abspath(__file__).split('/')[0:-2])
-sys.path.append(lib_path+'/utils/')
-sys.path.append(lib_path)
-from SpliceGraph import SpliceGraph
-from utils import *
+import swan as sw
 import cProfile
 import time
 import numpy as np
@@ -17,7 +13,7 @@ import numpy as np
 # cortex_gtf = 'input_files/cortex_talon.gtf'
 # ab_file = 'input_files/mouse_brain_talon_abundance_filtered.tsv'
 
-# sg = SpliceGraph()
+# sg = sw.SwanGraph()
 # sg.add_annotation(annot_gtf)
 # sg.add_dataset('hippocampus', gtf=hippocampus_gtf,
 # 			   counts_file=ab_file,
@@ -28,7 +24,7 @@ import numpy as np
 # sg.save_graph('input_files/cortex_hippocampus')
 
 # loading the sg
-sg = SpliceGraph()
+sg = sw.SwanGraph()
 sg.load_graph('input_files/cortex_hippocampus.p')
 
 

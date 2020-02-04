@@ -1,12 +1,9 @@
 import sys
 import os
 from collections import defaultdict
-lib_path = '/'.join(os.path.abspath(__file__).split('/')[0:-2])
-sys.path.append(lib_path+'/utils/')
-sys.path.append(lib_path)
-from SpliceGraph import SpliceGraph
+import swan as sw
 
-sg = SpliceGraph()
+sg = sw.SwanGraph()
 sg.add_annotation(gtf='input_files/annotation_ENSMUSG00000051951.5.gtf')
 
 # sg.add_dataset('cortex',
