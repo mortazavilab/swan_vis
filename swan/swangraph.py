@@ -71,9 +71,9 @@ class SwanGraph(Graph):
 			self.t_df[col] = True
 
 		# adding a new dataset to the graph requires us to merge
-		# SpliceGraph objects
+		# SwanGraph objects
 		else:
-			temp = SpliceGraph()
+			temp = SwanGraph()
 			if gtf:
 				temp.create_dfs_gtf(gtf)
 			elif db:
@@ -124,7 +124,7 @@ class SwanGraph(Graph):
 		self.counts.append('{}_counts'.format(dataset_name))
 		self.tpm.append('{}_tpm'.format(dataset_name))
 
-	# merge dfs from two SpliceGraph objects
+	# merge dfs from two SwanGraph objects
 	def merge_dfs(self, b, b_col):
 
 		# merge loc dfs
@@ -615,7 +615,7 @@ class SwanGraph(Graph):
 		return strand
 
 	##########################################################################
-	######################## Other SpliceGraph utilities #####################
+	######################## Other SwanGraph utilities #####################
 	##########################################################################
 
 	# order the transcripts by expression of transcript, transcript id, 
@@ -755,7 +755,7 @@ class SwanGraph(Graph):
 		pass
 
 	##########################################################################
-	######################## Loading/saving SpliceGraphs #####################
+	######################## Loading/saving SwanGraphs #####################
 	##########################################################################
 
 	# saves a splice graph object in pickle format
@@ -770,7 +770,7 @@ class SwanGraph(Graph):
 		picklefile = open(fname, 'rb')
 		graph = pickle.load(picklefile)
 
-		# assign SpliceGraph fields from file to self
+		# assign SwanGraph fields from file to self
 		self.loc_df = graph.loc_df
 		self.edge_df = graph.edge_df
 		self.t_df = graph.t_df
@@ -789,7 +789,7 @@ class SwanGraph(Graph):
 	##########################################################################
 
 
-	# plot the SpliceGraph object according to the user's input
+	# plot the SwanGraph object according to the user's input
 	def plot_graph(self, gid, combine=False,
 				   indicate_dataset=False,
 				   indicate_novel=False):
@@ -830,7 +830,7 @@ class SwanGraph(Graph):
 
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 
-		# loop through each transcript in the SpliceGraph object
+		# loop through each transcript in the SwanGraph object
 		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
 			self.pg = PlottedGraph(self,
 								   combine,
@@ -986,7 +986,7 @@ class SwanGraph(Graph):
 							'or indicate_novel, not both.')
 
 		# if indicate_dataset or indicate_novel are chosen, make sure
-		# the dataset or annotation data exists in the SpliceGraph
+		# the dataset or annotation data exists in the SwanGraph
 		if indicate_novel and 'annotation' not in self.get_dataset_cols():
 			raise Exception('Annotation data not present in graph. Use  '
 							'add_annotation before using indicate_novel')

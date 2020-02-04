@@ -239,7 +239,7 @@ class Graph:
 		if datasets:
 			if type(datasets) != list:
 				datasets = [datasets]
-			# self.check_abundances(datasets)
+			self.check_abundances(datasets)
 			counts_cols = []
 			for d in datasets:
 				counts_cols.append('{}_counts'.format(d))
