@@ -7,16 +7,16 @@ Welcome to Swan, a tool for visualizing and interpreting transcript isoforms gra
 Create a new Python file to serve as your "driver" script in the swan directory. Add the following header to your file:
 
 ```py
-from SpliceGraph import SpliceGraph
+import swan as sw
 ```
 
-Then, initialize an empty SpliceGraph object.
+Then, initialize an empty SwanGraph object.
 
 ```py
-sg = SpliceGraph()
+sg = sw.SwanGraph()
 ```
 
-## 2: Adding an annotation to your SpliceGraph
+## 2: Adding an annotation to your SwanGraph
 
 To keep things flexible, you don't *technically* need to add an annotation, however for my purposes, I always have found it useful to have an annotation to compare things to. Here, I'll be using the gencode vM21 annotation (for mouse). 
 
@@ -28,7 +28,7 @@ sg.add_annotation(gtf='input_files/gencode.vM21.annotation.gtf')
 
 ### 3.a: Adding just the models
 
-These transcript models should be those that come from your RNA-seq dataset, in GTF format. You will give your dataset a name so that the program can record what transcripts are seen in what dataset. Here, I'm adding 2 replicates each of wildtype mouse cortex, and 5xFAD (Alzheimer's model) mouse cortex. In each call, the first argument is the name of the dataset (each name added to the SpliceGraph must be unique!), and the second argument is the GTF file in which the transcript models associated with the dataset are stored.
+These transcript models should be those that come from your RNA-seq dataset, in GTF format. You will give your dataset a name so that the program can record what transcripts are seen in what dataset. Here, I'm adding 2 replicates each of wildtype mouse cortex, and 5xFAD (Alzheimer's model) mouse cortex. In each call, the first argument is the name of the dataset (each name added to the SwanGraph must be unique!), and the second argument is the GTF file in which the transcript models associated with the dataset are stored.
 ```py
 sg.add_dataset('wt_1', gtf='input_files/wt_1_filtered_talon.gtf')
 sg.add_dataset('wt_2', gtf='input_files/wt_2_filtered_talon.gtf')
@@ -36,10 +36,10 @@ sg.add_dataset('5xFAD_1', gtf='input_files/5xFAD_1_filtered_talon.gtf')
 sg.add_dataset('5xFAD_2', gtf='input_files/5xFAD_2_filtered_talon.gtf')
 ```
 
-### 3.b: (Alternative to 3.a) Adding transcript models to your SpliceGraph with expression data
+### 3.b: (Alternative to 3.a) Adding transcript models to your SwanGraph with expression data
 
 Alternatively to only loading in the transcript models themselves, you can also load in both expression data and your transcript models at the same time. To do this, obtain an abundance file that contains counts corresponding to occurrence of each transcript (I got mine from [TALON](https://github.com/dewyman/TALON)). There are a few things that each abundance file needs to be processed by Swan. 
-* column 'annot_transcript_id': should correspond to the transcript ids found in each GTF loaded into your SpliceGraph. For instance, mine are ENSEMBL style ie. ENSMUST00000159265.1
+* column 'annot_transcript_id': should correspond to the transcript ids found in each GTF loaded into your SwanGraph. For instance, mine are ENSEMBL style ie. ENSMUST00000159265.1
 * counts for your dataset in a column with any name (well except for 'annot_transcript_id' or 'annot_gene_id'), your counts can also be spread across multiple columns in case you're trying to combine replicates
 
 The input to add_dataset now just includes the counts_file argument and the count_cols arguments, which should be assigned to the abundance file and a list of the columns that you wish to use as your counts columns. And in this case the columns I am using for each of my datasets are as follows:
@@ -70,9 +70,9 @@ sg.add_dataset('wt', gtf='input_files/wt_1_filtered_talon.gtf',
 ```
 Where counts_cols is a list instead of just a string.
 
-### 3.c: (Alternative to 3.b) Adding transcript models to your SpliceGraph, then adding expression data
+### 3.c: (Alternative to 3.b) Adding transcript models to your SwanGraph, then adding expression data
 
-Also alternatively, you can add your abundance information to your SpliceGraph after you've already added the transcript models. This will be accomplished using similar arguments as in 3a and 3b, but split among two function: add_dataset and add_abundance.
+Also alternatively, you can add your abundance information to your SwanGraph after you've already added the transcript models. This will be accomplished using similar arguments as in 3a and 3b, but split among two function: add_dataset and add_abundance.
 
 ```py
 # add the datasets first (3a)
@@ -93,19 +93,19 @@ Similarly to 3b, if you have more than one counts columns, you can do:
 sg.add_abundance('input_files/wt_5xFAD_filtered_talon_abundance.tsv', ['PB132', 'PB133'], 'wt')
 ```
 
-## 4: Saving and loading a SpliceGraph object
+## 4: Saving and loading a SwanGraph object
 
-Since the program typically takes a while to run the SpliceGraph population/merging code, you can also save it after you're done populating it, and load it in again later.
+Since the program typically takes a while to run the SwanGraph population/merging code, you can also save it after you're done populating it, and load it in again later.
 
-To save your SpliceGraph, simply use save_graph and pass it in the prefix for the file to save to (here it's 'input_files/wt_5xFAD_sg'. 
+To save your SwanGraph, simply use save_graph and pass it in the prefix for the file to save to (here it's 'input_files/wt_5xFAD_sg'. 
 ```py
 sg.save_graph('input_files/wt_5xFAD_sg')
 ```
-The resultant file is in the form of a pickled file (a binarized form of a python object), so you can't look at the file to try to understand your data at all. In the future, I plan on having an option to save the dataframes associated with the SpliceGraph object which will further the user's ability to view and analyze their data, even outside of the context of what swan can currently do.
+The resultant file is in the form of a pickled file (a binarized form of a python object), so you can't look at the file to try to understand your data at all. In the future, I plan on having an option to save the dataframes associated with the SwanGraph object which will further the user's ability to view and analyze their data, even outside of the context of what swan can currently do.
 
-To load your SpliceGraph, you first have to initialize an empty SpliceGraph, then tell the object to just load your preexisting saved SpliceGraph into the current object.
+To load your SwanGraph, you first have to initialize an empty SwanGraph, then tell the object to just load your preexisting saved SwanGraph into the current object.
 ```py
-sg = SpliceGraph()
+sg = SwanGraph()
 sg.load_graph('input_files/wt_5xFAD_sg.p')
 ```
 
