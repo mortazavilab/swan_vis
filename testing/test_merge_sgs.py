@@ -1,11 +1,7 @@
 import pytest
 import sys
 import numpy as np
-sys.path.append('../utils/')
-sys.path.append('../../refactor_splice_graph/')
-from SpliceGraph import SpliceGraph
-from utils import *
-
+import swan as sw
 
 # i suppose this is also testing the df init because 
 # everything needs to be here? And in the right order -\(' ')/-
@@ -13,7 +9,7 @@ class TestMergeSGs(object):
 	def test_merge_sgs(self):
 		a_gtf = 'input_files/annot.gtf'
 		b_gtf = 'input_files/annot_2.gtf'
-		sg = SpliceGraph()
+		sg = sw.SwanGraph()
 		sg.add_dataset('a', gtf=a_gtf)
 		sg.add_dataset('b', gtf=b_gtf)
 		sg.order_transcripts()

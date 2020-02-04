@@ -1,23 +1,21 @@
 import pytest
 import sys
 import numpy as np
-sys.path.append('../utils/')
-sys.path.append('../../swan/')
-from SpliceGraph import SpliceGraph
-from utils import *
+import swan as sw
+import pandas as pd
 
 class TestFindInterestingGenes(object):
 
 	# 
 	def test_num_novel_known_isoforms(self):
-		sg = SpliceGraph()
+		sg = sw.SwanGraph()
 		sg.t_df = pd.DataFrame({'tid': [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
 							    'gid': [0,0,0,0,1,1,1,2,2,2,2,2,2,2,3,3],
 							    'annotation': [True,True,True,True,False,True,True,False,False,False,True,False,False,True,True,True],
 							    'a': [False,True,True,False,True,False,False,True,True,False,False,True,False,False,False,False],
 							    'b': [False,False,True,True,True,False,True,False,True,True,True,False,True,False,False,False]})
-		sg.t_df = create_dupe_index(sg.t_df, 'tid')
-		sg.t_df = set_dupe_index(sg.t_df, 'tid')
+		sg.t_df = sw.create_dupe_index(sg.t_df, 'tid')
+		sg.t_df = sw.set_dupe_index(sg.t_df, 'tid')
 		sg.datasets = ['annotation', 'a', 'b']
 
 		genes, g_df = sg.find_genes_with_novel_isoforms()

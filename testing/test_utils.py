@@ -1,18 +1,13 @@
 import sys
 import os
 from collections import defaultdict
-lib_path = '/'.join(os.path.abspath(__file__).split('/')[0:-2])
-sys.path.append(lib_path+'/utils/')
-sys.path.append(lib_path)
-import SpliceGraph as sg
-import PlottedGraph as pg
-from utils import *
+import swan as sw
 
 class TestUtils(object):
 # tests random utilities, from the utils.py file
 	def test_process_abundance_file(self):
 		file = 'input_files/test_abundance.tsv'
-		df = process_abundance_file(file, ['count_1a', 'count_2a'])
+		df = sw.process_abundance_file(file, ['count_1a', 'count_2a'])
 
 		print(df)
 		

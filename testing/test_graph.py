@@ -1,13 +1,10 @@
 import pytest
 import sys
 import numpy as np
-sys.path.append('../utils/')
-sys.path.append('../../swan/')
-from SpliceGraph import SpliceGraph
-from PlottedGraph import PlottedGraph
-from utils import *
+import swan as sw
 import networkx as nx
 import math
+import pandas as pd
 
 # tests the functions in superclass Graph.py
 class TestGraph(object):
@@ -19,7 +16,7 @@ class TestGraph(object):
 	# test for check_datasets
 	def test_check_datasets(self):
 
-		g = SpliceGraph()
+		g = sw.SwanGraph()
 		g.datasets = ['a','b']
 
 		# 1: test for a dataset that's not there
@@ -43,7 +40,7 @@ class TestGraph(object):
 
 	# test for check_abundances
 	def test_check_abundances(self):
-		g = SpliceGraph()
+		g = sw.SwanGraph()
 		g.datasets = ['a', 'b', 'c']
 		g.counts = ['a_counts', 'b_counts']
 
@@ -168,7 +165,7 @@ class TestGraph(object):
 
 	# tests is_empty
 	def test_is_empty(self):
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 
 		# 1: graph is empty, no datasets (including annotation) 
 		print(a.datasets)
@@ -188,7 +185,7 @@ class TestGraph(object):
 
 	# tests get_dataset_cols
 	def test_get_dataset_cols(self):
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 
 		# 1: graph is empty, no datasets (including annotation) 
 		print(a.datasets)
@@ -208,7 +205,7 @@ class TestGraph(object):
 
 	# tests get_count_cols
 	def test_get_count_cols(self):
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 
 		# 1: empty graph, no datasets argument
 		assert a.get_count_cols() == []
@@ -223,7 +220,7 @@ class TestGraph(object):
 
 		# 4: empty graph, datasets argument
 		# also tests ability to handle char input
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 		with pytest.raises(Exception) as excinfo:
 			a.get_count_cols('a')
 		assert 'Abundance for dataset a' in str(excinfo.value)
@@ -248,7 +245,7 @@ class TestGraph(object):
 
 	# tests get_tpm_cols
 	def test_get_tpm_cols(self):
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 
 		# 1: empty graph, no datasets argument
 		assert a.get_tpm_cols() == []
@@ -263,7 +260,7 @@ class TestGraph(object):
 
 		# 4: empty graph, datasets argument
 		# also tests ability to handle char input
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 		with pytest.raises(Exception) as excinfo:
 			a.get_tpm_cols('a')
 		assert 'Abundance for dataset a' in str(excinfo.value)
@@ -332,7 +329,7 @@ class TestGraph(object):
 	# tests subset_on_gene
 	def test_subset_on_gene(self):
 		gid = 0
-		a = SpliceGraph()
+		a = sw.SwanGraph()
 		a.t_df = pd.DataFrame({'tid': [0,1,2,3,4,5],
 							   'gid': [0,0,1,1,2,2],
 							   'path': [[0,1,2],
@@ -347,12 +344,12 @@ class TestGraph(object):
 								 'coord': [0,1,2,3,4,5,6,7,8,9,10,11,12]})
 		a.edge_df = pd.DataFrame({'edge_id': [(0,1),(1,2),(2,3),(3,4),(5,6),(6,7),
 											  (7,8),(9,10),(10,11),(11,12)]})
-		a.t_df = create_dupe_index(a.t_df, 'tid')
-		a.t_df = set_dupe_index(a.t_df, 'tid')
-		a.loc_df = create_dupe_index(a.loc_df, 'vertex_id')
-		a.loc_df = set_dupe_index(a.loc_df, 'vertex_id')
-		a.edge_df = create_dupe_index(a.edge_df, 'edge_id')
-		a.edge_df = set_dupe_index(a.edge_df, 'edge_id')
+		a.t_df = sw.create_dupe_index(a.t_df, 'tid')
+		a.t_df = sw.set_dupe_index(a.t_df, 'tid')
+		a.loc_df = sw.create_dupe_index(a.loc_df, 'vertex_id')
+		a.loc_df = sw.set_dupe_index(a.loc_df, 'vertex_id')
+		a.edge_df = sw.create_dupe_index(a.edge_df, 'edge_id')
+		a.edge_df = sw.set_dupe_index(a.edge_df, 'edge_id')
 
 		# check subsetting for gene 0 
 		a.subset_on_gene(0)
@@ -382,22 +379,22 @@ def check_pairs(control, test):
 	assert len(test) == len(control)
 
 def get_dummy_sg(special=None):
-	a = SpliceGraph()
+	a = sw.SwanGraph()
 
 	loc_df = pd.DataFrame({'chrom': [1,1,1],
 		'coord': [1,3,2],
 		'strand': ['+', '+', '+'],
 		'vertex_id': [0,1,2]})
-	loc_df = create_dupe_index(loc_df, 'vertex_id')
-	loc_df = set_dupe_index(loc_df, 'vertex_id')
+	loc_df = sw.create_dupe_index(loc_df, 'vertex_id')
+	loc_df = sw.set_dupe_index(loc_df, 'vertex_id')
 
 	edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
 			  'v1': [0,0,1],
 			  'v2': [2,1,2],
 			  'edge_type': ['exon', 'exon', 'intron'], 
 			  'strand': ['+','+','+']})
-	edge_df = create_dupe_index(edge_df, 'edge_id')
-	edge_df = set_dupe_index(edge_df, 'edge_id')
+	edge_df = sw.create_dupe_index(edge_df, 'edge_id')
+	edge_df = sw.set_dupe_index(edge_df, 'edge_id')
 
 	t_df = pd.DataFrame({'tid':[2,1,0],
 			  'gid':[0,0,0],
@@ -405,8 +402,8 @@ def get_dummy_sg(special=None):
 			  'path':[[0,1,2],[1,2],[0,1]],
 			  'counts_a': [0,0,12],
 			  'counts_b': [1,0,14]})
-	t_df = create_dupe_index(t_df, 'tid')
-	t_df = set_dupe_index(t_df, 'tid')
+	t_df = sw.create_dupe_index(t_df, 'tid')
+	t_df = sw.set_dupe_index(t_df, 'tid')
 
 	if special == 'intron':
 		edge_df.loc[(0,1), 'edge_type'] = 'intron'

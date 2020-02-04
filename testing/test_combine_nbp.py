@@ -2,11 +2,8 @@
 import pytest
 import sys
 import numpy as np
-sys.path.append('../utils/')
-sys.path.append('../../refactor_splice_graph/')
-from SpliceGraph import SpliceGraph
-from PlottedGraph import PlottedGraph
-from utils import *
+import pandas as pd 
+import swan as sw
 import networkx as nx
 import math
 
@@ -14,7 +11,7 @@ class TestCombineNBP(object):
 
 	# graph where not all nodes must be combined
 	def test_not_all_nodes_combined(self):
-		sg = SpliceGraph()
+		sg = sw.SwanGraph()
 		sg.loc_df = pd.DataFrame({'vertex_id':[0,1,2,3,4,5],
 								  'coord': [0,1,2,3,4,5],
 								  'strand': ['+','+','+','+','+','+'],
@@ -28,16 +25,16 @@ class TestCombineNBP(object):
 								'gname': ['0','0'],
 								'gid': [0,0],
 								'path': [[0,1,2,3,5],[0,1,2,4,5]]})
-		sg.loc_df = create_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = create_dupe_index(sg.edge_df, 'edge_id')
-		sg.t_df = create_dupe_index(sg.t_df, 'tid')
-		sg.loc_df = set_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = set_dupe_index(sg.edge_df, 'edge_id')                                         
-		sg.t_df = set_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.create_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.create_dupe_index(sg.edge_df, 'edge_id')
+		sg.t_df = sw.create_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.set_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.set_dupe_index(sg.edge_df, 'edge_id')                                         
+		sg.t_df = sw.set_dupe_index(sg.t_df, 'tid')
 		sg.get_loc_types()
 		sg.create_graph_from_dfs()
 
-		sg.pg = PlottedGraph(sg, True, False, False)
+		sg.pg = sw.PlottedGraph(sg, True, False, False)
 
 		# first make sure that only the correct edges/nodes were 
 		# kept in loc_df and edge_df
@@ -54,7 +51,7 @@ class TestCombineNBP(object):
 
 	# graph where an NBP is halted because it reaches an alt TSS
 	def test_TSS(self):
-		sg = SpliceGraph()
+		sg = sw.SwanGraph()
 		sg.loc_df = pd.DataFrame({'vertex_id':[0,1,2,3,4,5],
 								  'coord': [0,1,2,3,4,5],
 								  'strand': ['+','+','+','+','+','+'],
@@ -68,16 +65,16 @@ class TestCombineNBP(object):
 								'gname': ['0','0'],
 								'gid': [0,0],
 								'path': [[0,1,2,3,4,5],[2,3,4,5]]})
-		sg.loc_df = create_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = create_dupe_index(sg.edge_df, 'edge_id')
-		sg.t_df = create_dupe_index(sg.t_df, 'tid')
-		sg.loc_df = set_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = set_dupe_index(sg.edge_df, 'edge_id')                                         
-		sg.t_df = set_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.create_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.create_dupe_index(sg.edge_df, 'edge_id')
+		sg.t_df = sw.create_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.set_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.set_dupe_index(sg.edge_df, 'edge_id')                                         
+		sg.t_df = sw.set_dupe_index(sg.t_df, 'tid')
 		sg.get_loc_types()
 		sg.create_graph_from_dfs()
 
-		sg.pg = PlottedGraph(sg, True, False, False)
+		sg.pg = sw.PlottedGraph(sg, True, False, False)
 
 		# first make sure that only the correct edges/nodes were 
 		# kept in loc_df and edge_df
@@ -95,7 +92,7 @@ class TestCombineNBP(object):
 
 	# graph where an NBP is halted because it reaches an alt TES
 	def test_TES(self):
-		sg = SpliceGraph()
+		sg = sw.SwanGraph()
 		sg.loc_df = pd.DataFrame({'vertex_id':[0,1,2,3,4,5],
 								  'coord': [0,1,2,3,4,5],
 								  'strand': ['+','+','+','+','+','+'],
@@ -109,16 +106,16 @@ class TestCombineNBP(object):
 								'gname': ['0','0'],
 								'gid': [0,0],
 								'path': [[0,1,2,3,4,5],[0,1,2,3]]})
-		sg.loc_df = create_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = create_dupe_index(sg.edge_df, 'edge_id')
-		sg.t_df = create_dupe_index(sg.t_df, 'tid')
-		sg.loc_df = set_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = set_dupe_index(sg.edge_df, 'edge_id')                                         
-		sg.t_df = set_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.create_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.create_dupe_index(sg.edge_df, 'edge_id')
+		sg.t_df = sw.create_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.set_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.set_dupe_index(sg.edge_df, 'edge_id')                                         
+		sg.t_df = sw.set_dupe_index(sg.t_df, 'tid')
 		sg.get_loc_types()
 		sg.create_graph_from_dfs()
 
-		sg.pg = PlottedGraph(sg, True, False, False)
+		sg.pg = sw.PlottedGraph(sg, True, False, False)
 
 		# first make sure that only the correct edges/nodes were 
 		# kept in loc_df and edge_df
@@ -140,7 +137,7 @@ class TestCombineNBP(object):
 	# nbp interrupted by TES
 	# all nodes lumped together
 	def test_combine(self):
-		sg = SpliceGraph()
+		sg = sw.SwanGraph()
 		sg.loc_df = pd.DataFrame({'vertex_id':[0,1,2,3,4,5,6,7,8,9,10,11],
 								  'coord': [0,1,2,3,4,5,6,7,8,9,10,11],
 								  'strand': ['+','+','+','+','+','+','+','+','+','+','+','+'],
@@ -154,15 +151,15 @@ class TestCombineNBP(object):
 								'gname': ['0','0','0'],
 								'gid': [0,0,0],
 								'path': [[0,1,2,3,4,5,6,7],[2,3,4,5,6,7,10,11],[8,9,10,11]]})
-		sg.loc_df = create_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = create_dupe_index(sg.edge_df, 'edge_id')
-		sg.t_df = create_dupe_index(sg.t_df, 'tid')
-		sg.loc_df = set_dupe_index(sg.loc_df, 'vertex_id')
-		sg.edge_df = set_dupe_index(sg.edge_df, 'edge_id')                                         
-		sg.t_df = set_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.create_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.create_dupe_index(sg.edge_df, 'edge_id')
+		sg.t_df = sw.create_dupe_index(sg.t_df, 'tid')
+		sg.loc_df = sw.set_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = sw.set_dupe_index(sg.edge_df, 'edge_id')                                         
+		sg.t_df = sw.set_dupe_index(sg.t_df, 'tid')
 		sg.get_loc_types()
 		sg.create_graph_from_dfs()
-		sg.pg = PlottedGraph(sg, True, False, False)
+		sg.pg = sw.PlottedGraph(sg, True, False, False)
 
 		# first make sure that only the correct edges/nodes were 
 		# kept in loc_df and edge_df
