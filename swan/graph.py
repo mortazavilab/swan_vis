@@ -94,7 +94,7 @@ class Graph:
 		self.update_t_df_paths(id_map)
 
 		# convert back to dfs
-		self.dicts_to_dfs()		
+		self.dicts_to_dfs()	
 
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
@@ -186,6 +186,7 @@ class Graph:
 
 	# convert loc_df, edge_df, and t_df to dictionaries
 	def dfs_to_dicts(self):
+
 		self.loc_df = self.loc_df.to_dict('index')
 		self.edge_df = self.edge_df.to_dict('index')
 		self.t_df = self.t_df.to_dict('index')

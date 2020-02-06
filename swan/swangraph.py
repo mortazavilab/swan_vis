@@ -1,3 +1,4 @@
+
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ class SwanGraph(Graph):
 		self.add_dataset(col, fname)
 
 	# add dataset into graph from gtf
-	def add_dataset(self, col, fname, db=None,
+	def add_dataset(self, col, fname, dname=None,
 					counts_file=None, count_cols=None):
 
 		# make sure that input dataset name is not
@@ -59,7 +60,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				self.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				self.create_dfs_db(fname)
+				self.create_dfs_db(fname, dname)
 
 			# add column to each df to indicate where data came from
 			self.loc_df[col] = True
@@ -73,13 +74,12 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				temp.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				temp.create_dfs_db(fname)
+				temp.create_dfs_db(fname, dname)
 			self.merge_dfs(temp, col)
 
 		# order node ids by genomic position, add node types,
 		# and create graph
 		self.update_ids()
-
 		self.order_edge_df()
 		self.get_loc_types()
 		self.create_graph_from_dfs()
@@ -429,51 +429,24 @@ class SwanGraph(Graph):
 		self.t_df = t_df
 
 	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
-	def create_dfs_db(self, db):
+	def create_dfs_db(self, db, dname):
+
+		# are we pulling a specific dataset's observed transcripts
+		# from the database?
+		if dname == None:
+			print('No dataset name given.'
+				' Will pull everything, including unobserved transcripts,'
+				' from {}'.format(db))
+		else:
+			print('Getting transcripts for {} from {}'.format(db, dname))
 
 		# make sure file exists
 		if not os.path.exists(db):
-			raise Exception('TALON db file not found. Check path.')
+			raise Exception('TALON db file {} not found. Check path.'.format(db))
 
 		# open db connection
 		conn = sqlite3.connect(db)
 		c = conn.cursor()
-
-		# loc_df
-		q = 'SELECT loc.* FROM location loc'
-
-		c.execute(q)
-		locs = c.fetchall()
-
-		loc_df = pd.DataFrame(locs,
-			columns=['location_ID', 'genome_build',
-					 'chrom', 'position'])
-
-		# do some df reformatting, add strand
-		loc_df.drop('genome_build', axis=1, inplace=True)
-		loc_df.rename({'location_ID': 'vertex_id',
-					   'position': 'coord'},
-					   inplace=True, axis=1)
-		loc_df.vertex_id = loc_df.vertex_id.map(int)
-
-		# edge_df
-		q = """SELECT e.* 
-				FROM edge e 
-				JOIN vertex V ON e.v1=v.vertex_ID 
-				JOIN gene_annotations ga ON v.gene_ID=ga.ID 
-				WHERE ga.attribute='gene_name'
-			""" 
-
-		c.execute(q)
-		edges = c.fetchall()
-
-		edge_df = pd.DataFrame(edges, 
-			columns=['edge_id', 'v1', 'v2',
-					 'edge_type', 'strand'])
-		edge_df.v1 = edge_df.v1.map(int)
-		edge_df.v2 = edge_df.v2.map(int)
-		edge_df['talon_edge_id'] = edge_df.edge_id
-		edge_df['edge_id'] = edge_df.apply(lambda x: (int(x.v1), int(x.v2)), axis=1)
 
 		# t_df
 		t_df = pd.DataFrame()
@@ -485,10 +458,15 @@ class SwanGraph(Graph):
 				FROM gene_annotations ga 
 				JOIN transcripts t ON ga.ID=t.gene_ID
 				JOIN transcript_annotations ta ON t.transcript_ID=ta.ID
-				WHERE ta.attribute='transcript_id'
+			"""
+		if dname: 
+			q += """ JOIN observed o ON o.transcript_ID=t.transcript_ID"""
+		q += """ WHERE ta.attribute='transcript_id'
 				AND (ga.attribute='gene_name' 
 				OR ga.attribute='gene_id')
 			"""
+		if dname: 
+			q += """ AND o.dataset='{}'""".format(dname)
 
 		c.execute(q)
 		data = c.fetchall()
@@ -506,17 +484,125 @@ class SwanGraph(Graph):
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
 
+		# edge_df
+
+		# get the list of edge ids we need to pull from db
+		edge_ids = list(set([str(n) for path in paths for n in path]))
+		edge_str = '({})'.format(','.join(edge_ids))
+
+		q = """SELECT DISTINCT e.* 
+				FROM edge e 
+				JOIN vertex V ON e.v1=v.vertex_ID 
+			"""
+		if dname:
+			q += """ WHERE e.edge_ID IN {}""".format(edge_str)
+
+		c.execute(q)
+		edges = c.fetchall()
+
+		edge_df = pd.DataFrame(edges, 
+			columns=['edge_id', 'v1', 'v2',
+					 'edge_type', 'strand'])
+		edge_df.v1 = edge_df.v1.map(int)
+		edge_df.v2 = edge_df.v2.map(int)
+		edge_df['talon_edge_id'] = edge_df.edge_id
+		edge_df['edge_id'] = edge_df.apply(lambda x: (int(x.v1), int(x.v2)), axis=1)
+
+		# loc_df
+
+		# get the list of vertex ids we need to pull from db
+		edge_ids = edge_df.edge_id.tolist()
+		loc_ids = list(set([str(n) for edge_id in edge_ids for n in edge_id]))
+		loc_string = '({})'.format(','.join(loc_ids))
+
+
+		q = """SELECT loc.* FROM location loc"""
+		if dname:
+			q += """ WHERE loc.location_ID IN {}""".format(loc_string)
+
+		c.execute(q)
+		locs = c.fetchall()
+
+		loc_df = pd.DataFrame(locs,
+			columns=['location_ID', 'genome_build',
+					 'chrom', 'position'])
+
+		# do some df reformatting, add strand
+		loc_df.drop('genome_build', axis=1, inplace=True)
+		loc_df.rename({'location_ID': 'vertex_id',
+					   'position': 'coord'},
+					   inplace=True, axis=1)
+		loc_df.vertex_id = loc_df.vertex_id.map(int)
+
 		# furnish the last bit of info in each df
 		t_df['path'] = [[int(n) for n in path]
 						 for path in self.get_db_vertex_paths(paths, edge_df)]
-		loc_df['strand'] = loc_df.apply(lambda x:
-				 self.get_db_strand(x, edge_df), axis=1)
+
+		# get strandedness of each sj
+		extra_entries = pd.DataFrame(columns=['vertex_id', 'chrom',
+			'coord', 'strand', 'plus_vertex_id'])
+		loc_df['strand'] = np.nan
+		for index, entry in loc_df.iterrows():
+
+			# use v1 or v2 depending on where vertex is in edge
+			loc_id = entry.vertex_id
+			strands = edge_df.loc[(edge_df.v1==loc_id) | (edge_df.v2==loc_id), 'strand']
+			strands = list(set(strands.tolist()))
+
+			# if this sj is found on both the + and - strand,
+			# create a minus strand entry to add after the apply
+			# function is done. return the plus strand entry
+			if len(strands) > 1:
+				minus_entry = entry.copy(deep=True)
+				minus_entry.strand = '-'
+				minus_entry.vertex_id = len(loc_df.index)+len(extra_entries.index)+1
+				minus_entry['plus_vertex_id'] = entry.vertex_id
+				extra_entries = extra_entries.append(minus_entry)
+
+				loc_df.loc[index, 'strand'] = '+'
+			else:
+				loc_df.loc[index, 'strand'] = strands[0]
+		loc_df = loc_df.append(extra_entries, ignore_index=True, sort=True)
+
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
 
+		# replace sjs in t_df paths that had to be introduced in extra entries
+		double_sjs = extra_entries.plus_vertex_id.tolist()
+		for tid, entry in t_df.iterrows():
+			path = entry.path
+			if any(x in path for x in double_sjs):
+				coords = loc_df.loc[path[:2], 'coord'].tolist()
+
+				# this transcript is on the minus strand
+				if coords[1] < coords[0]:
+					new_path = [extra_entries.loc[extra_entries.plus_vertex_id == n,
+						'vertex_id'].tolist()[0] if n in double_sjs else n for n in path]
+					t_df.loc[tid, 'path'] = new_path
+
+		# also replace sjs in edge_df that had to be introduced in extra_entries
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
+		edge_df.to_csv('input_files/edge_df_db.csv')
+		for eid, entry in edge_df.iterrows():
+			if any(x in eid for x in double_sjs):
+				coords = loc_df.loc[eid, 'coord'].tolist()	
+
+				# this edge is on the minus strand
+				if coords[1] < coords[0]:
+					new_eid = tuple([extra_entries.loc[extra_entries.plus_vertex_id == n, 'vertex_id'].tolist()[0] if n in double_sjs else n for n in eid])
+					edge_df.loc[[eid], 'v1'] = new_eid[0]
+					edge_df.loc[[eid], 'v2'] = new_eid[1]
+
+		# reset edge ids to use the ones updated from extra_entries
+		edge_df.reset_index(drop=True, inplace=True)
+		edge_df['edge_id'] = edge_df.apply(lambda x: (int(x.v1), int(x.v2)), axis=1)
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+
+		# finally, drop unused column from loc_df
+		loc_df.drop('plus_vertex_id', axis=1, inplace=True)
 
 		self.loc_df = loc_df
 		self.edge_df = edge_df
@@ -600,15 +686,6 @@ class SwanGraph(Graph):
 				else: path.append(entry.v2.values[0])
 			vertex_paths.append(path)
 		return vertex_paths
-
-	# get the strand of each vertex
-	def get_db_strand(self, x, edge_df):
-		# use v1 or v2 depending on where vertex is in edge
-		try: 
-			strand = edge_df.loc[edge_df.v1 == x.vertex_id, 'strand'].values[0]
-		except:
-			strand = edge_df.loc[edge_df.v2 == x.vertex_id, 'strand'].values[0]
-		return strand
 
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
