@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import os
 import copy
 from collections import defaultdict
-import sqlite3
 
 # creates the duplicate index
 def create_dupe_index(df, ind_name):
