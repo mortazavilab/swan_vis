@@ -6,8 +6,8 @@ import os
 import copy
 from collections import defaultdict
 import matplotlib.patches as pch
-from swan.utils import *
-from swan.graph import Graph
+from swan_vis.utils import *
+from swan_vis.graph import Graph
 
 class PlottedGraph(Graph):
 

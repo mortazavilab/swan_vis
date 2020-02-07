@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import copy
-from swan.utils import *
+from swan_vis.utils import *
 
 # super class that both SwanGraph and PlottedGraph inherit from.
 # all functions that both subclasses will use are in here.

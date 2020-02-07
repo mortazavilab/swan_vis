@@ -1,4 +1,4 @@
-from swan.utils import *
+from swan_vis.utils import *
 from fpdf import FPDF
 import matplotlib.pyplot as pyplot
 

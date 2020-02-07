@@ -9,9 +9,9 @@ import copy
 from collections import defaultdict
 import sqlite3
 import pickle
-from swan.utils import *
-from swan.graph import Graph
-from swan.plottedgraph import PlottedGraph
+from swan_vis.utils import *
+from swan_vis.graph import Graph
+from swan_vis.plottedgraph import PlottedGraph
 
 class SwanGraph(Graph):
 
