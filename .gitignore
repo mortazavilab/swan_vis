@@ -10,3 +10,7 @@ visual_tests/figures/
 # other 
 .DS_Store
 
+# pip stuff
+dist/
+swan_vis.egg-info/
+

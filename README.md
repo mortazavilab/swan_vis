@@ -2,18 +2,24 @@ Welcome to Swan, a tool for visualizing and interpreting transcript isoforms gra
 
 # Swan
 
+## 0: Installing swan
+In your terminal, run:
+```bash
+pip install swan_vis
+```
+
 ## 1: Setting up your environment
  
 Create a new Python file to serve as your "driver" script in the swan directory. Add the following header to your file:
 
 ```py
-import swan as sw
+import swan_vis as swan
 ```
 
 Then, initialize an empty SwanGraph object.
 
 ```py
-sg = sw.SwanGraph()
+sg = swan.SwanGraph()
 ```
 
 ## 2: Adding an annotation to your SwanGraph
