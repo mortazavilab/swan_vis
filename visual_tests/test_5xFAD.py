@@ -1,28 +1,29 @@
 import sys
 import os
 from collections import defaultdict
-import swan as sw
+import swan_vis as sw
 import numpy as np
 
 # # add each dataset to the SpliceGraph
-# annot_gtf = 'input_files/gencode.vM21.annotation.gtf'
-# wt_1_gtf = 'input_files/wt_1_filtered_talon.gtf'
-# wt_2_gtf = 'input_files/wt_2_filtered_talon.gtf'
-# alz_1_gtf = 'input_files/5xFAD_1_filtered_talon.gtf'
-# alz_2_gtf = 'input_files/5xFAD_2_filtered_talon.gtf'
-# ab_file = 'input_files/wt_5xFAD_filtered_talon_abundance.tsv'
-# sg = SpliceGraph()
-# sg.add_annotation(gtf=annot_gtf)
-# sg.add_dataset('wt_1', gtf=wt_1_gtf,
+# prefix = '/Users/fairliereese/mortazavi_lab/bin/swan_vis/visual_tests/'
+# annot_gtf = '/Users/fairliereese/mortazavi_lab/ref/gencode.vM21/gencode.vM21.annotation.gtf'
+# wt_1_gtf = prefix+'input_files/wt_1_filtered_talon.gtf'
+# wt_2_gtf = prefix+'input_files/wt_2_filtered_talon.gtf'
+# alz_1_gtf = prefix+'input_files/5xFAD_1_filtered_talon.gtf'
+# alz_2_gtf = prefix+'input_files/5xFAD_2_filtered_talon.gtf'
+# ab_file = prefix+'input_files/wt_5xFAD_filtered_talon_abundance.tsv'
+# sg = sw.SwanGraph()
+# sg.add_annotation(annot_gtf)
+# sg.add_dataset('wt_1', wt_1_gtf,
 #   counts_file=ab_file,
 #   count_cols='PB132')
-# sg.add_dataset('wt_2', gtf=wt_2_gtf,
+# sg.add_dataset('wt_2', wt_2_gtf,
 #   counts_file=ab_file,
 #   count_cols='PB133')
-# sg.add_dataset('5xFAD_1', gtf=alz_1_gtf,
+# sg.add_dataset('5xFAD_1', alz_1_gtf,
 #   counts_file=ab_file,
 #   count_cols='PB130')
-# sg.add_dataset('5xFAD_2', gtf=alz_2_gtf,
+# sg.add_dataset('5xFAD_2', alz_2_gtf,
 #   counts_file=ab_file,
 #   count_cols='PB131')
 
@@ -82,8 +83,8 @@ sg.load_graph('input_files/wt_5xFAD_sg.p')
 # # generate report with tpm shown
 # sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', tpm=True)
 
-# generate report with heatmap
-sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', heatmap=True)
+# # generate report with heatmap
+# sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', heatmap=True)
 
 # # generate report ordered by tid
 # sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', heatmap=True)
@@ -96,6 +97,13 @@ sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', heatmap=True)
 
 # # include unexpressed
 # sg.gen_report('ENSMUSG00000018411.17', 'figures/wt_5xFAD', order='tid', tpm=True, include_unexpressed=True)
+
+# make a report of genes heavily involved in isoform switching
+genes, t_df = sg.find_differentially_expressed_transcripts(['wt_1', 'wt_2'], ['5xFAD_1', '5xFAD_2'])
+t_df.to_csv('input_files/wt_5xFAD_isoform_switches_t_df.csv')
+# g_df.to_csv('input_files/wt_5xFAD_isoform_switches_g_df.csv')
+print(genes)
+sg.gen_report(genes, 'figures/wt_5xFAD_isoform_switches', heatmap=True)
 
 
 

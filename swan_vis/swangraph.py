@@ -12,6 +12,7 @@ import pickle
 from swan_vis.utils import *
 from swan_vis.graph import Graph
 from swan_vis.plottedgraph import PlottedGraph
+from swan_vis.report import Report
 
 class SwanGraph(Graph):
 
@@ -805,16 +806,18 @@ class SwanGraph(Graph):
 		d2_cols = self.get_tpm_cols(d2)
 		keep_cols = d1_cols+d2_cols+['gid']
 		g_df = t_df[keep_cols].groupby('gid').sum()
-		g_df['d1_tpm'] = g_df[d1_cols].sum(axis=1)
-		g_df['d2_tpm'] = g_df[d2_cols].sum(axis=1)
+
+		# make sure we're taking the mean expression
+		g_df['d1_mean_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
+		g_df['d2_mean_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
 
 		# add pseudocounts for each gene
-		g_df.d1_tpm = g_df.d1_tpm + 1
-		g_df.d2_tpm = g_df.d2_tpm + 1
+		g_df.d1_mean_tpm = g_df.d1_mean_tpm + 1
+		g_df.d2_mean_tpm = g_df.d2_mean_tpm + 1
 
 		# calculate log2 fold change and order g_df based on magnitude
 		# of fold change
-		g_df['log_fold_change'] = np.log2(g_df.d1_tpm/g_df.d2_tpm)
+		g_df['log_fold_change'] = np.log2(g_df.d1_mean_tpm/g_df.d2_mean_tpm)
 		g_df['abs_log_fold_change'] = np.absolute(g_df.log_fold_change)
 		g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
 
@@ -824,8 +827,75 @@ class SwanGraph(Graph):
 		return genes, g_df
 
 	# find differentially expressed transcripts
-	def find_differentially_expressed_transcripts():
-		pass
+	def find_differentially_expressed_transcripts(self, d1, d2):
+		
+		# first check to see if the queried expression data is in the graph
+		if type(d1) != list: d1 = [d1]
+		if type(d2) != list: d2 = [d2]
+		datasets = d1+d2
+		self.check_abundances(datasets)
+
+		# group t_df into gene df and sum up abundances
+		# both across genes and across datasets
+		t_df = self.t_df.copy(deep=True)
+		d1_cols = self.get_tpm_cols(d1)
+		d2_cols = self.get_tpm_cols(d2)
+		keep_cols = d1_cols+d2_cols+['gid']
+		g_df = t_df[keep_cols].groupby('gid').sum()
+
+		# make sure we're taking the mean expression
+		g_df['d1_mean_gene_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
+		g_df['d2_mean_gene_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
+
+		# add pseudocounts for each gene
+		g_df.d1_mean_gene_tpm = g_df.d1_mean_gene_tpm + 1
+		g_df.d2_mean_gene_tpm = g_df.d2_mean_gene_tpm + 1
+
+		# also calculate transcript isoform-level expression
+		t_df['d1_mean_tpm'] = t_df[d1_cols].sum(axis=1)/len(d1_cols)
+		t_df['d2_mean_tpm'] = t_df[d2_cols].sum(axis=1)/len(d2_cols)
+
+		# merge g_df and t_df to get gene expression and transcript
+		# expression in the same dataframe
+		keep_cols = ['gid', 'd1_mean_gene_tpm', 'd2_mean_gene_tpm']
+		t_df = t_df.merge(g_df[keep_cols], on='gid')
+
+		print(t_df[['gid', 'd1_mean_tpm', 'd1_mean_gene_tpm', 'd2_mean_tpm', 'd2_mean_gene_tpm']].head())
+		exit()
+
+		# calculate the isoform fraction as defined by Vitting-Seerup
+		# et. al., 2017
+
+		# first get the total expression of each gene
+		keep_cols = ['gid']+datasets
+		g_df = t_df['keep_cols'].groupby('gid').sum()
+
+		# calculate log2 fold change for each transcript
+		t_df['log_fold_change'] = np.log2(t_df.d1_mean_tpm/t_df.d2_mean_tpm)
+		t_df['abs_log_fold_change'] = np.log2(t_df.d1_mean_tpm/t_df.d2_mean_tpm)
+
+		# sort by largest change
+		t_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
+		genes = t_df.head(10).gid.tolist()
+
+		# # sum up log2FC magnitudes across each gene and sort by sum
+		# keep_cols = ['gid', 'abs_log_fold_change']
+		# g_df = t_df[keep_cols].groupby('gid').agg((['sum', 'count']))
+		# g_df.columns = g_df.columns.droplevel()
+		# g_df.rename({'sum': 'abs_log_fold_change',
+		# 	'count': 'num_isoforms'}, axis=1, inplace=True)
+		# # g_df['scaled_isoform_switching'] = g_df.abs_log_fold_change/g_df.num_isoforms
+		# # g_df.sort_values(by='scaled_isoform_switching', ascending=False, inplace=True)
+		# g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
+
+		# # top 10 in case the user doesn't care about the whole df
+		# genes = g_df.index.tolist()[:10]
+
+		# return genes, g_df, t_df
+		return genes, t_df
+
+
+
 
 	##########################################################################
 	######################## Loading/saving SwanGraphs #####################

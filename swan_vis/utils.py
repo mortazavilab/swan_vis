@@ -93,10 +93,11 @@ def process_abundance_file(file, cols):
 	for col in cols: 
 		total_counts = df[col].sum()
 		df['{}_tpm'.format(col)] = (df[col]*1000000)/total_counts
-	cols = ['{}_tpm'.format(col) for col in cols]
-	df['tpm'] = df[cols].mean(axis=1)
+	tpm_cols = ['{}_tpm'.format(col) for col in cols]
+	df['tpm'] = df[tpm_cols].mean(axis=1)
 
 	# set up for merging
+	cols += tpm_cols 
 	df.drop(cols, axis=1, inplace=True)
 	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
 
