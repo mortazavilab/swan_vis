@@ -783,9 +783,40 @@ class SwanGraph(Graph):
 
 		return genes, g_df
 
-	# TODO find genes with higher expression in novel than known isoforms
-	def find_genes_with_high_novel_expression():
-		pass
+	# find genes with higher expression in novel than known isoforms
+	def find_genes_with_high_novel_expression(self):
+		
+		# get all the datasets, make sure we're not counting transcripts 
+		# that are only in the annotation
+		if 'annotation' not in self.datasets:
+			raise Exception('No annotation data in graph. Cannot ',
+				'determine isoform novelty.')
+		datasets = self.get_dataset_cols(include_annotation=False)
+		t_df = self.t_df.copy(deep=True)
+		t_df = t_df.loc[t_df[datasets].any(axis=1)]
+
+		# how much expression do known and novel isoforms have?
+		t_df['known'] = t_df.annotation
+		tpm_cols = self.get_tpm_cols()
+		keep_cols = tpm_cols+['known', 'gid']
+		g_df = t_df[keep_cols].groupby(['gid', 'known']).sum()
+		g_df.reset_index(inplace=True)
+		g_df['total_known_exp'] = 0
+		g_df['total_novel_exp'] = 0
+		g_df.loc[g_df.known == True, 'total_known_exp'] = g_df.loc[g_df.known == True, tpm_cols].sum(axis=1) 
+		g_df.loc[g_df.known == False, 'total_novel_exp'] = g_df.loc[g_df.known == False, tpm_cols].sum(axis=1) 
+		keep_cols = tpm_cols+['total_known_exp', 'total_novel_exp', 'gid']
+		g_df = g_df[keep_cols].groupby('gid').sum()
+
+		# create 'interestingness' column ranking how much expression
+		# of the gene is attributable to novel isoforms versus known isoforms
+		g_df['interestingness'] = ((g_df.total_novel_exp+1)/(g_df.total_known_exp+1))*np.log2(g_df.total_known_exp+1+g_df.total_novel_exp+1)
+		g_df.sort_values(by='interestingness', ascending=False, inplace=True)
+
+		# top 10 in case the user doesn't care about whole df
+		genes = g_df.index.tolist()[:10]
+
+		return genes, g_df
 
 	# find differentially expressed genes
 	# d1 = list or string containing first set of datasets to analyze
@@ -852,50 +883,38 @@ class SwanGraph(Graph):
 		g_df.d2_mean_gene_tpm = g_df.d2_mean_gene_tpm + 1
 
 		# also calculate transcript isoform-level expression
-		t_df['d1_mean_tpm'] = t_df[d1_cols].sum(axis=1)/len(d1_cols)
-		t_df['d2_mean_tpm'] = t_df[d2_cols].sum(axis=1)/len(d2_cols)
+		# and add pseudocounts
+		t_df['d1_mean_tpm'] = t_df[d1_cols].sum(axis=1)/len(d1_cols)+1
+		t_df['d2_mean_tpm'] = t_df[d2_cols].sum(axis=1)/len(d2_cols)+1
 
 		# merge g_df and t_df to get gene expression and transcript
 		# expression in the same dataframe
 		keep_cols = ['gid', 'd1_mean_gene_tpm', 'd2_mean_gene_tpm']
+		g_df.reset_index(inplace=True)
 		t_df = t_df.merge(g_df[keep_cols], on='gid')
 
-		print(t_df[['gid', 'd1_mean_tpm', 'd1_mean_gene_tpm', 'd2_mean_tpm', 'd2_mean_gene_tpm']].head())
-		exit()
 
 		# calculate the isoform fraction as defined by Vitting-Seerup
-		# et. al., 2017
+		# (2017)
+		t_df['d1_if'] = t_df['d1_mean_tpm']/t_df['d1_mean_gene_tpm']
+		t_df['d2_if'] = t_df['d2_mean_tpm']/t_df['d2_mean_gene_tpm']
 
-		# first get the total expression of each gene
-		keep_cols = ['gid']+datasets
-		g_df = t_df['keep_cols'].groupby('gid').sum()
+		# calculate the log2 fold change of isoform fraction per transcript
+		t_df['log_fold_change'] = np.log2(t_df.d1_if/t_df.d2_if)
+		t_df['abs_log_fold_change'] = np.absolute(t_df.log_fold_change)
 
-		# calculate log2 fold change for each transcript
-		t_df['log_fold_change'] = np.log2(t_df.d1_mean_tpm/t_df.d2_mean_tpm)
-		t_df['abs_log_fold_change'] = np.log2(t_df.d1_mean_tpm/t_df.d2_mean_tpm)
+		# groupby to create g_df (again I guess) and sum up over log2
+		# if changes
+		keep_cols = ['gid', 'abs_log_fold_change']
+		g_df = t_df[keep_cols].groupby('gid').sum()
+		g_df.reset_index(inplace=True)
 
 		# sort by largest change
 		t_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
-		genes = t_df.head(10).gid.tolist()
+		g_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
+		genes = g_df.head(10).gid.tolist()
 
-		# # sum up log2FC magnitudes across each gene and sort by sum
-		# keep_cols = ['gid', 'abs_log_fold_change']
-		# g_df = t_df[keep_cols].groupby('gid').agg((['sum', 'count']))
-		# g_df.columns = g_df.columns.droplevel()
-		# g_df.rename({'sum': 'abs_log_fold_change',
-		# 	'count': 'num_isoforms'}, axis=1, inplace=True)
-		# # g_df['scaled_isoform_switching'] = g_df.abs_log_fold_change/g_df.num_isoforms
-		# # g_df.sort_values(by='scaled_isoform_switching', ascending=False, inplace=True)
-		# g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
-
-		# # top 10 in case the user doesn't care about the whole df
-		# genes = g_df.index.tolist()[:10]
-
-		# return genes, g_df, t_df
-		return genes, t_df
-
-
-
+		return genes, g_df, t_df
 
 	##########################################################################
 	######################## Loading/saving SwanGraphs #####################
@@ -946,7 +965,6 @@ class SwanGraph(Graph):
 		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_novel, gid=gid)
 		self.pg.plot_graph()
 
-
 	# plot an input transcript's path through the summary graph 
 	def plot_transcript_path(self, tid, combine=False,
 							 indicate_dataset=False,
@@ -974,7 +992,10 @@ class SwanGraph(Graph):
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
 
 		# loop through each transcript in the SwanGraph object
-		for tid in self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist():
+		tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
+		print('Plotting {} transcripts for {}'.format(len(tids), gid))
+		print()
+		for tid in tids:
 			self.pg = PlottedGraph(self,
 								   combine,
 								   indicate_dataset,
@@ -1009,6 +1030,7 @@ class SwanGraph(Graph):
 				   gids,
 				   prefix,
 				   datasets='all',
+				   group_datasets=False,
 				   heatmap=False,
 				   tpm=False,
 				   include_unexpressed=False,

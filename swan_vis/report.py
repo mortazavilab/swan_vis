@@ -17,11 +17,7 @@ class Report(FPDF):
 		# the columns that we'll include
 		self.report_cols = report_cols
 		self.header_cols = header_cols
-		print('in report constructor')
-		print('report cols:')
-		print(self.report_cols)
-		print()
-
+		
 		# prefix for files that we'll pull from 
 		self.prefix = prefix
 
