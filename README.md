@@ -156,7 +156,7 @@ sg.save_fig('figures/ENSMUSG00000018411.17_summary.png')
 
 Currently, this command only accepts the gene id in terms of the id taken from GTF, in my case, the ENSEMBL ID.
 
-**Note:** for graphs produced with *plot_graph* or *plot_transcript_path*, currently you must call *save_fig* to save a copy of a figure. This is as opposed to *gen_report* and *plot_each_transcript*, which will automatically save the figures. The rationale behind the save_fig call is to allow the user to decide what the figure is called, whereas the latter functions generate filenames for the user.
+**Note:** for graphs produced with *plot_graph* or *plot_transcript_path*, currently you must call *save_fig* to save a copy of a figure. This is as opposed to *gen_report* and *plot_each_transcript_in_gene*, which will automatically save the figures. The rationale behind the save_fig call is to allow the user to decide what the figure is called, whereas the latter functions generate filenames for the user.
 
 ### 5.b: Plotting a transcript's path through a swan graph
  
@@ -176,7 +176,7 @@ sg.save_fig('figures/ENSMUST00000106992.9.png')
 Sometimes (okay probably most of the time) you don't know what exact isoform you want to look at from a gene, and instead just want to understand the differences in transcript splicing within a gene, in the form of generating a plot from 5.b for every transcript in a gene. To do this, use the following command: 
 
 ```py
-sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
+sg.plot_each_transcript_in_gene('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 ```
 
 <img align="center" width="800" src="figures/wt_5xFAD_ENSMUST00000106993.9.png">
@@ -185,7 +185,7 @@ sg.plot_each_transcript('ENSMUSG00000018411.17', 'figures/wt_5xFAD')
 .
 <img align="center" width="800" src="figures/wt_5xFAD_TALONT000593679.png">
 
-The first argument here is the gene's ENSEMBL ID, as we called the plotting functions in 5.a and 5.b. The second argument is a prefix for the output files to be saved. In contrast to the plotting functions in 5.a and 5.b, *plot_each_transcript* automatically saves each transcript's plot with the input prefix and the transcript's ID in each of the output file names.
+The first argument here is the gene's ENSEMBL ID, as we called the plotting functions in 5.a and 5.b. The second argument is a prefix for the output files to be saved. In contrast to the plotting functions in 5.a and 5.b, *plot_each_transcript_in_gene* automatically saves each transcript's plot with the input prefix and the transcript's ID in each of the output file names.
 
 
 ### 5.d: Swan graph plotting settings
@@ -194,7 +194,7 @@ In addition to being able to plot the types of graphs mentioned above, there are
 
 * *plot_graph*
 * *plot_transcript_path*
-* *plot_each_transcript*
+* *plot_each_transcript_in_gene*
 
 And the options you can add to each plotting function are as follows
 
@@ -238,13 +238,13 @@ And the options you can add to each plotting function are as follows
 
 ## 6: Plotting browser track-style transcript model
 
-In order to be able to compare the swan graph models with more traditional representations of transcript models, there is also an option to plot the browser track-style for plotting one transcript at a time. In these visualizations, genomic location is to scale. You can plot browser-style tracks in both *plot_transcript_path* and *plot_each_transcript* as follows:
+In order to be able to compare the swan graph models with more traditional representations of transcript models, there is also an option to plot the browser track-style for plotting one transcript at a time. In these visualizations, genomic location is to scale. You can plot browser-style tracks in both *plot_transcript_path* and *plot_each_transcript_in_gene* as follows:
 
 ```py
 sg.plot_transcript_path('ENSMUST00000106992.9', browser=True)
 sg.save_fig('figures/ENSMUST00000106992.9_browser.png')
 
-sg.plot_each_transcript('ENSMUSG00000018411.17', browser=True)
+sg.plot_each_transcript_in_gene('ENSMUSG00000018411.17', browser=True)
 ```
 
 <img align="center" width="800" src="figures/ENSMUST00000106992.9_browser.png">

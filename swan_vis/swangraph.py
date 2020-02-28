@@ -716,9 +716,7 @@ class SwanGraph(Graph):
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')
 
-		# order by coordinate of tss
-		# TODO might be able to roll this in with getting ordered_nodes
-		# in PlottedGraph
+		# order by coordinate of tss in PlottedGraph
 		elif order == 'tss':
 			self.t_df['start_coord'] = self.t_df.apply(lambda x: 
 				self.loc_df.loc[x.path[0], 'coord'], axis=1)
@@ -984,8 +982,42 @@ class SwanGraph(Graph):
 
 		self.pg.plot_graph()
 
+	# plots each input transcript path through its gene's summary graph,
+	# and automatically saves them
+	def plot_each_transcript(self, tids, prefix, combine=False,
+						indicate_dataset=False,
+						indicate_novel=False,
+						browser=False):
+
+		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+
+		# loop through each transcript in the SwanGraph object
+		for tid in tids:
+			self.check_transcript(tid)
+
+		print('Plotting transcript for {}'.format(tid))
+		print()
+		for tid in tids:
+			gid = self.get_gid_from_tid(tid)
+			self.pg = PlottedGraph(self,
+								   combine,
+								   indicate_dataset,
+								   indicate_novel,
+								   tid=tid,
+								   gid=gid,
+								   browser=browser)
+			fname = create_fname(prefix,
+								 combine,
+								 indicate_dataset,
+								 indicate_novel,
+								 browser,
+								 tid=tid)
+			self.pg.plot_graph()
+			print('Saving plot for {} as {}'.format(tid, fname))
+			self.save_fig(fname)
+
 	# plots each transcript's path through the summary graph, and automatically saves them!
-	def plot_each_transcript(self, gid, prefix, combine=False,
+	def plot_each_transcript_in_gene(self, gid, prefix, combine=False,
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False):
@@ -1017,6 +1049,7 @@ class SwanGraph(Graph):
 	# saves current figure named oname. clears the figure space so additional
 	# plotting can be done
 	def save_fig(self, oname):
+		check_file_loc(oname)
 		plt.axis('off')
 		plt.tight_layout()
 		plt.savefig(oname, format='png', dpi=200)
@@ -1031,7 +1064,8 @@ class SwanGraph(Graph):
 				   gids,
 				   prefix,
 				   datasets='all',
-				   group_datasets=False,
+				   dataset_groups=False,
+				   dataset_group_names=False,
 				   heatmap=False,
 				   tpm=False,
 				   include_unexpressed=False,
@@ -1059,6 +1093,22 @@ class SwanGraph(Graph):
 			order = 'tid'
 		else:
 			self.check_datasets(datasets)
+
+		# if we have dataset groupings make sure that they are a subset
+		# of the datasets already requested
+		if dataset_groups:
+			if not datasets: 
+				raise Exception('Cannot group datasets as none were requested.')
+			else:
+				all_dgs = [j for i in dataset_groups for j in i]
+				self.check_datasets(all_dgs)
+
+				subsumed_datasets = [True if i in datasets else False for i in all_dgs]
+				if False in subsumed_datasets:
+					bad_dataset = all_dgs[subsumed_datasets.index(False)]
+					raise Exception("Grouping dataset {} not present in " 
+						"datasets {}.".format(bad_dataset, datasets))
+
 
 		# now check to make sure abundance data is there for the
 		# query columns, if user is asking
@@ -1089,7 +1139,8 @@ class SwanGraph(Graph):
 				report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
 
 			# plot each transcript with these settings
-			self.plot_each_transcript(gid, prefix, combine,
+			print('Plotting transcripts for {}'.format(gid))
+			self.plot_each_transcript(report_tids, prefix, combine,
 									  indicate_dataset,
 									  indicate_novel,
 									  browser=browser)
@@ -1102,18 +1153,49 @@ class SwanGraph(Graph):
 				self.save_fig(prefix+'_browser_scale.png')
 				report_type = 'browser'
 
+			# if we're grouping things switch up the report_cols 
+			# and how t_df is formatted
+			if dataset_groups:
+
+				# use 
+				if not dataset_group_names:
+					print('No group names given. Will just use Group_#.')
+					dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
+
+				# check if we have the right number of group names
+				if len(dataset_groups) != len(dataset_group_names):
+					print('Not enough group names given. Will just use Group_#.')
+
+				print(dataset_groups)
+				for i in range(len(dataset_groups)):
+					group = dataset_groups[i]
+					group_name = dataset_group_names[i]
+
+					if not heatmap and not tpm:
+						t_df[group_name] = t_df[group].any(axis=1)
+					else:
+						tpm_group_cols = self.get_tpm_cols(group)
+						t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
+				datasets = dataset_group_names
+				report_cols = datasets
+
 			# if we're making a heatmap, need to first 
 			# add pseudocount, log and normalize tpm values
 			if heatmap:
+
+				print(datasets)
+				print(report_cols)
+
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
 				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-				t_df[log_cols] = np.log2(t_df[tpm_cols]+1)
+				t_df[log_cols] = np.log2(t_df[datasets]+1)
 				max_val = max(t_df[log_cols].max().tolist())
 				min_val = min(t_df[log_cols].min().tolist())
 				t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
 				report_cols = norm_log_cols
 
 			# create report
+			print('Generating report for {}'.format(gid))
 			pdf_name = create_fname(prefix, 
 						 combine,
 						 indicate_dataset,
