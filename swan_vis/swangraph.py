@@ -972,6 +972,7 @@ class SwanGraph(Graph):
 							 browser=False):
 
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+		self.check_transcript(tid)
 
 		# create PlottedGraph object
 		self.pg = PlottedGraph(self,

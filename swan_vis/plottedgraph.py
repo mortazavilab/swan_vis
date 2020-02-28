@@ -94,14 +94,21 @@ class PlottedGraph(Graph):
 		pink = '#CC79A7'
 		green = '#009E73'
 
-		color_dict = {'intron': pink, 
-					  'exon': green,
-					  'TSS': blue,
-					  'alt_TSS': light_blue,
-					  'TES': red,
-					  'alt_TES': orange,
-					  'internal': yellow,
-					  'gray': gray}
+		gray_light_blue = '#c1ddec'
+		gray_yellow = '#f8f6db'
+		gray_blue = '#c4e0f0'
+		gray_red = '#f1d9c6'
+		gray_orange = '#ebdec3'
+		gray_pink = '#efdae5'
+		gray_green = '#cdf5ea'
+
+		color_dict = {'intron': {'normal': pink, 'gray': gray_pink},
+					  'exon': {'normal': green, 'gray': gray_green},
+					  'TSS': {'normal': blue, 'gray': gray_blue},
+					  'alt_TSS': {'normal': light_blue, 'gray': gray_light_blue},
+					  'TES': {'normal': red, 'gray': gray_red},
+					  'alt_TES': {'normal': orange, 'gray': gray_orange},
+					  'internal': {'normal': yellow, 'gray': gray_yellow}}
 
 		# get the list of datasets we should be looking at to determine
 		# node or edge uniqueness
@@ -174,7 +181,6 @@ class PlottedGraph(Graph):
 		label_size = 43.9*(x**-0.484)
 
 		# linearly-related sizes
-		# rad_scale = ((11/540)*x)#+(73/540)
 		edge_width = -x/18 + (121/18)
 
 		# assign fields to plotted graph object 
@@ -182,7 +188,6 @@ class PlottedGraph(Graph):
 		self.node_size = node_size
 		self.sub_node_size = sub_node_size
 		self.label_size = label_size
-		# self.rad_scale = rad_scale
 		self.rad_scale = 0.35
 		self.edge_width = edge_width
 
@@ -216,17 +221,23 @@ class PlottedGraph(Graph):
 		if self.tid:
 			self.path = self.get_path_from_tid(self.tid)
 			if x.vertex_id == self.path[0]:
-				x['color'] = color_dict['alt_TSS']
-				x['sub_color'] = color_dict['alt_TSS']
+				x['color'] = color_dict['alt_TSS']['normal']
+				x['sub_color'] = color_dict['alt_TSS']['normal']
 			elif x.vertex_id == self.path[-1]:
-				x['color'] = color_dict['alt_TES']
-				x['sub_color'] = color_dict['alt_TES']
+				x['color'] = color_dict['alt_TES']['normal']
+				x['sub_color'] = color_dict['alt_TES']['normal']
 			elif x.vertex_id in self.path:
-				x['color'] = color_dict['internal']
-				x['sub_color'] = color_dict['internal']	
+				x['color'] = color_dict['internal']['normal']
+				x['sub_color'] = color_dict['internal']['normal']
+			
+			# if the vertex is not in the path
 			else:
-				x['color'] = color_dict['gray']
-				x['sub_color'] = color_dict['gray']	
+				if x.internal: color = color_dict['internal']['gray']
+				if x.TSS: color = color_dict['TSS']['gray']
+				if x.alt_TSS: color = color_dict['alt_TSS']['gray']
+				if x.TES: color = color_dict['TES']['gray']
+				if x.alt_TES: color = color_dict['alt_TES']['gray']
+				x['color'] = color
 
 		# combined nodes
 		elif x.combined:
@@ -235,11 +246,11 @@ class PlottedGraph(Graph):
 			# did one or two types of node go into this node?
 			if len(types) == 2:
 
-				x['sub_color'] = color_dict[types[0]]
-				x['color'] = color_dict[types[1]]
+				x['sub_color'] = color_dict[types[0]]['normal']
+				x['color'] = color_dict[types[1]]['normal']
 			else: 
 				x['sub_color'] = np.nan
-				x['color'] = color_dict[types[0]]
+				x['color'] = color_dict[types[0]]['normal']
 
 		# non combined nodes
 		else:
@@ -251,11 +262,11 @@ class PlottedGraph(Graph):
 			# MOST UNIQUE type (yes I know this is subjective) 
 			# to me, this means that the label priority for a node is 
 			# internal < TSS/alt_TSS < TES/alt_TES
-			if x.internal: color = color_dict['internal']
-			if x.TSS: color = color_dict['TSS']
-			if x.alt_TSS: color = color_dict['alt_TSS']
-			if x.TES: color = color_dict['TES']
-			if x.alt_TES: color = color_dict['alt_TES']
+			if x.internal: color = color_dict['internal']['normal']
+			if x.TSS: color = color_dict['TSS']['normal']
+			if x.alt_TSS: color = color_dict['alt_TSS']['normal']
+			if x.TES: color = color_dict['TES']['normal']
+			if x.alt_TES: color = color_dict['alt_TES']['normal']
 			x['color'] = color
 
 		return x
@@ -269,11 +280,12 @@ class PlottedGraph(Graph):
 			path_edges = [(self.path[i],self.path[i+1])
 						   for i in range(len(self.path)-1)]
 			if x.edge_id in path_edges:
-				color = color_dict[x.edge_type]
-			else: color = color_dict['gray']
+				color = color_dict[x.edge_type]['normal']
+			else:
+				color = color_dict[x.edge_type]['gray']
 
 		else:
-			color = color_dict[x.edge_type]
+			color = color_dict[x.edge_type]['normal']
 
 		return color
 
