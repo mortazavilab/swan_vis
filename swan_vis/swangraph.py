@@ -3,6 +3,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import os
 import math
 import copy
@@ -1166,7 +1167,6 @@ class SwanGraph(Graph):
 				if len(dataset_groups) != len(dataset_group_names):
 					print('Not enough group names given. Will just use Group_#.')
 
-				print(dataset_groups)
 				for i in range(len(dataset_groups)):
 					group = dataset_groups[i]
 					group_name = dataset_group_names[i]
@@ -1183,16 +1183,30 @@ class SwanGraph(Graph):
 			# add pseudocount, log and normalize tpm values
 			if heatmap:
 
-				print(datasets)
-				print(report_cols)
-
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
 				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-				t_df[log_cols] = np.log2(t_df[datasets]+1)
+				t_df[log_cols] = np.log2(t_df[tpm_cols]+1)
 				max_val = max(t_df[log_cols].max().tolist())
 				min_val = min(t_df[log_cols].min().tolist())
 				t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
 				report_cols = norm_log_cols
+
+				print(t_df[report_cols])
+
+				# create a colorbar 
+				plt.figure(1, figsize=(14,1), frameon=False)
+				ax = plt.gca()
+
+				cmap = plt.get_cmap('Spectral_r')
+				norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+				cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
+                                norm=norm,
+                                orientation='horizontal')
+				cb.set_label('TPM')
+				plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
+				plt.clf()
+				plt.close()
+
 
 			# create report
 			print('Generating report for {}'.format(gid))
