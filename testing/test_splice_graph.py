@@ -1,7 +1,7 @@
 import pytest
 import sys
 import numpy as np
-import swan as sw
+import swan_vis as swan
 import networkx as nx
 import math
 import pandas as pd
@@ -190,22 +190,22 @@ def check_pairs(control, test):
 	assert len(test) == len(control)
 
 def get_dummy_sg(special=None):
-	a = sw.SwanGraph()
+	a = swan.SwanGraph()
 
 	loc_df = pd.DataFrame({'chrom': [1,1,1],
 		'coord': [1,3,2],
 		'strand': ['+', '+', '+'],
 		'vertex_id': [0,1,2]})
-	loc_df = sw.create_dupe_index(loc_df, 'vertex_id')
-	loc_df = sw.set_dupe_index(loc_df, 'vertex_id')
+	loc_df = swan.create_dupe_index(loc_df, 'vertex_id')
+	loc_df = swan.set_dupe_index(loc_df, 'vertex_id')
 
 	edge_df = pd.DataFrame({'edge_id': [(0,2),(0,1),(1,2)],
 			  'v1': [0,0,1],
 			  'v2': [2,1,2],
 			  'edge_type': ['exon', 'exon', 'intron'], 
 			  'strand': ['+','+','+']})
-	edge_df = sw.create_dupe_index(edge_df, 'edge_id')
-	edge_df = sw.set_dupe_index(edge_df, 'edge_id')
+	edge_df = swan.create_dupe_index(edge_df, 'edge_id')
+	edge_df = swan.set_dupe_index(edge_df, 'edge_id')
 
 	t_df = pd.DataFrame({'tid':[2,1,0],
 			  'gid':[0,0,0],
@@ -213,8 +213,8 @@ def get_dummy_sg(special=None):
 			  'path':[[0,1,2],[1,2],[0,1]],
 			  'counts_a': [0,0,12],
 			  'counts_b': [1,0,14]})
-	t_df = sw.create_dupe_index(t_df, 'tid')
-	t_df = sw.set_dupe_index(t_df, 'tid')
+	t_df = swan.create_dupe_index(t_df, 'tid')
+	t_df = swan.set_dupe_index(t_df, 'tid')
 
 	if special == 'intron':
 		edge_df.loc[(0,1), 'edge_type'] = 'intron'
@@ -238,8 +238,8 @@ def get_dummy_sg(special=None):
 	return a
 
 def get_dummy_merge_sgs():
-		a = sw.SwanGraph()
-		b = sw.SwanGraph()
+		a = swan.SwanGraph()
+		b = swan.SwanGraph()
 
 		a.loc_df = pd.DataFrame({'chrom': [1,1,1,2],
 								 'coord': [1,2,3,1],
@@ -249,10 +249,10 @@ def get_dummy_merge_sgs():
 								 'coord': [1,2,4,1,1],
 								 'strand': ['+', '+', '+', '-', '+'],
 								 'vertex_id': [1,2,3,4,5]})
-		a.loc_df = sw.create_dupe_index(a.loc_df, 'vertex_id')
-		b.loc_df = sw.create_dupe_index(b.loc_df, 'vertex_id')
-		a.loc_df = sw.set_dupe_index(a.loc_df, 'vertex_id')
-		b.loc_df = sw.set_dupe_index(b.loc_df, 'vertex_id')
+		a.loc_df = swan.create_dupe_index(a.loc_df, 'vertex_id')
+		b.loc_df = swan.create_dupe_index(b.loc_df, 'vertex_id')
+		a.loc_df = swan.set_dupe_index(a.loc_df, 'vertex_id')
+		b.loc_df = swan.set_dupe_index(b.loc_df, 'vertex_id')
 
 		a.edge_df = pd.DataFrame({'edge_id': [(0,1),(1,2),(0,2),(2,3)],
 								  'v1': [0,1,0,2],
@@ -264,10 +264,10 @@ def get_dummy_merge_sgs():
 								  'v2': [2,3,4,4],
 								  'strand': ['+','+','+','+'],
 								  'edge_type': ['exon', 'exon', 'intron', 'intron']})
-		a.edge_df = sw.create_dupe_index(a.edge_df, 'edge_id')
-		b.edge_df = sw.create_dupe_index(b.edge_df, 'edge_id')
-		a.edge_df = sw.set_dupe_index(a.edge_df, 'edge_id')
-		b.edge_df = sw.set_dupe_index(b.edge_df, 'edge_id')
+		a.edge_df = swan.create_dupe_index(a.edge_df, 'edge_id')
+		b.edge_df = swan.create_dupe_index(b.edge_df, 'edge_id')
+		a.edge_df = swan.set_dupe_index(a.edge_df, 'edge_id')
+		b.edge_df = swan.set_dupe_index(b.edge_df, 'edge_id')
 
 		a.t_df = pd.DataFrame({'tid': [0,1,3],
 								'gid': [0,0,0],
@@ -277,10 +277,10 @@ def get_dummy_merge_sgs():
 								'gid': [0,0,0],
 								'gname': ['0','0','0'],
 								'path': [[1,2],[1,2,4],[1,2,3]]})
-		a.t_df = sw.create_dupe_index(a.t_df, 'tid')
-		b.t_df = sw.create_dupe_index(b.t_df, 'tid')
-		a.t_df = sw.set_dupe_index(a.t_df, 'tid')
-		b.t_df = sw.set_dupe_index(b.t_df, 'tid')
+		a.t_df = swan.create_dupe_index(a.t_df, 'tid')
+		b.t_df = swan.create_dupe_index(b.t_df, 'tid')
+		a.t_df = swan.set_dupe_index(a.t_df, 'tid')
+		b.t_df = swan.set_dupe_index(b.t_df, 'tid')
 
 		# add 'dataset a' to a
 		a.datasets = ['a']

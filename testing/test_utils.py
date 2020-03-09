@@ -1,13 +1,13 @@
 import sys
 import os
 from collections import defaultdict
-import swan as sw
+import swan_vis as swan
 
 class TestUtils(object):
 # tests random utilities, from the utils.py file
 	def test_process_abundance_file(self):
 		file = 'input_files/test_abundance.tsv'
-		df = sw.process_abundance_file(file, ['count_1a', 'count_2a'])
+		df = swan.process_abundance_file(file, ['count_1a', 'count_2a'])
 
 		print(df)
 		

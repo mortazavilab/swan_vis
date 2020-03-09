@@ -1,7 +1,7 @@
 import pytest
 import sys
 import numpy as np
-import swan as sw
+import swan_vis as swan
 
 # i suppose this is also testing the df init because 
 # everything needs to be here? And in the right order -\(' ')/-
@@ -9,9 +9,9 @@ class TestMergeSGs(object):
 	def test_merge_sgs(self):
 		a_gtf = 'input_files/annot.gtf'
 		b_gtf = 'input_files/annot_2.gtf'
-		sg = sw.SwanGraph()
-		sg.add_dataset('a', gtf=a_gtf)
-		sg.add_dataset('b', gtf=b_gtf)
+		sg = swan.SwanGraph()
+		sg.add_dataset('a', a_gtf)
+		sg.add_dataset('b', b_gtf)
 		sg.order_transcripts()
 
 		print(sg.loc_df.head())
