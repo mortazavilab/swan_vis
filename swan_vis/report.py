@@ -5,7 +5,7 @@ import matplotlib.pyplot as pyplot
 # report for genes - extension of FPDF class
 class Report(FPDF):
 
-	def __init__(self, prefix, report_type, report_cols, header_cols):
+	def __init__(self, prefix, report_type, report_cols, header_cols, heatmap=False):
 		super().__init__(orientation='L')
 
 		# set report type, 'browser' or 'swan'
@@ -13,6 +13,9 @@ class Report(FPDF):
 			raise Exception("Report type must be 'browser' or 'swan'.")
 		else: 
 			self.report_type = report_type
+
+		# does this report include a heatmap?
+		self.heatmap = heatmap
 
 		# the columns that we'll include
 		self.report_cols = report_cols
@@ -29,37 +32,62 @@ class Report(FPDF):
 	def header(self):
 		self.set_font('Arial', 'B', 10)
 
-		# add extra room for the scale if we're doing the browser version
+		# add extra room for the scale/colorbar if we're doing 
+		# the browser/heatmap version
 		if self.report_type == 'swan':
 			header_height = 10
-		elif self.report_type == 'browser':
+		if self.report_type == 'browser' or self.heatmap == True:
 			header_height = 20
 
+		# size the dataset IDs differently if we need to include
+		# colorbar below
+		if self.heatmap == False:
+			dataset_height = header_height
+		elif self.heatmap == True:
+			dataset_height = 10
+		
+		# transcript ID header
 		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
+
+		# in case we need to add the colorbar
+		colorbar_x = self.get_x()
+		colorbar_y = self.get_y()
+
+		# dataset ID headers
 		for col in self.header_cols:
-			self.cell(25, header_height, col,
+			self.cell(25, dataset_height, col,
 					  border=True, align='C')
 
-		# in case we need to add the browser models
-		x = self.get_x()
-		y = self.get_y()
+		# add colorbar if we need to 
+		if self.heatmap == True: 
+			self.image(self.prefix+'_colorbar_scale.png',
+				x=colorbar_x, 
+				y=colorbar_y+10,
+				w=90, h=135/14)
 
+		# in case we need to add the browser scale
+		browser_scale_x = self.get_x()
+		browser_scale_y = self.get_y()
+
+		# transcript model header
 		self.cell(100, header_height, 'Transcript Model', border=True, align='C')
 
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':
 			self.image(self.prefix+'_browser_scale.png',
-					   x=x, y=y+12, w=100, h=50/7)
+					   x=browser_scale_x, 
+					   y=browser_scale_y+12,
+					   w=100, h=50/7)
 		self.ln()
 
 	# add a transcript model to the report
-	def add_transcript(self, entry, oname, heatmap=False):
+	def add_transcript(self, entry, oname):
 		self.set_font('Arial', '', 10)
 		self.cell(50, 20, entry['tid'], border=True, align='C')
 		for col in self.report_cols:
 
 			# heat map coloring
-			if heatmap:
+			if self.heatmap:
 				color = self.cmap(entry[col])
 				r = color[0]*255
 				b = color[1]*255

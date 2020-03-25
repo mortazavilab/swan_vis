@@ -161,12 +161,22 @@ class SwanGraph(Graph):
 		# merge on transcript information
 		t_df = self.t_df.merge(b.t_df,
 			   how='outer',
-			   on=['tid', 'gid', 'gname', 'path'],
+			   on=['path'],
 			   suffixes=['_a', '_b'])
 
 		# convert path back to list
-		t_df.path = t_df.apply(
-			lambda x: list(x.path), axis=1)
+		t_df.path = list(t_df.path)
+
+		# update tid, gid, gname. preferentially save old ids over new ids
+		t_df['gid'] = t_df.apply(lambda x: x.gid_a if x.gid_a != np.nan else x.gid_b, axis=1)
+		t_df['gname'] = t_df.apply(lambda x: x.gname_a if x.gname_a != np.nan else x.gname_b, axis=1)
+		t_df['tid'] = t_df.apply(lambda x: x.tid_a if x.tid_a != np.nan else x.tid_b, axis=1)
+
+		drop_cols = ['gid_a', 'gname_a', 'tid_a',
+					 'gid_b', 'gname_b', 'tid_b']
+		t_df.drop(drop_cols, axis=1, inplace=True)
+
+		t_df.to_csv('path.csv')
 
 		# assign False to entries that are not in the new dataset, 
 		# and to new entries that were not in the prior datasets
@@ -996,8 +1006,6 @@ class SwanGraph(Graph):
 		for tid in tids:
 			self.check_transcript(tid)
 
-		print('Plotting transcript for {}'.format(tid))
-		print()
 		for tid in tids:
 			gid = self.get_gid_from_tid(tid)
 			self.pg = PlottedGraph(self,
@@ -1194,15 +1202,22 @@ class SwanGraph(Graph):
 				print(t_df[report_cols])
 
 				# create a colorbar 
-				plt.figure(1, figsize=(14,1), frameon=False)
-				ax = plt.gca()
+				plt.rcParams.update({'font.size': 20})
+				fig, ax = plt.subplots(figsize=(14, 1.5))
+				fig.subplots_adjust(bottom=0.5)
+				fig.patch.set_visible(False)
+				ax.patch.set_visible(False)
 
 				cmap = plt.get_cmap('Spectral_r')
 				norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
-				cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
-                                norm=norm,
-                                orientation='horizontal')
+
+				cb = mpl.colorbar.ColorbarBase(ax,
+												cmap=cmap,
+				                                norm=norm,
+				                                orientation='horizontal')
 				cb.set_label('TPM')
+
+
 				plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
 				plt.clf()
 				plt.close()
@@ -1217,7 +1232,7 @@ class SwanGraph(Graph):
 						 browser,
 						 ftype='report',
 						 gid=gid)
-			report = Report(prefix, report_type, report_cols, datasets)
+			report = Report(prefix, report_type, report_cols, datasets, heatmap=heatmap)
 			report.add_page()
 
 			# loop through each transcript and add it to the report
@@ -1231,7 +1246,7 @@ class SwanGraph(Graph):
 									 indicate_novel, 
 									 browser,
 									 tid=entry.tid)
-				report.add_transcript(entry, fname, heatmap=heatmap)
+				report.add_transcript(entry, fname)
 			report.write_pdf(pdf_name)
 
 	##########################################################################
