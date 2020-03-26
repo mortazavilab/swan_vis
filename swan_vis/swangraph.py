@@ -1123,8 +1123,7 @@ class SwanGraph(Graph):
 		# query columns, if user is asking
 		if tpm or heatmap:
 			self.check_abundances(datasets)
-			tpm_cols = self.get_tpm_cols(datasets)
-			report_cols = copy.deepcopy(tpm_cols)
+			report_cols = copy.deepcopy(self.get_tpm_cols(datasets))
 		elif datasets:
 			report_cols = datasets
 
@@ -1166,7 +1165,7 @@ class SwanGraph(Graph):
 			# and how t_df is formatted
 			if dataset_groups:
 
-				# use 
+				# no grouped dataset names were given - generate names
 				if not dataset_group_names:
 					print('No group names given. Will just use Group_#.')
 					dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
@@ -1174,18 +1173,28 @@ class SwanGraph(Graph):
 				# check if we have the right number of group names
 				if len(dataset_groups) != len(dataset_group_names):
 					print('Not enough group names given. Will just use Group_#.')
+					dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
 
 				for i in range(len(dataset_groups)):
 					group = dataset_groups[i]
 					group_name = dataset_group_names[i]
 
+					# true or false
 					if not heatmap and not tpm:
 						t_df[group_name] = t_df[group].any(axis=1)
+					# tpm values
 					else:
 						tpm_group_cols = self.get_tpm_cols(group)
 						t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
 				datasets = dataset_group_names
-				report_cols = datasets
+
+				# if heatmap or tpm:
+				# 	report_cols = tpm_group_cols
+				# else:
+				# 	report_cols = datasets
+				report_cols = dataset_group_names
+
+				print(t_df[report_cols+['wt_1_tpm','wt_2_tpm','5xFAD_1_tpm','5xFAD_2_tpm']].head())
 
 			# if we're making a heatmap, need to first 
 			# add pseudocount, log and normalize tpm values
@@ -1193,13 +1202,11 @@ class SwanGraph(Graph):
 
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
 				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-				t_df[log_cols] = np.log2(t_df[tpm_cols]+1)
+				t_df[log_cols] = np.log2(t_df[report_cols]+1)
 				max_val = max(t_df[log_cols].max().tolist())
 				min_val = min(t_df[log_cols].min().tolist())
 				t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
 				report_cols = norm_log_cols
-
-				print(t_df[report_cols])
 
 				# create a colorbar 
 				plt.rcParams.update({'font.size': 20})

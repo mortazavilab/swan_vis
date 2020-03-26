@@ -8,6 +8,9 @@ class Report(FPDF):
 	def __init__(self, prefix, report_type, report_cols, header_cols, heatmap=False):
 		super().__init__(orientation='L')
 
+		# change margins
+		self.set_margins(0.5, 0.5, 0.5)
+
 		# set report type, 'browser' or 'swan'
 		if report_type != 'browser' and report_type != 'swan':
 			raise Exception("Report type must be 'browser' or 'swan'.")
@@ -20,6 +23,7 @@ class Report(FPDF):
 		# the columns that we'll include
 		self.report_cols = report_cols
 		self.header_cols = header_cols
+		self.n_dataset_cols = len(self.report_cols)
 		
 		# prefix for files that we'll pull from 
 		self.prefix = prefix
@@ -50,12 +54,13 @@ class Report(FPDF):
 		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
 
 		# in case we need to add the colorbar
-		colorbar_x = self.get_x()
+		colorbar_x = self.get_x() + float(45/2) + 4.5
 		colorbar_y = self.get_y()
 
 		# dataset ID headers
+		w_dataset = 146/self.n_dataset_cols
 		for col in self.header_cols:
-			self.cell(25, dataset_height, col,
+			self.cell(w_dataset, dataset_height, col,
 					  border=True, align='C')
 
 		# add colorbar if we need to 
@@ -82,6 +87,10 @@ class Report(FPDF):
 
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname):
+
+		# dynamically size dataset cols
+		w_dataset = 146/self.n_dataset_cols
+
 		self.set_font('Arial', '', 10)
 		self.cell(50, 20, entry['tid'], border=True, align='C')
 		for col in self.report_cols:
@@ -110,7 +119,7 @@ class Report(FPDF):
 					text = 'No'
 				border = True
 				fill = False 
-			self.cell(25, 20, text, border=border, align='C', fill=fill)	
+			self.cell(w_dataset, 20, text, border=border, align='C', fill=fill)	
 		x = self.get_x()
 		y = self.get_y()
 
