@@ -10,6 +10,7 @@ import copy
 from collections import defaultdict
 import sqlite3
 import pickle
+import seaborn as sns
 from swan_vis.utils import *
 from swan_vis.graph import Graph
 from swan_vis.plottedgraph import PlottedGraph
@@ -1143,8 +1144,9 @@ class SwanGraph(Graph):
 			if not include_unexpressed:
 				counts_cols = self.get_count_cols(datasets)
 				report_tids = t_df.loc[t_df[counts_cols].sum(axis=1)>0, 'tid']
+				t_df = t_df.loc[report_tids]
 			else:
-				report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
+				report_tids = t_df.loc[:, 'tid'].tolist()
 
 			# plot each transcript with these settings
 			print('Plotting transcripts for {}'.format(gid))
@@ -1187,26 +1189,22 @@ class SwanGraph(Graph):
 						tpm_group_cols = self.get_tpm_cols(group)
 						t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
 				datasets = dataset_group_names
-
-				# if heatmap or tpm:
-				# 	report_cols = tpm_group_cols
-				# else:
-				# 	report_cols = datasets
 				report_cols = dataset_group_names
-
-				print(t_df[report_cols+['wt_1_tpm','wt_2_tpm','5xFAD_1_tpm','5xFAD_2_tpm']].head())
 
 			# if we're making a heatmap, need to first 
 			# add pseudocount, log and normalize tpm values
+			num_transcripts = []
 			if heatmap:
 
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
-				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
+				# norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
 				t_df[log_cols] = np.log2(t_df[report_cols]+1)
+
+				# max/min to normalize
 				max_val = max(t_df[log_cols].max().tolist())
 				min_val = min(t_df[log_cols].min().tolist())
-				t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
-				report_cols = norm_log_cols
+				# t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
+				report_cols = log_cols	
 
 				# create a colorbar 
 				plt.rcParams.update({'font.size': 20})
@@ -1217,18 +1215,51 @@ class SwanGraph(Graph):
 
 				cmap = plt.get_cmap('Spectral_r')
 				norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
-
 				cb = mpl.colorbar.ColorbarBase(ax,
-												cmap=cmap,
-				                                norm=norm,
-				                                orientation='horizontal')
-				cb.set_label('TPM')
-
-
+											   cmap=cmap,
+				                               norm=norm,
+				                               orientation='horizontal')
+				cb.set_label('log2(TPM)')
 				plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
 				plt.clf()
 				plt.close()
 
+				# loop through groups of <=8 transcripts and create a heatmap
+				page_num = 0
+				i = 0
+				while i < len(report_tids):
+
+					# increment the page number, which will be used in the 
+					# heatmap's filename
+					page_num += 1
+
+					# slice the dataframe to grab 8 
+					if i+8 > len(report_tids):
+						heatmap_slice = [i for i in range(i, len(report_tids)+1)]
+					else:
+						heatmap_slice = [i for i in range(i, i+9)]
+					print(heatmap_slice)
+					heatmap_len = len(heatmap_slice)
+					num_transcripts.append(heatmap_len-1)
+					heatmap_wid = 14.6
+
+					# make sure if we're only grabbing one transcript that we're
+					# still returning a dataframe instead of a series
+					# if len(heatmap_slice) != 1:
+					heatmap_data = t_df.iloc[heatmap_slice[0]:heatmap_slice[-1]][report_cols]
+					# else:
+					# 	heatmap_data = t_df.iloc[[heatmap_slice[0]]][report_cols]
+
+					plt.figure(1, figsize=(heatmap_wid, heatmap_len), frameon=False)
+					sns.heatmap(heatmap_data,
+						vmin=min_val,
+						vmax=max_val,
+						cmap=cmap,
+						cbar=False,
+						xticklabels=False,
+						yticklabels=False)
+					self.save_fig('{}_{}_heatmap_{}.png'.format(prefix, gid, page_num))
+					i += 8
 
 			# create report
 			print('Generating report for {}'.format(gid))
@@ -1239,7 +1270,13 @@ class SwanGraph(Graph):
 						 browser,
 						 ftype='report',
 						 gid=gid)
-			report = Report(prefix, report_type, report_cols, datasets, heatmap=heatmap)
+			report = Report(prefix,
+				gid,
+				report_type,
+				report_cols,
+				datasets,
+				heatmap=heatmap,
+				num_transcripts=num_transcripts)
 			report.add_page()
 
 			# loop through each transcript and add it to the report
