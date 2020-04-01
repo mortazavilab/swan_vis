@@ -63,8 +63,13 @@ class Report(FPDF):
 			self.cell(w_dataset, dataset_height, col,
 					  border=True, align='C')
 
+		# transcript model header
+		self.cell(100, header_height, 'Transcript Model', border=True, align='C')
+
 		# add colorbar if we need to 
 		if self.heatmap == True: 
+			self.set_xy(50.5, 10.5)
+			self.cell(146, 10, border=True)
 			self.image(self.prefix+'_colorbar_scale.png',
 				x=colorbar_x, 
 				y=colorbar_y+10,
@@ -73,9 +78,6 @@ class Report(FPDF):
 		# in case we need to add the browser scale
 		browser_scale_x = self.get_x()
 		browser_scale_y = self.get_y()
-
-		# transcript model header
-		self.cell(100, header_height, 'Transcript Model', border=True, align='C')
 
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':

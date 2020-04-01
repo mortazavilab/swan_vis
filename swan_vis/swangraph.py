@@ -1221,9 +1221,7 @@ class SwanGraph(Graph):
 												cmap=cmap,
 				                                norm=norm,
 				                                orientation='horizontal')
-				cb.set_label('TPM')
-
-
+				cb.set_label('log2(TPM)')
 				plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
 				plt.clf()
 				plt.close()

@@ -153,6 +153,10 @@ class PlottedGraph(Graph):
 		# edge plotting settings: line type (dashed or not)
 		self.edge_df['line'] = self.edge_df.apply(
 			lambda x: self.get_edge_line(x, dataset_cols), axis=1)
+
+		# order edges based on inclusion/exclusion 
+		if self.tid:
+			self.get_ordered_edges()
 		
 	# calculates the positions and sizes of edges/nodes based on the 
 	# number of nodes in the graph
@@ -740,6 +744,15 @@ class PlottedGraph(Graph):
 		ordered_nodes = [i[0] for i in sorted(zip(loc_ids, coords),
 			key=lambda x: x[1])]
 		return ordered_nodes
+
+	# orders edges by those present in the transcript and those not present in the transcript
+	def get_ordered_edges(self):
+		path_edges = [(self.path[i],self.path[i+1])
+			   for i in range(len(self.path)-1)]
+		self.edge_df['in_transcript'] = self.edge_df.apply(lambda x:
+			1 if x.edge_id in path_edges else 0, axis=1)
+		self.edge_df.sort_values(by='in_transcript', inplace=True)
+		self.edge_df.drop('in_transcript', axis=1, inplace=True)
 
 # is this entry unique from all other datasets?
 # and in the provided dataset?
