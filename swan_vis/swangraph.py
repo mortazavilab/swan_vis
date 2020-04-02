@@ -160,22 +160,11 @@ class SwanGraph(Graph):
 		# merge on transcript information
 		t_df = self.t_df.merge(b.t_df,
 			   how='outer',
-			   on=['path'],
+			   on=['tid', 'gid', 'gname', 'path'],
 			   suffixes=['_a', '_b'])
 
 		# convert path back to list
 		t_df.path = list(t_df.path)
-
-		# update tid, gid, gname. preferentially save old ids over new ids
-		t_df['gid'] = t_df.apply(lambda x: x.gid_a if x.gid_a != np.nan else x.gid_b, axis=1)
-		t_df['gname'] = t_df.apply(lambda x: x.gname_a if x.gname_a != np.nan else x.gname_b, axis=1)
-		t_df['tid'] = t_df.apply(lambda x: x.tid_a if x.tid_a != np.nan else x.tid_b, axis=1)
-
-		drop_cols = ['gid_a', 'gname_a', 'tid_a',
-					 'gid_b', 'gname_b', 'tid_b']
-		t_df.drop(drop_cols, axis=1, inplace=True)
-
-		t_df.to_csv('path.csv')
 
 		# assign False to entries that are not in the new dataset, 
 		# and to new entries that were not in the prior datasets
