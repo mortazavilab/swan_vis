@@ -16,8 +16,13 @@ from swan_vis.report import Report
 
 class SwanGraph(Graph):
 
-	def __init__(self):
-		super().__init__()
+	def __init__(self, file=None):
+
+		if not file:
+			super().__init__()
+		else:
+			check_file_loc(file)
+			self.load_graph(file)
 
 	###########################################################################
 	############## Related to adding datasets and merging #####################
@@ -1088,7 +1093,7 @@ class SwanGraph(Graph):
 	# saves current figure named oname. clears the figure space so additional
 	# plotting can be done
 	def save_fig(self, oname):
-		check_file_loc(oname)
+		check_dir_loc(oname)
 		plt.axis('off')
 		plt.tight_layout()
 		plt.savefig(oname, format='png', dpi=200)

@@ -63,6 +63,10 @@ class Report(FPDF):
 			self.cell(w_dataset, dataset_height, col,
 					  border=True, align='C')
 
+		# in case we need to add the browser models
+		browser_scale_x = self.get_x()
+		browser_scale_y = self.get_y()
+
 		# transcript model header
 		self.cell(100, header_height, 'Transcript Model', border=True, align='C')
 
@@ -74,10 +78,6 @@ class Report(FPDF):
 				x=colorbar_x, 
 				y=colorbar_y+10,
 				w=90, h=135/14)
-
-		# in case we need to add the browser scale
-		browser_scale_x = self.get_x()
-		browser_scale_y = self.get_y()
 
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':

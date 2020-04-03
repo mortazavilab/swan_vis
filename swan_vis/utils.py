@@ -75,11 +75,15 @@ def get_fields(fields):
     return attributes  
 
 # check to see if a file save location is valid
-def check_file_loc(loc):
+def check_dir_loc(loc):
 	d = '/'.join(loc.split('/')[:-1])
 	if not os.path.isdir(d):
 		raise Exception('Directory {} is not found. '
 			'Try a different save location'.format(d))
+
+# check to see if a file exists
+def check_file_loc(loc):
+	return os.path.isfile(loc)
 
 # return a table indexed by transcript id with the appropriate 
 # abundance
