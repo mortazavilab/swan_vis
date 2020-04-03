@@ -449,10 +449,28 @@ class SwanGraph(Graph):
 		c = conn.cursor()
 
 		# t_df
+
+		# convert talon novelty values into human-readable values
+		def get_transcript_novelties_db(x):
+			if x.attribute == 'transcript_status':
+				return 'Known'
+			elif x.attribute == 'ISM_transcript':
+				return 'ISM'
+			elif x.attribute == 'NIC_transcript':
+				return 'NIC'
+			elif x.attribute == 'NNC_transcript':
+				return 'NNC'
+			elif x.attribute == 'antisense_transcript':
+				return 'Antisense'
+			elif x.attribute == 'intergenic_transcript':
+				return 'Intergenic'
+			elif x.attribute == 'genomic_transcript':
+				return 'Genomic'
+
 		t_df = pd.DataFrame()
 
 		# get tid, gid, gname, and paths
-		q = """SELECT ga.value, ta.value,
+		q = """SELECT ga.value, ta.value, ta.ID,
 					  t.start_exon, t.jn_path, t.end_exon,
 					  t.start_vertex, t.end_vertex
 				FROM gene_annotations ga 
@@ -472,14 +490,38 @@ class SwanGraph(Graph):
 		data = c.fetchall()
 
 		# get fields from each transcript and add to dataframe
-		gids, tids, paths = zip(*[(i[0], i[1], i[2:]) for i in data[::2]])
+		gids, tids, talon_tids, paths = zip(*[(i[0], i[1], i[2], i[3:]) for i in data[::2]])
 		gnames = [i[0] for i in data[1::2]]
 		paths = self.get_db_edge_paths(paths)
+		talon_tids = np.asarray(talon_tids)
 
 		t_df['tid'] = np.asarray(tids)
+		t_df['talon_tid'] = talon_tids
 		t_df['gid'] = np.asarray(gids)
 		t_df['gname'] = np.asarray(gnames)
 		t_df['path'] = np.asarray(paths)
+
+		# fetch novelty type for each transcript
+		novelties = ['transcript_status', 'ISM_transcript', 'NIC_transcript', 
+					   'NNC_transcript', 'antisense_transcript', 
+					   'genomic_transcript', 'intergenic_transcript']
+		novelties = format_for_in(novelties)
+		talon_tids = format_for_in(talon_tids)
+		q = """SELECT ta.ID, ta.attribute, ta.value 
+			   FROM transcript_annotations ta
+			   WHERE ta.attribute IN {}
+			   AND ta.ID IN {}
+			""".format(novelties, talon_tids)
+		novelties = pd.read_sql_query(q, conn)
+		novelties = novelties[novelties.value != 'NOVEL']
+		novelties['novelty'] = novelties.apply(lambda x:
+			get_transcript_novelties_db(x), axis=1)
+		novelties.drop(['attribute', 'value'], axis=1, inplace=True)
+
+		# merge novelty types with t_df
+		t_df = t_df.merge(novelties, how='left',
+			left_on='talon_tid', right_on='ID')
+		t_df.drop('talon_tid', axis=1, inplace=True)
 
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')

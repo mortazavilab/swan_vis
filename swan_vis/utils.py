@@ -85,12 +85,16 @@ def check_file_loc(loc):
 # abundance
 # currently only works with TALON abundance files but can easily 
 # be updated to work with more types of abundance files
-def process_abundance_file(file, cols):
+def process_abundance_file(file, cols, talon=False):
 
 	if type(cols) != list: cols = [cols]
 
 	df = pd.read_csv(file, sep='\t')
 	keep_cols = ['annot_transcript_id']+cols	
+
+	# keep transcript novelty if from talon
+	if talon:
+		keep_cols += 'transcript_novelty'
 	df = df[keep_cols]
 
 	# get the counts
@@ -142,6 +146,15 @@ def gtf_or_db(fname):
 		raise Exception('File type must be gtf or db. '
 			'Type received is {}'.format(ext))
 
+# Converts input to string that can be used for IN database query
+# originally written by Dana Wyman for TALON
+def format_for_in(l):    
+    if type(l) is tuple:
+        l = list(l)
+    if type(l) is str:
+        l = [l]
+
+    return "(" + ','.join(['"' + str(x) + '"' for x in l]) + ")" 
 
 
 	
