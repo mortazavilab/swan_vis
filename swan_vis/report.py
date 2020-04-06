@@ -40,22 +40,23 @@ class Report(FPDF):
 		# the browser/heatmap version
 		if self.report_type == 'swan':
 			header_height = 10
-		if self.report_type == 'browser' or self.heatmap == True:
+		if self.report_type == 'browser':
 			header_height = 20
 
-		# size the dataset IDs differently if we need to include
-		# colorbar below
-		if self.heatmap == False:
-			dataset_height = header_height
-		elif self.heatmap == True:
-			dataset_height = 10
+		# # size the dataset IDs differently if we need to include
+		# # colorbar below
+		# if self.heatmap == False:
+		# 	dataset_height = header_height
+		# elif self.heatmap == True:
+		# 	dataset_height = 10
+		dataset_height = header_height
 		
 		# transcript ID header
 		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
 
-		# in case we need to add the colorbar
-		colorbar_x = self.get_x() + float(45/2) + 4.5
-		colorbar_y = self.get_y()
+		# # in case we need to add the colorbar
+		# colorbar_x = self.get_x() + float(45/2) + 4.5
+		# colorbar_y = self.get_y() + 10
 
 		# dataset ID headers
 		w_dataset = 146/self.n_dataset_cols
@@ -70,14 +71,14 @@ class Report(FPDF):
 		# transcript model header
 		self.cell(100, header_height, 'Transcript Model', border=True, align='C')
 
-		# add colorbar if we need to 
-		if self.heatmap == True: 
-			self.set_xy(50.5, 10.5)
-			self.cell(146, 10, border=True)
-			self.image(self.prefix+'_colorbar_scale.png',
-				x=colorbar_x, 
-				y=colorbar_y+10,
-				w=90, h=135/14)
+		# # add colorbar if we need to 
+		# if self.heatmap == True: 
+		# 	self.set_xy(50.5, 10.5)
+		# 	self.cell(146, 10, border=True)
+		# 	self.image(self.prefix+'_colorbar_scale.png',
+		# 		x=colorbar_x, 
+		# 		y=colorbar_y,
+		# 		w=90, h=135/14)
 
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':
@@ -87,6 +88,14 @@ class Report(FPDF):
 					   w=100, h=50/7)
 		self.ln()
 
+	# footer - just add the colorbar if we're using the
+	# heatmap option
+	def footer(self):
+		if self.heatmap:
+			self.set_x(77.5)
+			self.image(self.prefix+'_colorbar_scale.png',
+				w=90, h=135/14)
+			
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname):
 
