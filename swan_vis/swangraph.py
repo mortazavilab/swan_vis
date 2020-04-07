@@ -83,6 +83,7 @@ class SwanGraph(Graph):
 				temp.create_dfs_db(fname, dname)
 			self.merge_dfs(temp, col)
 
+
 		# order node ids by genomic position, add node types,
 		# and create graph
 		self.update_ids()
