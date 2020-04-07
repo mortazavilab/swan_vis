@@ -104,10 +104,8 @@ class PlottedGraph(Graph):
 
 		color_dict = {'intron': {'normal': pink, 'gray': gray_pink},
 					  'exon': {'normal': green, 'gray': gray_green},
-					  'TSS': {'normal': blue, 'gray': gray_blue},
-					  'alt_TSS': {'normal': light_blue, 'gray': gray_light_blue},
-					  'TES': {'normal': red, 'gray': gray_red},
-					  'alt_TES': {'normal': orange, 'gray': gray_orange},
+					  'TSS': {'normal': light_blue, 'gray': gray_light_blue},
+					  'TES': {'normal': orange, 'gray': gray_orange},
 					  'internal': {'normal': yellow, 'gray': gray_yellow}}
 
 		# get the list of datasets we should be looking at to determine
@@ -225,11 +223,11 @@ class PlottedGraph(Graph):
 		if self.tid:
 			self.path = self.get_path_from_tid(self.tid)
 			if x.vertex_id == self.path[0]:
-				x['color'] = color_dict['alt_TSS']['normal']
-				x['sub_color'] = color_dict['alt_TSS']['normal']
+				x['color'] = color_dict['TSS']['normal']
+				x['sub_color'] = color_dict['TSS']['normal']
 			elif x.vertex_id == self.path[-1]:
-				x['color'] = color_dict['alt_TES']['normal']
-				x['sub_color'] = color_dict['alt_TES']['normal']
+				x['color'] = color_dict['TES']['normal']
+				x['sub_color'] = color_dict['TES']['normal']
 			elif x.vertex_id in self.path:
 				x['color'] = color_dict['internal']['normal']
 				x['sub_color'] = color_dict['internal']['normal']
@@ -238,9 +236,7 @@ class PlottedGraph(Graph):
 			else:
 				if x.internal: color = color_dict['internal']['gray']
 				if x.TSS: color = color_dict['TSS']['gray']
-				if x.alt_TSS: color = color_dict['alt_TSS']['gray']
 				if x.TES: color = color_dict['TES']['gray']
-				if x.alt_TES: color = color_dict['alt_TES']['gray']
 				x['color'] = color
 
 		# combined nodes
@@ -265,12 +261,10 @@ class PlottedGraph(Graph):
 			# colors should label nodes by their 
 			# MOST UNIQUE type (yes I know this is subjective) 
 			# to me, this means that the label priority for a node is 
-			# internal < TSS/alt_TSS < TES/alt_TES
+			# internal < TSS < TES
 			if x.internal: color = color_dict['internal']['normal']
 			if x.TSS: color = color_dict['TSS']['normal']
-			if x.alt_TSS: color = color_dict['alt_TSS']['normal']
 			if x.TES: color = color_dict['TES']['normal']
-			if x.alt_TES: color = color_dict['alt_TES']['normal']
 			x['color'] = color
 
 		return x
@@ -654,8 +648,8 @@ class PlottedGraph(Graph):
 			# get the colors for each aggregate node
 			# TODO need to fix how these are colored with alt TSS/TES vs singleton TSS/TES
 			combined_types = [j[0] for j in sorted([i for i in 
-			   [('alt_TSS',loc_df.loc[path,'alt_TSS'].tolist().count(True)),
-			   ('alt_TES',loc_df.loc[path,'alt_TES'].tolist().count(True)),
+			   [('TSS',loc_df.loc[path,'TSS'].tolist().count(True)),
+			   ('TES',loc_df.loc[path,'TES'].tolist().count(True)),
 			   ('internal',loc_df.loc[path,'internal'].tolist().count(True))]
 			   if i[1] != 0], key=lambda x: x[1], reverse=True)][:2]
 
@@ -677,12 +671,10 @@ class PlottedGraph(Graph):
 			coord = loc_df.loc[start, 'coord']
 			chrom = loc_df.loc[start, 'chrom']
 			strand = loc_df.loc[start, 'strand']
-			tss = alt_tss = tes = alt_tes = internal = False
+			tss = tes = internal = False
 			for n in path:
 				if loc_df.loc[n, 'TSS']: tss = True
 				if loc_df.loc[n, 'TES']: tes = True
-				if loc_df.loc[n, 'alt_TSS']: alt_tss = True
-				if loc_df.loc[n, 'alt_TES']: alt_tes = True
 				if loc_df.loc[n, 'internal']: internal = True
 			loc_attrs = {'chrom': chrom, 'strand': strand,
 				   'vertex_id': combined_node,
@@ -690,7 +682,6 @@ class PlottedGraph(Graph):
 				   'vertex_id_back': combined_node,
 				   'agg_path': list(path), 'combined': True,
 				   'TSS': tss, 'TES': tes,
-				   'alt_TSS': alt_tss, 'alt_TES': alt_tes,
 				   'internal': internal, 'coord': coord}
 
 			# # if we're indicating dataset, which datasets are these nodes present in?

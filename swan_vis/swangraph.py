@@ -87,6 +87,7 @@ class SwanGraph(Graph):
 		# and create graph
 		self.update_ids()
 		self.order_edge_df()
+		self.order_transcripts('tss')
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 
@@ -211,7 +212,7 @@ class SwanGraph(Graph):
 	def merge_loc_dfs(self, b, b_col):
 
 		# some df reformatting
-		node_types = ['TSS', 'alt_TSS', 'TES', 'alt_TES', 'internal']
+		node_types = ['TSS', 'TES', 'internal']
 
 		self.loc_df.drop(node_types, axis=1, inplace=True)
 		self.loc_df.reset_index(drop=True, inplace=True)
@@ -573,6 +574,10 @@ class SwanGraph(Graph):
 		gnames.rename({'ID': 'talon_gid', 'value': 'gname'},
 			axis=1, inplace=True)
 		t_df = t_df.merge(gnames, on='talon_gid')
+		t_df.drop('talon_gid', axis=1, inplace=True)
+
+		# reorder columns
+		t_df = t_df[['tid', 'gid', 'gname', 'path', 'talon_tid']]
 
 		# get novelty types and merge
 		novelties = ['transcript_status', 'ISM_transcript', 'NIC_transcript', 
@@ -592,7 +597,7 @@ class SwanGraph(Graph):
 
 		t_df = t_df.merge(novelties, how='left',
 			left_on='talon_tid', right_on='ID')
-		t_df.drop(['talon_tid', 'talon_gid'], axis=1, inplace=True)
+		t_df.drop(['talon_tid', 'ID'], axis=1, inplace=True)
 
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
@@ -604,7 +609,8 @@ class SwanGraph(Graph):
 		# edge_str = '({})'.format(','.join(edge_ids))
 		edge_str = format_for_in(edge_ids)
 
-		q = """SELECT DISTINCT e.* 
+		q = """SELECT DISTINCT e.edge_ID, e.v1,
+				e.v2, e.strand, e.edge_type
 				FROM edge e 
 				JOIN vertex V ON e.v1=v.vertex_ID 
 			WHERE e.edge_ID IN {}""".format(edge_str)
@@ -614,7 +620,7 @@ class SwanGraph(Graph):
 
 		edge_df = pd.DataFrame(edges, 
 			columns=['edge_id', 'v1', 'v2',
-					 'edge_type', 'strand'])
+					 'strand', 'edge_type'])
 		edge_df.v1 = edge_df.v1.map(int)
 		edge_df.v2 = edge_df.v2.map(int)
 		edge_df['talon_edge_id'] = edge_df.edge_id
@@ -625,7 +631,6 @@ class SwanGraph(Graph):
 		# get the list of vertex ids we need to pull from db
 		edge_ids = edge_df.edge_id.tolist()
 		loc_ids = list(set([str(n) for edge_id in edge_ids for n in edge_id]))
-		# loc_string = '({})'.format(','.join(loc_ids))
 		loc_string = format_for_in(loc_ids)
 
 		q = """SELECT loc.* FROM location loc
@@ -646,8 +651,8 @@ class SwanGraph(Graph):
 		loc_df.vertex_id = loc_df.vertex_id.map(int)
 
 		# furnish the last bit of info in each df
-		t_df['path'] = [[int(n) for n in path]
-						 for path in self.get_db_vertex_paths(paths, edge_df)]
+		t_df['path'] = t_df.apply(lambda x:
+			self.get_db_vertex_path(x, edge_df), axis=1)
 
 		# get strandedness of each sj
 		extra_entries = pd.DataFrame(columns=['vertex_id', 'chrom',
@@ -690,17 +695,6 @@ class SwanGraph(Graph):
 					new_path = [extra_entries.loc[extra_entries.plus_vertex_id == n,
 						'vertex_id'].tolist()[0] if n in double_sjs else n for n in path]
 					t_df.at[tid, 'path'] = new_path
-					# try:
-					# 	print(tid)
-					# 	t_df.at[tid, 'path'] = new_path
-					# 	print(t_df.loc[tid])
-					# 	print(t_df.loc[tid, 'path'])
-					# except: 
-					# 	print(t_df.path)
-					# 	print(tid)
-					# 	print(new_path)
-					# 	print('exiting')
-					# 	exit()
 
 		# also replace sjs in edge_df that had to be introduced in extra_entries
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
@@ -729,7 +723,7 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-	# add node types (internal, TSS, alt TSS, TES, alt_TES) to loc_df
+	# add node types (internal, TSS, TES) to loc_df
 	def get_loc_types(self):
 
 		def label_node_types(locs, vertex_ids, node_type):
@@ -745,8 +739,6 @@ class SwanGraph(Graph):
 		locs['internal'] = False
 		locs['TSS'] = False
 		locs['TES'] = False
-		locs['alt_TSS'] = False
-		locs['alt_TES'] = False
 		locs.drop(['coord', 'vertex_id'], axis=1, inplace=True)
 		locs = locs.to_dict('index')
 
@@ -759,21 +751,21 @@ class SwanGraph(Graph):
 		internal = np.unique([n for path in paths for n in path[1:-1]])
 		locs = label_node_types(locs, internal, 'internal')
 
-		# also create a dictionary of gid: [path1, ... pathn] to speed up
-		path_dict = defaultdict(list)
-		for tid, entry in t_df.iterrows():
-			path_dict[entry.gid].append(entry.path)
+		# # also create a dictionary of gid: [path1, ... pathn] to speed up
+		# path_dict = defaultdict(list)
+		# for tid, entry in t_df.iterrows():
+		# 	path_dict[entry.gid].append(entry.path)
 
-		# label alt TES/TSS
-		for gid in path_dict.keys():
-			paths = path_dict[gid]
-			if len(paths) > 1:
-				tss = np.unique([path[0] for path in paths])
-				tes = np.unique([path[-1] for path in paths])
-				if len(tss) > 1:  
-					locs = label_node_types(locs, tss, 'alt_TSS')
-				if len(tes) > 1:
-					locs = label_node_types(locs, tes, 'alt_TES')
+		# # label alt TES/TSS
+		# for gid in path_dict.keys():
+		# 	paths = path_dict[gid]
+		# 	if len(paths) > 1:
+		# 		tss = np.unique([path[0] for path in paths])
+		# 		tes = np.unique([path[-1] for path in paths])
+		# 		if len(tss) > 1:  
+		# 			locs = label_node_types(locs, tss, 'alt_TSS')
+		# 		if len(tes) > 1:
+		# 			locs = label_node_types(locs, tes, 'alt_TES')
 
 		# create df from locs dict and append old loc_df with node types
 		locs = pd.DataFrame.from_dict(locs, orient='index')
@@ -796,17 +788,14 @@ class SwanGraph(Graph):
 		return edge_paths
 
 	# convert edge path to vertex path
-	def get_db_vertex_paths(self, paths, edge_df):
-		vertex_paths = []
-		for p in paths: 
-			path = []
-			for i, e in enumerate(p): 
-				entry = edge_df.loc[edge_df.talon_edge_id == e]
-				if i == 0:
-					path.extend([entry.v1.values[0], entry.v2.values[0]])
-				else: path.append(entry.v2.values[0])
-			vertex_paths.append(path)
-		return vertex_paths
+	def get_db_vertex_path(self, x, edge_df):
+		path = []
+		for i, e in enumerate(x.path): 
+			entry = edge_df.loc[edge_df.talon_edge_id == e]
+			if i == 0:
+				path.extend([entry.v1.values[0], entry.v2.values[0]])
+			else: path.append(entry.v2.values[0])
+		return path
 
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
