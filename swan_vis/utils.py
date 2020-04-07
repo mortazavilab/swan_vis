@@ -69,9 +69,9 @@ def get_fields(fields):
 
     # put in placeholders for important attributes (such as gene_id) if they
     # are absent
-    if "gene_id" not in attributes:
-        attributes["gene_id"] = "NULL"
-
+    if 'gene_id' not in attributes:
+        attributes['gene_id'] = 'NULL'
+        
     return attributes  
 
 # check to see if a file save location is valid
@@ -82,8 +82,10 @@ def check_dir_loc(loc):
 			'Try a different save location'.format(d))
 
 # check to see if a file exists
-def check_file_loc(loc):
-	return os.path.isfile(loc)
+def check_file_loc(loc, ftype):
+	if not os.path.isfile(loc):
+		raise Exception('{} file not found at {}. '
+			'Check path.'.format(ftype, loc))
 
 # return a table indexed by transcript id with the appropriate 
 # abundance

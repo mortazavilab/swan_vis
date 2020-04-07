@@ -21,7 +21,7 @@ class SwanGraph(Graph):
 		if not file:
 			super().__init__()
 		else:
-			check_file_loc(file)
+			check_file_loc(file, 'SwanGraph')
 			self.load_graph(file)
 
 	###########################################################################
@@ -45,7 +45,7 @@ class SwanGraph(Graph):
 		# already in any of the df col spaces
 		if col in self.datasets:
 			raise Exception('Dataset {} is already in the graph. '
-				'Use update_dataset (coming soon) or provide a different name.'.format(col))
+				'Provide a different name.'.format(col))
 		if col in self.loc_df.columns:
 			raise Exception('Dataset name {} conflicts with preexisting '
 				'column in loc_df. Choose a different name.'.format(col))
@@ -270,8 +270,9 @@ class SwanGraph(Graph):
 	def create_dfs_gtf(self, gtf_file):
 
 		# make sure file exists
-		if not os.path.exists(gtf_file):
-			raise Exception('GTF file not found. Check path.')
+		check_file_loc(gtf_file, 'GTF')
+		# if not os.path.exists(gtf_file):
+		# 	raise Exception('GTF file not found. Check path.')
 
 		# depending on the strand, determine the stard and stop
 		# coords of an intron or exon
@@ -283,6 +284,23 @@ class SwanGraph(Graph):
 				start = min([v1, v2])
 				stop = max([v1, v2])
 			return start, stop
+
+		# get novelty types associated with each transcript
+		def get_transcript_novelties_gtf(fields):
+			if fields['transcript_status'] == 'KNOWN':
+				return 'Known'
+			elif 'ISM_transcript' in fields:
+				return 'ISM'
+			elif 'NIC_transcript' in fields:
+				return 'NIC'
+			elif 'NNC_transcript' in fields:
+				return 'NNC'
+			elif 'antisense_transcript' in fields:
+				return 'Antisense'
+			elif 'intergenic_transcript' in fields:
+				return 'Intergenic'
+			elif 'genomic_transcript' in fields:
+				return 'Genomic'
 
 		# dictionaries to hold unique edges and transcripts
 		transcripts = {}
@@ -309,16 +327,37 @@ class SwanGraph(Graph):
 				# transcript entry 
 				if entry_type == "transcript":
 					attributes = get_fields(fields)
+
+					# check if this gtf has transcript novelty vals
+					# for the first transcript entry
+					if not transcripts:
+						if 'talon_transcript' in attributes:
+							from_talon = True
+						else:
+							from_talon = False
+
 					tid = attributes['transcript_id']
 					gid = attributes['gene_id']
 					gname = attributes['gene_name']
 
 					# add transcript to dictionary 
-					transcript = {tid: {'gid': gid,
-										'gname': gname,
-										'tid': tid,
-										'strand': strand,
-										'exons': []}}
+					entry = {'gid': gid,
+							 'gname': gname,
+							 'tid': tid,
+							 'strand': strand,
+							 'exons': []}
+					# transcript = {tid: {'gid': gid,
+					# 					'gname': gname,
+					# 					'tid': tid,
+					# 					'strand': strand,
+					# 					'exons': []}}
+
+					# if we're using a talon gtf, add a novelty field
+					if from_talon:
+						novelty = get_transcript_novelties_gtf(attributes)
+						entry['novelty'] = novelty
+
+					transcript = {tid: entry}
 					transcripts.update(transcript)
 					
 				# exon entry
@@ -415,10 +454,22 @@ class SwanGraph(Graph):
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
 		edge_df = pd.DataFrame(edges)
 
-		transcripts = [{'tid': key,
+		# transcripts = [{'tid': key,
+		# 				'gid': item['gid'],
+		# 				'gname': item['gname'],
+		# 				'path': item['path'],} for key, item in transcripts.items()]
+		if from_talon:
+			transcripts = [{'tid': key,
+						'gid': item['gid'],
+						'gname': item['gname'],
+						'path': item['path'],
+						'novelty': item['novelty']} for key, item in transcripts.items()]
+		else:
+			transcripts = [{'tid': key,
 						'gid': item['gid'],
 						'gname': item['gname'],
 						'path': item['path']} for key, item in transcripts.items()]
+
 		t_df = pd.DataFrame(transcripts)
 
 		# final df formatting
@@ -440,14 +491,13 @@ class SwanGraph(Graph):
 		# from the database?
 		if dname == None:
 			print('No dataset name given.'
-				' Will pull everything, including unobserved transcripts,'
+				' Will fetch all observed transcripts'
 				' from {}'.format(db))
 		else:
 			print('Getting transcripts for {} from {}'.format(db, dname))
 
 		# make sure file exists
-		if not os.path.exists(db):
-			raise Exception('TALON db file {} not found. Check path.'.format(db))
+		check_file_loc(db, 'TALON DB')
 
 		# open db connection
 		conn = sqlite3.connect(db)
@@ -474,44 +524,61 @@ class SwanGraph(Graph):
 
 		t_df = pd.DataFrame()
 
-		# get tid, gid, gname, and paths
-		q = """SELECT ga.value, ta.value, ta.ID,
-					  t.start_exon, t.jn_path, t.end_exon,
-					  t.start_vertex, t.end_vertex
-				FROM gene_annotations ga 
-				JOIN transcripts t ON ga.ID=t.gene_ID
-				JOIN transcript_annotations ta ON t.transcript_ID=ta.ID
-			"""
-		if dname: 
-			q += """ JOIN observed o ON o.transcript_ID=t.transcript_ID"""
-		q += """ WHERE ta.attribute='transcript_id'
-				AND (ga.attribute='gene_name' 
-				OR ga.attribute='gene_id')
-			"""
-		if dname: 
-			q += """ AND o.dataset='{}'""".format(dname)
+		# get talon tids from observed transcripts in input dataset
+		q = """SELECT transcript_ID, gene_ID, start_exon, jn_path, end_exon,
+			   start_vertex, end_vertex
+			   FROM transcripts t
+			   WHERE transcript_ID in
+			   (SELECT DISTINCT transcript_ID from observed)"""
+		if dname:
+			q += """ WHERE dataset='{}'""".format(dname)
 
 		c.execute(q)
 		data = c.fetchall()
-
-		# get fields from each transcript and add to dataframe
-		gids, tids, talon_tids, paths = zip(*[(i[0], i[1], i[2], i[3:]) for i in data[::2]])
-		gnames = [i[0] for i in data[1::2]]
+		talon_tids, talon_gids, paths = zip(*[(i[0], i[1], i[2:]) for i in data])
 		paths = self.get_db_edge_paths(paths)
-		talon_tids = np.asarray(talon_tids)
 
-		t_df['tid'] = np.asarray(tids)
-		t_df['talon_tid'] = talon_tids
-		t_df['gid'] = np.asarray(gids)
-		t_df['gname'] = np.asarray(gnames)
+		t_df['talon_tid'] = np.asarray(talon_tids)
+		t_df['talon_gid'] = np.asarray(talon_gids)
 		t_df['path'] = np.asarray(paths)
 
-		# fetch novelty type for each transcript
+		# get transcript ids and merge 
+		talon_tids = format_for_in(talon_tids)
+		q = """SELECT ID, value 
+			   FROM transcript_annotations
+			   WHERE attribute='transcript_id'
+			   AND ID in {}""".format(talon_tids)
+		tids = pd.read_sql_query(q, conn)
+		tids.rename({'value': 'tid', 'ID': 'talon_tid'},
+			axis=1, inplace=True)
+		t_df = t_df.merge(tids, on='talon_tid')
+
+		# get gene ids and merge
+		talon_gids = format_for_in(list(set(talon_gids)))
+		q = """SELECT ID, value 
+			   FROM gene_annotations
+			   WHERE attribute='gene_id'
+			   AND ID in {}""".format(talon_gids)
+		gids = pd.read_sql_query(q, conn)
+		gids.rename({'ID': 'talon_gid', 'value': 'gid'},
+			axis=1, inplace=True)
+		t_df = t_df.merge(gids, on='talon_gid')
+
+		# get gene names and merge
+		q = """SELECT ID, value 
+			   FROM gene_annotations
+			   WHERE attribute='gene_name'
+			   AND ID in {}""".format(talon_gids)
+		gnames = pd.read_sql_query(q, conn)
+		gnames.rename({'ID': 'talon_gid', 'value': 'gname'},
+			axis=1, inplace=True)
+		t_df = t_df.merge(gnames, on='talon_gid')
+
+		# get novelty types and merge
 		novelties = ['transcript_status', 'ISM_transcript', 'NIC_transcript', 
 					   'NNC_transcript', 'antisense_transcript', 
 					   'genomic_transcript', 'intergenic_transcript']
 		novelties = format_for_in(novelties)
-		talon_tids = format_for_in(talon_tids)
 		q = """SELECT ta.ID, ta.attribute, ta.value 
 			   FROM transcript_annotations ta
 			   WHERE ta.attribute IN {}
@@ -523,10 +590,9 @@ class SwanGraph(Graph):
 			get_transcript_novelties_db(x), axis=1)
 		novelties.drop(['attribute', 'value'], axis=1, inplace=True)
 
-		# merge novelty types with t_df
 		t_df = t_df.merge(novelties, how='left',
 			left_on='talon_tid', right_on='ID')
-		t_df.drop('talon_tid', axis=1, inplace=True)
+		t_df.drop(['talon_tid', 'talon_gid'], axis=1, inplace=True)
 
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
@@ -535,14 +601,13 @@ class SwanGraph(Graph):
 
 		# get the list of edge ids we need to pull from db
 		edge_ids = list(set([str(n) for path in paths for n in path]))
-		edge_str = '({})'.format(','.join(edge_ids))
+		# edge_str = '({})'.format(','.join(edge_ids))
+		edge_str = format_for_in(edge_ids)
 
 		q = """SELECT DISTINCT e.* 
 				FROM edge e 
 				JOIN vertex V ON e.v1=v.vertex_ID 
-			"""
-		if dname:
-			q += """ WHERE e.edge_ID IN {}""".format(edge_str)
+			WHERE e.edge_ID IN {}""".format(edge_str)
 
 		c.execute(q)
 		edges = c.fetchall()
@@ -560,12 +625,11 @@ class SwanGraph(Graph):
 		# get the list of vertex ids we need to pull from db
 		edge_ids = edge_df.edge_id.tolist()
 		loc_ids = list(set([str(n) for edge_id in edge_ids for n in edge_id]))
-		loc_string = '({})'.format(','.join(loc_ids))
+		# loc_string = '({})'.format(','.join(loc_ids))
+		loc_string = format_for_in(loc_ids)
 
-
-		q = """SELECT loc.* FROM location loc"""
-		if dname:
-			q += """ WHERE loc.location_ID IN {}""".format(loc_string)
+		q = """SELECT loc.* FROM location loc
+			   WHERE loc.location_ID IN {}""".format(loc_string)
 
 		c.execute(q)
 		locs = c.fetchall()
@@ -625,13 +689,23 @@ class SwanGraph(Graph):
 				if coords[1] < coords[0]:
 					new_path = [extra_entries.loc[extra_entries.plus_vertex_id == n,
 						'vertex_id'].tolist()[0] if n in double_sjs else n for n in path]
-					t_df.loc[tid, 'path'] = new_path
+					t_df.at[tid, 'path'] = new_path
+					# try:
+					# 	print(tid)
+					# 	t_df.at[tid, 'path'] = new_path
+					# 	print(t_df.loc[tid])
+					# 	print(t_df.loc[tid, 'path'])
+					# except: 
+					# 	print(t_df.path)
+					# 	print(tid)
+					# 	print(new_path)
+					# 	print('exiting')
+					# 	exit()
 
 		# also replace sjs in edge_df that had to be introduced in extra_entries
 		edge_df.drop('talon_edge_id', axis=1, inplace=True)
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
-		edge_df.to_csv('input_files/edge_df_db.csv')
 		for eid, entry in edge_df.iterrows():
 			if any(x in eid for x in double_sjs):
 				coords = loc_df.loc[eid, 'coord'].tolist()	
