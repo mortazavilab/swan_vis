@@ -156,16 +156,12 @@ class SwanGraph(Graph):
 		# print note to user about merging with novelty
 		existing_cols = self.t_df.columns.tolist()
 		add_cols = b.t_df.columns.tolist()
-		if 'novelty' in existing_cols and 'novelty' in add_cols:
-			print('Novelty types in both existing and added '
-				  'datasets. Transcripts with conflicting '
-				  'novelty types will be labelled "Ambiguous".')
-		elif 'novelty' not in existing_cols:
+		if 'novelty' not in existing_cols and 'novelty' in add_cols:
 			print('Novelty info not found for '
 			      'existing data. Transcripts '
 			      'without novelty information will be '
 			      'labelled "Undefined".')
-		elif 'novelty' not in add_cols:
+		elif 'novelty' not in add_cols and 'novelty' in existing_cols:
 			print('Novelty info not found for '
 			     '{} data. Transcripts '
 			     'without novelty information will be '
@@ -197,7 +193,9 @@ class SwanGraph(Graph):
 		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
 
 		# deal with novelties
-		t_df = self.merge_t_df_novelties(t_df)
+		t_df_cols = t_df.columns.tolist()
+		if 'novelty' in t_df_cols or 'novelty_a' in t_df_cols:
+			t_df = self.merge_t_df_novelties(t_df)
 
 		# set up index again
 		t_df = create_dupe_index(t_df, 'tid')
@@ -211,9 +209,40 @@ class SwanGraph(Graph):
 		if 'novelty' in t_df.columns.tolist():
 			t_df.fillna(value={'novelty': 'Undefined'},
 				inplace=True)
+
 		# merged dfs where both have novelty types
-		if 'novelty_a' in t_df.columns.tolist():
-			pass
+		elif 'novelty_a' in t_df.columns.tolist():
+
+			# first take values that are only present in one dataset
+			t_df['novelty_a'].fillna(t_df['novelty_b'], inplace=True)
+			t_df['novelty_b'].fillna(t_df['novelty_a'], inplace=True)
+			a = t_df[['tid', 'novelty_a']].copy(deep=True)
+			a.rename({'novelty_a': 'novelty'}, axis=1, inplace=True)
+			a.reset_index(drop=True, inplace=True)
+			b = t_df[['tid', 'novelty_b']].copy(deep=True)
+			b.rename({'novelty_b': 'novelty'}, axis=1, inplace=True)
+			b.reset_index(drop=True, inplace=True)
+
+			# merge novelties on tid and novelty, then extract
+			# transcript ids that are duplicated, which represent
+			# those that have conflicting novelty assignments
+			nov = a.merge(b, on=['tid', 'novelty'], how='outer')
+			amb_tids = nov[nov.tid.duplicated()].tid.tolist()
+
+			# label conflicting transcripts as Ambiguous
+			if amb_tids:
+				print('Novelty types between datasets conflict. Strongly '
+					  'consider using input from the same data source to '
+					  'reconcile these. Conflicting isoforms will be '
+					  'labelled "Ambiguous".')
+				nov.set_index('tid', inplace=True)
+				nov.loc[amb_tids, 'novelty'] = 'Ambiguous'
+				nov.reset_index(inplace=True)
+				nov.drop_duplicates(inplace=True)
+
+			# finally, merge new novelty types into t_df
+			t_df.drop(['novelty_a', 'novelty_b'], axis=1, inplace=True)
+			t_df = t_df.merge(nov, on='tid')
 
 		return t_df
 

@@ -162,16 +162,33 @@ class TestMergeSGs(object):
 		# and there are transcripts in the dataset that
 		# doesn't have categories that aren't in the
 		# dataset that does
+		print('Testing if novelty merging works...')
 		sg = swan.SwanGraph()
 		sg.add_dataset('a', a_gtf)
 		sg.t_df['novelty'] = ['Known', 'NIC', 'ISM']
 		sg.add_dataset('b', b_gtf)
 		test = sg.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
-		print(type(test))
 		control = [('ENST01', 'Known'), ('ENST02', 'Undefined'), ('ENST08', 'Undefined'),
 				   ('ENST03', 'NIC'), ('ENST04', 'Undefined'), ('ENST07', 'ISM')]
-		print('Testing if novelty merging works...')
 		check_pairs(control, test)
+
+		# both datasets have novelty categorizations
+		ab_gtf = 'input_files/annot_3.gtf'
+		sg_a = swan.SwanGraph()
+		sg_a.add_dataset('a', ab_gtf)
+		sg_a.t_df['novelty'] = ['Known', 'Known', 'ISM',
+								np.nan, 'NIC', 'NNC']
+		sg_b = swan.SwanGraph()
+		sg_b.add_dataset('b', ab_gtf)
+		sg_b.t_df['novelty'] = ['Known', 'ISM', np.nan,
+								'NIC', 'NNC', 'NNC']
+		sg_a.merge_dfs(sg_b, 'b')
+		test = sg_a.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
+		control = [('ENST01', 'Known'), ('ENST02', 'Ambiguous'), ('ENST08', 'NNC'),
+				   ('ENST03', 'ISM'), ('ENST04', 'NIC'), ('ENST07', 'Ambiguous')]
+		check_pairs(control, test)
+
+		# neither dataset has novelty types
 
 
 def check_pairs(control, test):
