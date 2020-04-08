@@ -94,30 +94,20 @@ class TestSpliceGraph(object):
 		a.get_loc_types()
 
 		control_tss = [0,1]
-		control_alt_tss = [0,1]
 		control_tes = [1,2]
-		control_alt_tes = [1,2]
 		control_internal = [1]
 
 		test_tss = a.loc_df[a.loc_df.apply(
 			lambda x: True if x.TSS else False, axis=1)].vertex_id.tolist()
-		test_alt_tss = a.loc_df[a.loc_df.apply(
-			lambda x: True if x.alt_TSS else False, axis=1)].vertex_id.tolist()
 		test_tes = a.loc_df[a.loc_df.apply(
 			lambda x: True if x.TES else False, axis=1)].vertex_id.tolist()
-		test_alt_tes = a.loc_df[a.loc_df.apply(
-			lambda x: True if x.alt_TES else False, axis=1)].vertex_id.tolist()
 		test_internal = a.loc_df[a.loc_df.apply(
 			lambda x: True if x.internal else False, axis=1)].vertex_id.tolist()
 
 		print('tss')
 		check_pairs(control_tss, test_tss)
-		print('alt_tss')
-		check_pairs(control_alt_tss, test_alt_tss)
 		print('tes')
 		check_pairs(control_tes, test_tes)
-		print('alt_tes')
-		check_pairs(control_alt_tes, test_alt_tes)
 		print('internal')
 		check_pairs(control_internal, test_internal)
 
@@ -184,8 +174,9 @@ def nan_to_neg(pair):
 def check_pairs(control, test):
 	print('control')
 	print(control)
+	print('test')
+	print(test)
 	for t in test:
-		print(t)
 		assert t in control
 	assert len(test) == len(control)
 

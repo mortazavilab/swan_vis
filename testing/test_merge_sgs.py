@@ -12,7 +12,6 @@ class TestMergeSGs(object):
 		sg = swan.SwanGraph()
 		sg.add_dataset('a', a_gtf)
 		sg.add_dataset('b', b_gtf)
-		sg.order_transcripts()
 
 		print(sg.loc_df.head())
 		print(sg.edge_df.head())
@@ -25,7 +24,7 @@ class TestMergeSGs(object):
 		# check that the format of dfs are ok
 		assert sg.loc_df.index.names == ['vertex_id']
 		control = ['coord', 'chrom', 'strand', 'a', 'b', 'vertex_id',
-				   'internal', 'TSS', 'TES', 'alt_TSS', 'alt_TES'] 
+				   'internal', 'TSS', 'TES'] 
 		test = sg.loc_df.columns.tolist()
 		check_pairs(control, test)
 
@@ -154,8 +153,28 @@ class TestMergeSGs(object):
 		print(control)
 		assert b == control
 
+	# test novelty merging
+	def test_novelty_merging(self):
+		a_gtf = 'input_files/annot.gtf'
+		b_gtf = 'input_files/annot_2.gtf'
+
+		# only one dataset has novelty categorizations
+		# and there are transcripts in the dataset that
+		# doesn't have categories that aren't in the
+		# dataset that does
+		sg = swan.SwanGraph()
+		sg.add_dataset('a', a_gtf)
+		sg.t_df['novelty'] = ['Known', 'NIC', 'ISM']
+		sg.add_dataset('b', b_gtf)
+		test = sg.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
+		print(type(test))
+		control = [('ENST01', 'Known'), ('ENST02', 'Undefined'), ('ENST08', 'Undefined'),
+				   ('ENST03', 'NIC'), ('ENST04', 'Undefined'), ('ENST07', 'ISM')]
+		print('Testing if novelty merging works...')
+		check_pairs(control, test)
+
+
 def check_pairs(control, test):
-	print()
 	print('control')
 	print(control)
 	print('test')

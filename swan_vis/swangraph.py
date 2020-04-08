@@ -88,7 +88,7 @@ class SwanGraph(Graph):
 		# and create graph
 		self.update_ids()
 		self.order_edge_df()
-		self.order_transcripts('tss')
+		self.order_transcripts()
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 
@@ -153,6 +153,24 @@ class SwanGraph(Graph):
 	# merge t_dfs on tid, gid, gname, path
 	def merge_t_dfs(self, b, b_col):
 
+		# print note to user about merging with novelty
+		existing_cols = self.t_df.columns.tolist()
+		add_cols = b.t_df.columns.tolist()
+		if 'novelty' in existing_cols and 'novelty' in add_cols:
+			print('Novelty types in both existing and added '
+				  'datasets. Transcripts with conflicting '
+				  'novelty types will be labelled "Ambiguous".')
+		elif 'novelty' not in existing_cols:
+			print('Novelty info not found for '
+			      'existing data. Transcripts '
+			      'without novelty information will be '
+			      'labelled "Undefined".')
+		elif 'novelty' not in add_cols:
+			print('Novelty info not found for '
+			     '{} data. Transcripts '
+			     'without novelty information will be '
+			     'labelled "Undefined".'.format(b_col))
+
 		# some df reformatting
 		self.t_df.reset_index(drop=True, inplace=True)
 		b.t_df.reset_index(drop=True, inplace=True)
@@ -178,11 +196,27 @@ class SwanGraph(Graph):
 		d_cols = self.datasets+[b_col]
 		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
 
+		# deal with novelties
+		t_df = self.merge_t_df_novelties(t_df)
+
 		# set up index again
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
 
 		self.t_df = t_df
+
+	def merge_t_df_novelties(self, t_df):
+
+		# merged dfs with and without novelty
+		if 'novelty' in t_df.columns.tolist():
+			t_df.fillna(value={'novelty': 'Undefined'},
+				inplace=True)
+		# merged dfs where both have novelty types
+		if 'novelty_a' in t_df.columns.tolist():
+			pass
+
+		return t_df
+
 
 	# merge edge_dfs on edge_id, v1, v2, strand, edge_type
 	def merge_edge_dfs(self, b, b_col):
@@ -348,11 +382,6 @@ class SwanGraph(Graph):
 							 'tid': tid,
 							 'strand': strand,
 							 'exons': []}
-					# transcript = {tid: {'gid': gid,
-					# 					'gname': gname,
-					# 					'tid': tid,
-					# 					'strand': strand,
-					# 					'exons': []}}
 
 					# if we're using a talon gtf, add a novelty field
 					if from_talon:
@@ -751,22 +780,6 @@ class SwanGraph(Graph):
 		locs = label_node_types(locs, tes, 'TES')
 		internal = np.unique([n for path in paths for n in path[1:-1]])
 		locs = label_node_types(locs, internal, 'internal')
-
-		# # also create a dictionary of gid: [path1, ... pathn] to speed up
-		# path_dict = defaultdict(list)
-		# for tid, entry in t_df.iterrows():
-		# 	path_dict[entry.gid].append(entry.path)
-
-		# # label alt TES/TSS
-		# for gid in path_dict.keys():
-		# 	paths = path_dict[gid]
-		# 	if len(paths) > 1:
-		# 		tss = np.unique([path[0] for path in paths])
-		# 		tes = np.unique([path[-1] for path in paths])
-		# 		if len(tss) > 1:  
-		# 			locs = label_node_types(locs, tss, 'alt_TSS')
-		# 		if len(tes) > 1:
-		# 			locs = label_node_types(locs, tes, 'alt_TES')
 
 		# create df from locs dict and append old loc_df with node types
 		locs = pd.DataFrame.from_dict(locs, orient='index')
