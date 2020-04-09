@@ -160,14 +160,22 @@ class SwanGraph(Graph):
 	def merge_t_dfs(self, b, b_col):
 
 		# print note to user about merging with novelty
-		existing_cols = self.t_df.columns.tolist()
-		add_cols = b.t_df.columns.tolist()
+		existing_cols = self.t_df.columns
+		add_cols = b.t_df.columns
 		if 'novelty' not in existing_cols and 'novelty' in add_cols:
+			print('hello world 1')
+			print(self.t_df.columns)
+			print(b.t_df.columns)
 			print('Novelty info not found for '
 			      'existing data. Transcripts '
 			      'without novelty information will be '
 			      'labelled "Undefined".')
 		elif 'novelty' not in add_cols and 'novelty' in existing_cols:
+			print('hello world 2')
+			print(self.t_df.columns)
+			print(b.t_df.columns)
+			print('novelty' in self.t_df.columns)
+			print('novelty' in b.t_df.columns)
 			print('Novelty info not found for '
 			     '{} data. Transcripts '
 			     'without novelty information will be '
@@ -218,6 +226,13 @@ class SwanGraph(Graph):
 
 		# merged dfs where both have novelty types
 		elif 'novelty_a' in t_df.columns.tolist():
+
+			# if we already have any undefined entries, fill with nan
+			t_df.replace({'novelty_a': {'Undefined': np.nan},
+						  'novelty_b': {'Undefined': np.nan}}, 
+						  inplace=True)
+
+			print(t_df[['novelty_a', 'novelty_b']])
 
 			# first take values that are only present in one dataset
 			t_df['novelty_a'].fillna(t_df['novelty_b'], inplace=True)
@@ -1105,7 +1120,8 @@ class SwanGraph(Graph):
 	# plot the SwanGraph object according to the user's input
 	def plot_graph(self, gid, combine=False,
 				   indicate_dataset=False,
-				   indicate_novel=False):
+				   indicate_novel=False,
+				   abundance=False):
 
 		self.check_plotting_args(combine, indicate_dataset, indicate_novel)
 
@@ -1203,7 +1219,7 @@ class SwanGraph(Graph):
 		check_dir_loc(oname)
 		plt.axis('off')
 		plt.tight_layout()
-		plt.savefig(oname, format='png', dpi=200)
+		plt.savefig(oname, format='png', dpi=100)
 		plt.clf()
 		plt.close()
 

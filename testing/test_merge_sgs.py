@@ -172,6 +172,22 @@ class TestMergeSGs(object):
 				   ('ENST03', 'NIC'), ('ENST04', 'Undefined'), ('ENST07', 'ISM')]
 		check_pairs(control, test)
 
+		# one dataset has already been given "undefined" label 
+		# that needs to be overwritten
+		print('Testing merging with novelty=undefined given a new label')
+		sg_b = swan.SwanGraph()
+		sg_b.add_dataset('b_2', b_gtf)
+		sg_b.t_df['novelty'] = ['ISM', 'Antisense', 'Intergenic', 'Genomic']
+
+		print(sg.t_df)
+		print(sg_b.t_df)
+		sg.merge_dfs(sg_b, 'b_2')
+		control = [('ENST01', 'Ambiguous'), ('ENST02', 'Antisense'), ('ENST08', 'Genomic'),
+				   ('ENST03', 'NIC'), ('ENST04', 'Intergenic'), ('ENST07', 'ISM')]
+		test = sg.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
+		check_pairs(control, test)
+
+
 		# both datasets have novelty categorizations
 		ab_gtf = 'input_files/annot_3.gtf'
 		sg_a = swan.SwanGraph()
