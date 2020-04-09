@@ -230,6 +230,12 @@ class Graph:
 		else: 
 			return False
 
+	# check if novelty information is in the graph
+	def has_novelty(self):
+		if 'novelty' in self.t_df.columns.tolist():
+			return True
+		else: return False
+
 	# gets the names of the dataset columns in the graph
 	def get_dataset_cols(self, include_annotation=True):
 		if include_annotation:

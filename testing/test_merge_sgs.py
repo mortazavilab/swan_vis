@@ -189,7 +189,10 @@ class TestMergeSGs(object):
 		check_pairs(control, test)
 
 		# neither dataset has novelty types
-
+		sg = swan.SwanGraph()
+		sg.add_dataset('a', a_gtf)
+		sg.add_dataset('b', b_gtf)
+		assert 'novelty' not in sg.t_df.columns
 
 def check_pairs(control, test):
 	print('control')

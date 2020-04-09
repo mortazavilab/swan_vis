@@ -5,7 +5,13 @@ import matplotlib.pyplot as pyplot
 # report for genes - extension of FPDF class
 class Report(FPDF):
 
-	def __init__(self, prefix, report_type, report_cols, header_cols, heatmap=False):
+	def __init__(self,
+				 prefix,
+				 report_type, 
+				 report_cols, 
+				 header_cols, 
+				 novelty=False,
+				 heatmap=False):
 		super().__init__(orientation='L')
 
 		# change margins
@@ -17,8 +23,9 @@ class Report(FPDF):
 		else: 
 			self.report_type = report_type
 
-		# does this report include a heatmap?
+		# booleans of what's in the report
 		self.heatmap = heatmap
+		self.novelty = novelty 
 
 		# the columns that we'll include
 		self.report_cols = report_cols
@@ -31,37 +38,39 @@ class Report(FPDF):
 		# color map in case we're making a heatmap
 		self.cmap = plt.get_cmap('Spectral_r')
 
-	# header - should differ based on whether it's a browser report or
-	# a swan report
-	def header(self):
-		self.set_font('Arial', 'B', 10)
+		# settings
+
+		self.entry_height = 20
 
 		# add extra room for the scale/colorbar if we're doing 
 		# the browser/heatmap version
 		if self.report_type == 'swan':
-			header_height = 10
+			self.header_height = 10
 		if self.report_type == 'browser':
-			header_height = 20
+			self.header_height = 20
 
-		# # size the dataset IDs differently if we need to include
-		# # colorbar below
-		# if self.heatmap == False:
-		# 	dataset_height = header_height
-		# elif self.heatmap == True:
-		# 	dataset_height = 10
-		dataset_height = header_height
+		# dataset width is contingent on # of datasets
+		# as well as if we're including the novelty column
+		if self.novelty:
+			self.w_dataset = (146-25)/self.n_dataset_cols
+		else:
+			self.w_dataset = 146/self.n_dataset_cols
+
+	# header - should differ based on whether it's a browser report or
+	# a swan report
+	def header(self):
+		self.set_font('Arial', 'B', 10)
 		
 		# transcript ID header
-		self.cell(50, header_height, 'Transcript ID', border=True, align='C')
+		self.cell(50, self.header_height, 'Transcript ID', border=True, align='C')
 
-		# # in case we need to add the colorbar
-		# colorbar_x = self.get_x() + float(45/2) + 4.5
-		# colorbar_y = self.get_y() + 10
+		# novelty header (if needed)
+		if self.novelty:
+			self.cell(25, self.header_height, 'Novelty', border=True, align='C')
 
 		# dataset ID headers
-		w_dataset = 146/self.n_dataset_cols
 		for col in self.header_cols:
-			self.cell(w_dataset, dataset_height, col,
+			self.cell(self.w_dataset, self.header_height, col,
 					  border=True, align='C')
 
 		# in case we need to add the browser models
@@ -69,16 +78,7 @@ class Report(FPDF):
 		browser_scale_y = self.get_y()
 
 		# transcript model header
-		self.cell(100, header_height, 'Transcript Model', border=True, align='C')
-
-		# # add colorbar if we need to 
-		# if self.heatmap == True: 
-		# 	self.set_xy(50.5, 10.5)
-		# 	self.cell(146, 10, border=True)
-		# 	self.image(self.prefix+'_colorbar_scale.png',
-		# 		x=colorbar_x, 
-		# 		y=colorbar_y,
-		# 		w=90, h=135/14)
+		self.cell(100, self.header_height, 'Transcript Model', border=True, align='C')
 
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':
@@ -95,15 +95,22 @@ class Report(FPDF):
 			self.set_x(77.5)
 			self.image(self.prefix+'_colorbar_scale.png',
 				w=90, h=135/14)
-			
+
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname):
 
-		# dynamically size dataset cols
-		w_dataset = 146/self.n_dataset_cols
-
+		# entries should not be bolded
 		self.set_font('Arial', '', 10)
-		self.cell(50, 20, entry['tid'], border=True, align='C')
+
+		# tid
+		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
+
+		# novelty, if necessary
+		if self.novelty: 
+			self.cell(25, self.entry_height, entry['novelty'],
+				border=True, align='C')
+
+		# dataset columns
 		for col in self.report_cols:
 
 			# heat map coloring
@@ -130,7 +137,8 @@ class Report(FPDF):
 					text = 'No'
 				border = True
 				fill = False 
-			self.cell(w_dataset, 20, text, border=border, align='C', fill=fill)	
+			self.cell(self.w_dataset, self.entry_height, text,
+				border=border, align='C', fill=fill)	
 		x = self.get_x()
 		y = self.get_y()
 
@@ -138,10 +146,9 @@ class Report(FPDF):
 		self.set_fill_color(255,255,255)
 
 		# embed transcript model
-		self.cell(100, 20, '', border=True)
+		self.cell(100, self.entry_height, '', border=True)
 		self.image(oname, x=x, y=y, w=100, h=20)
 		self.ln()
-
 
 	# writes the pdf to file with the correct formatting
 	def write_pdf(self, file):

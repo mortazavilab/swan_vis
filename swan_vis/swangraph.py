@@ -37,6 +37,10 @@ class SwanGraph(Graph):
 		# use the add_dataset function to add stuff to graph
 		self.add_dataset(col, fname)
 
+		# call all transcripts from the annotation "Known"
+		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
+		self.t_df.novelty.fillna('Undefined', inplace=True)
+
 	# add dataset into graph from gtf
 	def add_dataset(self, col, fname, dname=None,
 					counts_file=None, count_cols=None):
@@ -58,6 +62,8 @@ class SwanGraph(Graph):
 
 		# are we dealing with a gtf or a db?
 		ftype = gtf_or_db(fname)
+
+		print('Adding dataset {} to the SwanGraph.'.format(col))
 
 		# first entry is easy 
 		if self.is_empty():
@@ -336,8 +342,6 @@ class SwanGraph(Graph):
 
 		# make sure file exists
 		check_file_loc(gtf_file, 'GTF')
-		# if not os.path.exists(gtf_file):
-		# 	raise Exception('GTF file not found. Check path.')
 
 		# depending on the strand, determine the stard and stop
 		# coords of an intron or exon
@@ -514,10 +518,6 @@ class SwanGraph(Graph):
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
 		edge_df = pd.DataFrame(edges)
 
-		# transcripts = [{'tid': key,
-		# 				'gid': item['gid'],
-		# 				'gname': item['gname'],
-		# 				'path': item['path'],} for key, item in transcripts.items()]
 		if from_talon:
 			transcripts = [{'tid': key,
 						'gid': item['gid'],
@@ -1072,6 +1072,7 @@ class SwanGraph(Graph):
 
 	# saves a splice graph object in pickle format
 	def save_graph(self, prefix):
+		print('Saving graph as '+prefix+'.p')
 		picklefile = open(prefix+'.p', 'wb')
 		pickle.dump(self, picklefile)
 		picklefile.close()
@@ -1216,6 +1217,7 @@ class SwanGraph(Graph):
 				   datasets='all',
 				   dataset_groups=False,
 				   dataset_group_names=False,
+				   novelty=False,
 				   heatmap=False,
 				   tpm=False,
 				   include_unexpressed=False,
@@ -1259,6 +1261,11 @@ class SwanGraph(Graph):
 					raise Exception("Grouping dataset {} not present in " 
 						"datasets {}.".format(bad_dataset, datasets))
 
+		# if we've asked for novelty first check to make sure it's there
+		if novelty:
+			if not self.has_novelty():
+				raise Exception('No novelty information present in the graph. '
+					'Add it or do not use the "novelty" report option.')
 
 		# now check to make sure abundance data is there for the
 		# query columns, if user is asking
@@ -1328,17 +1335,12 @@ class SwanGraph(Graph):
 						tpm_group_cols = self.get_tpm_cols(group)
 						t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
 				datasets = dataset_group_names
-
-				# if heatmap or tpm:
-				# 	report_cols = tpm_group_cols
-				# else:
-				# 	report_cols = datasets
 				report_cols = dataset_group_names
 
 				print(t_df[report_cols+['wt_1_tpm','wt_2_tpm','5xFAD_1_tpm','5xFAD_2_tpm']].head())
 
 			# if we're making a heatmap, need to first 
-			# add pseudocount, log and normalize tpm values
+			# add pseudocount, log, and normalize tpm values
 			if heatmap:
 
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
@@ -1368,7 +1370,6 @@ class SwanGraph(Graph):
 				plt.clf()
 				plt.close()
 
-
 			# create report
 			print('Generating report for {}'.format(gid))
 			pdf_name = create_fname(prefix, 
@@ -1378,7 +1379,12 @@ class SwanGraph(Graph):
 						 browser,
 						 ftype='report',
 						 gid=gid)
-			report = Report(prefix, report_type, report_cols, datasets, heatmap=heatmap)
+			report = Report(prefix,
+							report_type,
+							report_cols,
+							datasets,
+							novelty=novelty,
+							heatmap=heatmap)
 			report.add_page()
 
 			# loop through each transcript and add it to the report
@@ -1411,7 +1417,7 @@ class SwanGraph(Graph):
 		# if indicate_dataset or indicate_novel are chosen, make sure
 		# the dataset or annotation data exists in the SwanGraph
 		if indicate_novel and 'annotation' not in self.get_dataset_cols():
-			raise Exception('Annotation data not present in graph. Use  '
+			raise Exception('Annotation data not present in graph. Use '
 							'add_annotation before using indicate_novel')
 		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
 			raise Exception('Dataset {} not present in the graph. '
@@ -1420,9 +1426,8 @@ class SwanGraph(Graph):
 		# if browser, can't do indicate_novel, combine, or indicate_dataset
 		if browser:
 			if indicate_novel or indicate_dataset:
-				raise Exception('Currently highlighting splice junctions in '
-								'browser form is unsupported. Use browser option '
-								'without inidicate_novel or inidicate_dataset.')
+				raise Exception('Cannot indicate_novel or indicate_dataset '
+								'with browser option.')
 			if combine:
 				raise Exception('Combining non-branching splice junctions '
 								'not possible for browser track plotting.')

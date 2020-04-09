@@ -245,7 +245,6 @@ class PlottedGraph(Graph):
 
 			# did one or two types of node go into this node?
 			if len(types) == 2:
-
 				x['sub_color'] = color_dict[types[0]]['normal']
 				x['color'] = color_dict[types[1]]['normal']
 			else: 
