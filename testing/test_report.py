@@ -51,12 +51,6 @@ class TestReport(object):
 		print(str(excinfo.value))
 		assert 'or indicate_dataset' in str(excinfo.value)
 
-		print('browser and combine')
-		with pytest.raises(Exception) as excinfo:
-			sg.gen_report('ENSG03', 'figures/ensg03', browser=True, combine=True)
-		print(str(excinfo.value))
-		assert 'not possible for browser' in str(excinfo.value)
-
 
 def gen_toy_sg():
 	sg = swan.SwanGraph()

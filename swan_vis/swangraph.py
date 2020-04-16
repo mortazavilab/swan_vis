@@ -20,6 +20,10 @@ class SwanGraph(Graph):
 
 		if not file:
 			super().__init__()
+
+			# only a SwanGraph should have a plotted graph
+			self.pg = PlottedGraph()
+
 		else:
 			check_file_loc(file, 'SwanGraph')
 			self.load_graph(file)
@@ -163,19 +167,11 @@ class SwanGraph(Graph):
 		existing_cols = self.t_df.columns
 		add_cols = b.t_df.columns
 		if 'novelty' not in existing_cols and 'novelty' in add_cols:
-			print('hello world 1')
-			print(self.t_df.columns)
-			print(b.t_df.columns)
 			print('Novelty info not found for '
 			      'existing data. Transcripts '
 			      'without novelty information will be '
 			      'labelled "Undefined".')
 		elif 'novelty' not in add_cols and 'novelty' in existing_cols:
-			print('hello world 2')
-			print(self.t_df.columns)
-			print(b.t_df.columns)
-			print('novelty' in self.t_df.columns)
-			print('novelty' in b.t_df.columns)
 			print('Novelty info not found for '
 			     '{} data. Transcripts '
 			     'without novelty information will be '
@@ -231,8 +227,6 @@ class SwanGraph(Graph):
 			t_df.replace({'novelty_a': {'Undefined': np.nan},
 						  'novelty_b': {'Undefined': np.nan}}, 
 						  inplace=True)
-
-			print(t_df[['novelty_a', 'novelty_b']])
 
 			# first take values that are only present in one dataset
 			t_df['novelty_a'].fillna(t_df['novelty_b'], inplace=True)
@@ -1116,65 +1110,56 @@ class SwanGraph(Graph):
 	############################ Plotting utilities ##########################
 	##########################################################################
 
-
-	# plot the SwanGraph object according to the user's input
-	def plot_graph(self, gid, combine=False,
+	# plot a summary SwanGraph for a gene
+	def plot_graph(self, gid,
 				   indicate_dataset=False,
 				   indicate_novel=False,
 				   abundance=False):
 
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel)
+		self.check_plotting_args(indicate_dataset, indicate_novel)
+		self.check_gene(gid)
 
-		# TODO check to see if we already have a pg object and 
-		# reinitialize based on compatibility of object 
-
-		# create PlottedGraph object and plot summary graph
-		self.pg = PlottedGraph(self, combine, indicate_dataset, indicate_novel, gid=gid)
+		# reinit PlottedGraph object and plot
+		self.pg.init_plot_settings(self, gid=gid,
+			indicate_dataset=indicate_dataset, 
+			indicate_novel=indicate_novel)
 		self.pg.plot_graph()
 
 	# plot an input transcript's path through the summary graph 
-	def plot_transcript_path(self, tid, combine=False,
+	def plot_transcript_path(self, tid,
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False):
 
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
 		self.check_transcript(tid)
 
-		# create PlottedGraph object
-		self.pg = PlottedGraph(self,
-							   combine,
-							   indicate_dataset,
-							   indicate_novel,
-							   tid=tid,
-							   browser=browser)
-
+		# reinit PlottedGraph object and plot
+		self.pg.init_plot_settings(self, tid=tid, 
+			indicate_dataset=indicate_dataset,
+			indicate_novel=indicate_novel,
+			browser=browser)
 		self.pg.plot_graph()
 
 	# plots each input transcript path through its gene's summary graph,
 	# and automatically saves them
-	def plot_each_transcript(self, tids, prefix, combine=False,
+	def plot_each_transcript(self, tids, prefix,
 						indicate_dataset=False,
 						indicate_novel=False,
 						browser=False):
 
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
 
 		# loop through each transcript in the SwanGraph object
 		for tid in tids:
 			self.check_transcript(tid)
 
 		for tid in tids:
-			gid = self.get_gid_from_tid(tid)
-			self.pg = PlottedGraph(self,
-								   combine,
-								   indicate_dataset,
-								   indicate_novel,
-								   tid=tid,
-								   gid=gid,
-								   browser=browser)
+			self.pg.init_plot_settings(self, tid=tid,
+				indicate_dataset=indicate_dataset,
+				indicate_novel=indicate_novel,
+				browser=browser)
 			fname = create_fname(prefix,
-								 combine,
 								 indicate_dataset,
 								 indicate_novel,
 								 browser,
@@ -1184,27 +1169,23 @@ class SwanGraph(Graph):
 			self.save_fig(fname)
 
 	# plots each transcript's path through the summary graph, and automatically saves them!
-	def plot_each_transcript_in_gene(self, gid, prefix, combine=False,
+	def plot_each_transcript_in_gene(self, gid, prefix,
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False):
 
-		self.check_plotting_args(combine, indicate_dataset, indicate_novel, browser)
+		self.check_plotting_args(ndicate_dataset, indicate_novel, browser)
 
 		# loop through each transcript in the SwanGraph object
 		tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
 		print('Plotting {} transcripts for {}'.format(len(tids), gid))
 		print()
 		for tid in tids:
-			self.pg = PlottedGraph(self,
-								   combine,
-								   indicate_dataset,
-								   indicate_novel,
-								   tid=tid,
-								   gid=gid,
-								   browser=browser)
+			self.pg.init_plot_settings(self, tid=tid,
+				indicate_dataset=indicate_dataset,
+				indicate_novel=indicate_novel,
+				browser=browser)
 			fname = create_fname(prefix,
-								 combine,
 								 indicate_dataset,
 								 indicate_novel,
 								 browser,
@@ -1237,7 +1218,6 @@ class SwanGraph(Graph):
 				   heatmap=False,
 				   tpm=False,
 				   include_unexpressed=False,
-				   combine=False,
 				   indicate_dataset=False, 
 				   indicate_novel=False,
 				   browser=False,
@@ -1250,7 +1230,7 @@ class SwanGraph(Graph):
 			self.check_gene(gid)
 
 		# check to see if these plotting settings will play together
-		self.check_plotting_args(combine, indicate_dataset,
+		self.check_plotting_args(indicate_dataset,
 			indicate_novel, browser)
 
 		# make sure all input datasets are present in graph
@@ -1312,7 +1292,7 @@ class SwanGraph(Graph):
 
 			# plot each transcript with these settings
 			print('Plotting transcripts for {}'.format(gid))
-			self.plot_each_transcript(report_tids, prefix, combine,
+			self.plot_each_transcript(report_tids, prefix,
 									  indicate_dataset,
 									  indicate_novel,
 									  browser=browser)
@@ -1353,8 +1333,6 @@ class SwanGraph(Graph):
 				datasets = dataset_group_names
 				report_cols = dataset_group_names
 
-				print(t_df[report_cols+['wt_1_tpm','wt_2_tpm','5xFAD_1_tpm','5xFAD_2_tpm']].head())
-
 			# if we're making a heatmap, need to first 
 			# add pseudocount, log, and normalize tpm values
 			if heatmap:
@@ -1389,7 +1367,6 @@ class SwanGraph(Graph):
 			# create report
 			print('Generating report for {}'.format(gid))
 			pdf_name = create_fname(prefix, 
-						 combine,
 						 indicate_dataset,
 						 indicate_novel,
 						 browser,
@@ -1409,7 +1386,6 @@ class SwanGraph(Graph):
 				## TODO would be faster if I didn't have to compute these names twice....
 				## ie once in plot_each_transcript and once here
 				fname = create_fname(prefix,
-									 combine,
 									 indicate_dataset,
 									 indicate_novel, 
 									 browser,
@@ -1423,7 +1399,10 @@ class SwanGraph(Graph):
 
 	# make sure that the set of arguments work with each other 
 	# before we start plotting
-	def check_plotting_args(self, combine, indicate_dataset, indicate_novel, browser=False):
+	def check_plotting_args(self,
+							indicate_dataset,
+							indicate_novel,
+							browser=False):
 
 		# can only do one or another
 		if indicate_dataset and indicate_novel:
@@ -1439,15 +1418,11 @@ class SwanGraph(Graph):
 			raise Exception('Dataset {} not present in the graph. '
 							''.format(indicate_dataset))
 
-		# if browser, can't do indicate_novel, combine, or indicate_dataset
+		# if browser, can't do indicate_novel, or indicate_dataset
 		if browser:
 			if indicate_novel or indicate_dataset:
 				raise Exception('Cannot indicate_novel or indicate_dataset '
 								'with browser option.')
-			if combine:
-				raise Exception('Combining non-branching splice junctions '
-								'not possible for browser track plotting.')
-
 
 ##########################################################################
 ################################## Extras ################################

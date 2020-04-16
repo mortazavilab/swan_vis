@@ -7,6 +7,9 @@ __pycache__/
 figures/
 visual_tests/figures/
 
+# scratch
+Testing/scratch/
+
 # big test input files
 visual_tests/input_files/wt*gtf
 visual_tests/input_files/5xFAD*gtf

@@ -12,13 +12,11 @@ class Graph:
 		self.datasets = []
 		self.counts = []
 		self.tpm = []
-
-		self.pg = None
 		
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'strand','vertex_id',
-									   'TSS', 'alt_TSS',
-									   'TES', 'alt_TES',
+									   'TSS',
+									   'TES',
 									   'internal'])
 		self.edge_df = pd.DataFrame(columns=['edge_id', 'edge_type',
 									    'strand', 'v1', 'v2'])
@@ -70,12 +68,12 @@ class Graph:
 	# check if gid is in SwanGraph
 	def check_gene(self, gid):
 		if gid not in self.t_df.gid.tolist():
-			raise Exception('Gene {} not found in SwanGraph.'.format(gid))
+			raise Exception('Gene {} not found in Graph.'.format(gid))
 
 	# check if tid is in SwanGraph
 	def check_transcript(self, tid):
 		if tid not in self.t_df.tid.tolist():
-			raise Exception('Transcript {} not found in SwanGraph.'.format(tid))
+			raise Exception('Transcript {} not found in Graph.'.format(tid))
 
 
 	##########################################################################
@@ -292,6 +290,7 @@ class Graph:
 
 	# get the gene id from the transcript id
 	def get_gid_from_tid(self, tid):
+		print(self.t_df.loc[tid, 'gid'])
 		return self.t_df.loc[tid, 'gid']
 
 	# returns the min and max coordinates of an input gene
@@ -314,38 +313,49 @@ class Graph:
 
 		return int(min(end_coords)), int(max(end_coords))
 
-	# changes loc_df, edge_df, and t_df into only those seen in gene "gid",
-	# recreates the graph using this
-	def subset_on_gene(self, gid):
+###########################################################################
+################################## Extras #################################
+##########################################################################
 
-		# make sure this gid is even in the SwanGraph
-		if gid not in self.t_df.gid.tolist():
-			raise Exception('Gene id {} not found in SwanGraph.'.format(gid))
+ # subset a graph based on a gene
+def subset_on_gene(sg, gid):
 
-		# subset t_df first, it's the easiest
-		self.t_df = self.t_df.loc[self.t_df.gid == gid]
+	# make sure this gid is even in the Graph
+	sg.check_gene(gid)
 
-		# subset loc_df based on all the locs that are in the paths from 
-		# the already-subset t_df
-		paths = self.t_df['path'].tolist()
-		locs = [node for path in paths for node in path]
-		locs = np.unique(locs)
-		self.loc_df = self.loc_df.loc[locs]
+	# subset t_df first, it's the easiest
+	t_df = sg.t_df.loc[sg.t_df.gid == gid].copy(deep=True)
+	t_df['path'] = sg.t_df.loc[sg.t_df.gid == gid].apply(
+			lambda x: copy.deepcopy(x.path), axis=1)
 
-		# subset edge_df based on all the edges that are in the paths from 
-		# the alread-subset t_df
-		edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
-		edges = list(set(edges))
-		self.edge_df = self.edge_df.loc[edges]
+	# subset loc_df based on all the locs that are in the paths from 
+	# the already-subset t_df
+	paths = t_df['path'].tolist()
+	locs = [node for path in paths for node in path]
+	locs = np.unique(locs)
+	loc_df = sg.loc_df.loc[locs].copy(deep=True)
 
-		# renumber locs
-		self.update_ids()
+	# subset edge_df based on all the edges that are in the paths from 
+	# the alread-subset t_df
+	edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
+	edges = list(set(edges))
+	edge_df = sg.edge_df.loc[edges].copy(deep=True)
 
-		# finally create the graph
-		self.create_graph_from_dfs()
+	# create a new graph that's been subset
+	subset_sg = Graph()
+	subset_sg.loc_df = loc_df
+	subset_sg.edge_df = edge_df
+	subset_sg.t_df = t_df
+	subset_sg.datasets = sg.datasets
+	subset_sg.counts = sg.counts
+	subset_sg.tpm = sg.tpm
 
+	# renumber locs
+	subset_sg.update_ids()
 
-	###########################################################################
-	################################## Extras #################################
-	##########################################################################
+	# finally create the graph
+	subset_sg.create_graph_from_dfs()
+
+	return subset_sg
+
 

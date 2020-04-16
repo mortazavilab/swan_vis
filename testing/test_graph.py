@@ -352,7 +352,7 @@ class TestGraph(object):
 		a.edge_df = swan.set_dupe_index(a.edge_df, 'edge_id')
 
 		# check subsetting for gene 0 
-		a.subset_on_gene(0)
+		a = swan.subset_on_gene(a, 0)
 
 		test = a.t_df['tid'].tolist() 
 		control = [0,1]

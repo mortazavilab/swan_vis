@@ -71,9 +71,9 @@ def get_fields(fields):
     # are absent
     if 'gene_id' not in attributes:
         attributes['gene_id'] = 'NULL'
-        
-    return attributes  
 
+    return attributes  
+    
 # check to see if a file save location is valid
 def check_dir_loc(loc):
 	d = '/'.join(loc.split('/')[:-1])
@@ -121,12 +121,10 @@ def process_abundance_file(file, cols, talon=False):
 	return df
 
 # creates a file name based on input plotting arguments
-def create_fname(prefix, combine, indicate_dataset,
+def create_fname(prefix, indicate_dataset,
 				 indicate_novel, browser,
 				 ftype='figure', tid=None, gid=None):
 	fname = prefix
-	if combine:
-		fname += '_combine'
 	if indicate_dataset:
 		fname += '_{}'.format(indicate_dataset)
 	if indicate_novel:
