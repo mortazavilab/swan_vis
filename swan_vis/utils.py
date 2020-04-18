@@ -76,10 +76,11 @@ def get_fields(fields):
     
 # check to see if a file save location is valid
 def check_dir_loc(loc):
-	d = '/'.join(loc.split('/')[:-1])
-	if not os.path.isdir(d):
-		raise Exception('Directory {} is not found. '
-			'Try a different save location'.format(d))
+	if '/' in loc:
+		d = '/'.join(loc.split('/')[:-1])
+		if not os.path.isdir(d):
+			raise Exception('Directory {} is not found. '
+				'Try a different save location'.format(d))
 
 # check to see if a file exists
 def check_file_loc(loc, ftype):

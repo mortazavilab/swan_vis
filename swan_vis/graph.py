@@ -284,6 +284,11 @@ class Graph:
 	def get_strand_from_tid(self, tid):
 		return self.loc_df.loc[self.t_df.loc[tid, 'path'][0], 'strand']
 
+	# gets strandedness of transcript from gene id
+	def get_strand_from_gid(self, gid):
+		vertex = self.t_df.loc[self.t_df.gid == gid].path.tolist()[0][0]
+		return self.loc_df.loc[vertex, 'strand']
+
 	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
 		return self.t_df.loc[tid].path

@@ -51,6 +51,9 @@ class TestReport(object):
 		print(str(excinfo.value))
 		assert 'or indicate_dataset' in str(excinfo.value)
 
+		# this is what I'm referring to. Need to address this issue.
+		# sg.gen_report('ENSG03', 'figures/ensg03')
+
 
 def gen_toy_sg():
 	sg = swan.SwanGraph()

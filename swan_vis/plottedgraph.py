@@ -49,11 +49,6 @@ class PlottedGraph(Graph):
 						   indicate_novel=False,
 						   browser=False):
 
-		print()	
-
-		print('tid passed here')
-		print(tid)
-
 		# save some old stuff
 		old_indicate_dataset = self.indicate_dataset
 		old_indicate_novel = self.indicate_novel
@@ -78,24 +73,15 @@ class PlottedGraph(Graph):
 
 		# plotting the same transcript
 		if old_tid == self.tid and self.tid != None:
-			print('hello1')
 			if not browser: 
 				if old_indicate_dataset != self.indicate_dataset \
 				or old_indicate_novel != self.indicate_novel:
-					print('plotting graph with new indicate_novel/dataset settings')
 					self.calc_node_edge_styles()
 
 		# plotting a different transcript
 		elif old_tid != self.tid and self.tid != None:
 
-			print('hello2') 
 			self.gid = sg.get_gid_from_tid(self.tid)
-			print('old gid')
-			print(old_gid)
-			print('new gid')
-			print(self.gid)
-			print('tid')
-			print(self.tid)
 			if old_gid != self.gid:
 				self.new_gene(sg)
 			else:
@@ -106,26 +92,16 @@ class PlottedGraph(Graph):
 
 		# plotting a different gene
 		elif old_gid != self.gid:
-			print('hello3')
-			print('old gid')
-			print(old_gid)
-			print('new gid')
-			print(self.gid)
 			self.new_gene(sg)
 			if not self.browser:
 				self.calc_node_edge_styles()
 
 		elif old_indicate_dataset != self.indicate_dataset \
 		or old_indicate_novel != self.indicate_novel:
-			print('hello4')
-			print('plotting graph with new indicate_novel/dataset settings')
 			self.calc_node_edge_styles()
 
 	# update pg to contain information for plotting a new gene
 	def new_gene(self, sg):
-
-		print('plotting a new gene')
-
 		sg = subset_on_gene(sg, self.gid)
 		self.loc_df = sg.loc_df
 		self.edge_df = sg.edge_df
@@ -133,6 +109,7 @@ class PlottedGraph(Graph):
 		self.G = sg.G
 
 		self.g_min, self.g_max = self.get_gene_min_max(self.gid)
+		self.strand = self.get_strand_from_gid(self.gid)
 
 		if self.tid:
 			self.path = self.get_path_from_tid(self.tid)
@@ -141,7 +118,6 @@ class PlottedGraph(Graph):
 			self.ordered_nodes = self.get_ordered_nodes()
 			self.calc_pos_sizes()
 			self.calc_edge_curves()
-
 
 	# settings that can be initialized if we're plotting a new transcript
 	# (or a new gene)
@@ -185,7 +161,7 @@ class PlottedGraph(Graph):
 		self.pos = pos
 		self.node_size = node_size
 		self.label_size = label_size
-		self.rad_scale = 0.35
+		self.rad_scale = 0.32
 		self.edge_width = edge_width
 
 	# calculate the color for each node
@@ -395,12 +371,13 @@ class PlottedGraph(Graph):
 		x_min = int(g_min-(6/(g_max-g_min)))
 		x_max = int(g_max+(6/(g_max-g_min)))
 
-		strand = self.get_strand_from_tid(self.tid)
+		strand = self.strand
 		path = self.path
 
 		# plotting init
 		plt.figure(1, figsize=(14,2.8), frameon=False)
-		plt.xlim(x_min, x_max)
+		# plt.xlim(x_min, x_max)
+		plt.xlim(g_min, g_max)
 		plt.ylim(-1.05, 1.05)
 		ax = plt.gca()
 		teal = '#014753'
@@ -416,7 +393,7 @@ class PlottedGraph(Graph):
 			rect = pch.Rectangle((x_coord,y_coord), width, height, color=teal)
 			ax.add_patch(rect)
 
-		# plot each intron as a hashed line
+		# plot each intron as a line
 		dist = 0.001*g_len
 		plt.plot([t_min+dist, t_max-dist], [0,0], color=teal)
 
@@ -424,17 +401,23 @@ class PlottedGraph(Graph):
 		if strand == '-':
 			plt.gca().invert_xaxis()
 
-		def get_tick_coords(loc_df, gene_len, exons, g_min, g_max):
+		def get_tick_coords(loc_df, gene_len, exons, g_min, g_max, strand):
 
 			tick_coords = list(np.linspace(g_min, g_max, 40))
 
 			# remove ticks that are before the start of the first exon
 			start = loc_df.loc[exons[0][1], 'coord']
-			tick_coords = [t for t in tick_coords if t > start]
-
+			if strand == '+':
+				tick_coords = [t for t in tick_coords if t > start]
+			else:
+				tick_coords = [t for t in tick_coords if t < start]
+				
 			# remove ticks that are after the end of the last exon
 			stop = loc_df.loc[exons[-1][1], 'coord']
-			tick_coords = [t for t in tick_coords if t < stop]
+			if strand == '+':
+				tick_coords = [t for t in tick_coords if t < stop]
+			else:
+				tick_coords = [t for t in tick_coords if t > stop]
 
 			# remove ticks in and around the area of plotted exons
 			dist = 0.001*gene_len
@@ -453,7 +436,8 @@ class PlottedGraph(Graph):
 
 		# get coordinates for evenly-spaced ticks indicating strandedness
 		# ala genome browser
-		tick_coords = get_tick_coords(self.loc_df, g_len, exons, g_min, g_max)
+		tick_coords = get_tick_coords(self.loc_df, g_len, exons,
+			g_min, g_max, self.strand)
 		plt.plot(tick_coords, [0 for i in range(len(tick_coords))],
 			color=teal, marker='4')
 

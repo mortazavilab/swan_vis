@@ -1238,7 +1238,6 @@ class SwanGraph(Graph):
 			datasets = self.get_dataset_cols(include_annotation=False)
 		elif not datasets:
 			datasets = []
-			order = 'tid'
 		else:
 			self.check_datasets(datasets)
 
@@ -1263,32 +1262,71 @@ class SwanGraph(Graph):
 				raise Exception('No novelty information present in the graph. '
 					'Add it or do not use the "novelty" report option.')
 
-		# now check to make sure abundance data is there for the
+		# check to make sure abundance data is there for the
 		# query columns, if user is asking
 		if tpm or heatmap:
 			self.check_abundances(datasets)
-			report_cols = copy.deepcopy(self.get_tpm_cols(datasets))
-		elif datasets:
-			report_cols = datasets
+		# 	report_cols = copy.deepcopy(self.get_tpm_cols(datasets))
+		# elif datasets:
+		# 	report_cols = datasets
 
 		# order transcripts by user's preferences 
+		if order == 'expression' and not self.get_count_cols():
+			order = 'tid'
 		self.order_transcripts(order)
+
+		# subset t_df based on relevant tids and expression requirements
+		t_df = self.t_df[self.t_df.gid.isin(gids)].copy(deep=True)
+
+		# if user doesn't care about datasets, just show all transcripts
+		if not datasets:
+			include_unexpressed = True
+
+		# user only wants transcript isoforms that appear in their data
+		if not include_unexpressed:
+			counts_cols = self.get_count_cols(datasets)
+			t_df = t_df[t_df[counts_cols].sum(axis=1)>0]
+
+		# if we're grouping things switch up the datasets 
+		# and how t_df is formatted
+		if dataset_groups:
+
+			# no grouped dataset names were given - generate names
+			if not dataset_group_names:
+				print('No group names given. Will just use Group_#.')
+				dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
+
+			# check if we have the right number of group names
+			if len(dataset_groups) != len(dataset_group_names):
+				print('Not enough group names given. Will just use Group_#.')
+				dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
+
+			for i in range(len(dataset_groups)):
+				group = dataset_groups[i]
+				group_name = dataset_group_names[i]
+
+				# true or false
+				if not heatmap and not tpm:
+					t_df[group_name] = t_df[group].any(axis=1)
+				# tpm values
+				else:
+					tpm_group_cols = self.get_tpm_cols(group)
+					t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
+			datasets = dataset_group_names
+			# report_cols = dataset_group_names
+
+		# determine report type
+		if heatmap:
+			data_type = 'heatmap'
+		elif tpm:
+			data_type = 'tpm'
+		else:
+			data_type = None
 
 		# loop through each gid and create the report
 		for gid in gids:
 
-			# subset based on gid
-			t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
-
-			# if user doesn't care about datasets, just show all transcripts
-			if not datasets:
-				include_unexpressed = True
-			# user only wants transcript isoforms that appear in their data
-			if not include_unexpressed:
-				counts_cols = self.get_count_cols(datasets)
-				report_tids = t_df.loc[t_df[counts_cols].sum(axis=1)>0, 'tid']
-			else:
-				report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
+			report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
 
 			# plot each transcript with these settings
 			print('Plotting transcripts for {}'.format(gid))
@@ -1305,45 +1343,18 @@ class SwanGraph(Graph):
 				self.save_fig(prefix+'_browser_scale.png')
 				report_type = 'browser'
 
-			# if we're grouping things switch up the report_cols 
-			# and how t_df is formatted
-			if dataset_groups:
+			# subset on gene
+			gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
 
-				# no grouped dataset names were given - generate names
-				if not dataset_group_names:
-					print('No group names given. Will just use Group_#.')
-					dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
-
-				# check if we have the right number of group names
-				if len(dataset_groups) != len(dataset_group_names):
-					print('Not enough group names given. Will just use Group_#.')
-					dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
-
-				for i in range(len(dataset_groups)):
-					group = dataset_groups[i]
-					group_name = dataset_group_names[i]
-
-					# true or false
-					if not heatmap and not tpm:
-						t_df[group_name] = t_df[group].any(axis=1)
-					# tpm values
-					else:
-						tpm_group_cols = self.get_tpm_cols(group)
-						t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
-				datasets = dataset_group_names
-				report_cols = dataset_group_names
-
-			# if we're making a heatmap, need to first 
-			# add pseudocount, log, and normalize tpm values
 			if heatmap:
-
+				# take log2(tpm) and gene-normalize 
+				count_cols = ['{}_counts'.format(d) for d in datasets]
 				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
 				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-				t_df[log_cols] = np.log2(t_df[report_cols]+1)
-				max_val = max(t_df[log_cols].max().tolist())
-				min_val = min(t_df[log_cols].min().tolist())
-				t_df[norm_log_cols] = (t_df[log_cols]-min_val)/(max_val-min_val)
-				report_cols = norm_log_cols
+				gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
+				max_val = max(gid_t_df[log_cols].max().tolist())
+				min_val = min(gid_t_df[log_cols].min().tolist())
+				gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
 
 				# create a colorbar 
 				plt.rcParams.update({'font.size': 20})
@@ -1374,15 +1385,15 @@ class SwanGraph(Graph):
 						 gid=gid)
 			report = Report(prefix,
 							report_type,
-							report_cols,
 							datasets,
+							data_type,
 							novelty=novelty,
 							heatmap=heatmap)
 			report.add_page()
 
 			# loop through each transcript and add it to the report
 			for tid in report_tids:
-				entry = t_df.loc[tid]
+				entry = gid_t_df.loc[tid]
 				## TODO would be faster if I didn't have to compute these names twice....
 				## ie once in plot_each_transcript and once here
 				fname = create_fname(prefix,
@@ -1392,6 +1403,22 @@ class SwanGraph(Graph):
 									 tid=entry.tid)
 				report.add_transcript(entry, fname)
 			report.write_pdf(pdf_name)
+
+	# generate a report for one gene; used for parallelization
+	def create_gene_report(self, gid, datasets, include_unexpressed):
+
+		# subset based on gid
+		t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
+
+		# if user doesn't care about datasets, just show all transcripts
+		if not datasets:
+			include_unexpressed = True
+		# user only wants transcript isoforms that appear in their data
+		if not include_unexpressed:
+			counts_cols = self.get_count_cols(datasets)
+			report_tids = t_df.loc[t_df[counts_cols].sum(axis=1)>0, 'tid']
+		else:
+			report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
 
 	##########################################################################
 	############################# Error handling #############################

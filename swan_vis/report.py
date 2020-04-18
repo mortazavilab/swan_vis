@@ -8,8 +8,8 @@ class Report(FPDF):
 	def __init__(self,
 				 prefix,
 				 report_type, 
-				 report_cols, 
-				 header_cols, 
+				 datasets,
+				 data_type, 
 				 novelty=False,
 				 heatmap=False):
 		super().__init__(orientation='L')
@@ -28,8 +28,8 @@ class Report(FPDF):
 		self.novelty = novelty 
 
 		# the columns that we'll include
-		self.report_cols = report_cols
-		self.header_cols = header_cols
+		self.datasets = datasets
+		self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.report_cols)
 		
 		# prefix for files that we'll pull from 
@@ -56,6 +56,16 @@ class Report(FPDF):
 		else:
 			self.w_dataset = 146/self.n_dataset_cols
 
+	# grab the relevant columns associated with the report type
+	def get_report_cols(self, data_type):
+		if not data_type:
+			return self.datasets
+		elif data_type == 'tpm':
+			report_cols = [d+'_tpm' for d in self.datasets]
+		elif data_type == 'heatmap':
+			report_cols = [d+'_norm_log_tpm' for d in self.datasets]
+		return report_cols
+
 	# header - should differ based on whether it's a browser report or
 	# a swan report
 	def header(self):
@@ -69,7 +79,7 @@ class Report(FPDF):
 			self.cell(25, self.header_height, 'Novelty', border=True, align='C')
 
 		# dataset ID headers
-		for col in self.header_cols:
+		for col in self.datasets:
 			self.cell(self.w_dataset, self.header_height, col,
 					  border=True, align='C')
 
