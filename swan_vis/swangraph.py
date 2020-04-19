@@ -9,6 +9,8 @@ import copy
 from collections import defaultdict
 import sqlite3
 import pickle
+from multiprocessing import Pool
+from itertools import repeat
 from swan_vis.utils import *
 from swan_vis.graph import Graph
 from swan_vis.plottedgraph import PlottedGraph
@@ -388,7 +390,7 @@ class SwanGraph(Graph):
 			for line in gtf:
 
 				# ignore header lines
-				if '##' in line:
+				if line.startswith('#'):
 					continue
 
 				# split each entry
@@ -1166,7 +1168,7 @@ class SwanGraph(Graph):
 								 tid=tid)
 			self.pg.plot_graph()
 			print('Saving plot for {} as {}'.format(tid, fname))
-			self.save_fig(fname)
+			save_fig(fname)
 
 	# plots each transcript's path through the summary graph, and automatically saves them!
 	def plot_each_transcript_in_gene(self, gid, prefix,
@@ -1192,17 +1194,7 @@ class SwanGraph(Graph):
 								 tid=tid)
 			self.pg.plot_graph()
 			print('Saving plot for {} as {}'.format(tid, fname))
-			self.save_fig(fname)
-
-	# saves current figure named oname. clears the figure space so additional
-	# plotting can be done
-	def save_fig(self, oname):
-		check_dir_loc(oname)
-		plt.axis('off')
-		plt.tight_layout()
-		plt.savefig(oname, format='png', dpi=100)
-		plt.clf()
-		plt.close()
+			save_fig(fname)
 
 	##########################################################################
 	############################### Report stuff #############################
@@ -1266,9 +1258,6 @@ class SwanGraph(Graph):
 		# query columns, if user is asking
 		if tpm or heatmap:
 			self.check_abundances(datasets)
-		# 	report_cols = copy.deepcopy(self.get_tpm_cols(datasets))
-		# elif datasets:
-		# 	report_cols = datasets
 
 		# order transcripts by user's preferences 
 		if order == 'expression' and not self.get_count_cols():
@@ -1323,102 +1312,101 @@ class SwanGraph(Graph):
 		else:
 			data_type = None
 
-		# loop through each gid and create the report
-		for gid in gids:
-
-			report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
-
-			# plot each transcript with these settings
-			print('Plotting transcripts for {}'.format(gid))
-			self.plot_each_transcript(report_tids, prefix,
-									  indicate_dataset,
-									  indicate_novel,
-									  browser=browser)
-
-			# if we're plotting tracks, we need a scale as well
-			if not browser:
-				report_type = 'swan'
-			else:
-				self.pg.plot_browser_scale()
-				self.save_fig(prefix+'_browser_scale.png')
-				report_type = 'browser'
-
-			# subset on gene
-			gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
-
-			if heatmap:
-				# take log2(tpm) and gene-normalize 
-				count_cols = ['{}_counts'.format(d) for d in datasets]
-				log_cols = ['{}_log_tpm'.format(d) for d in datasets]
-				norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-				gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
-				max_val = max(gid_t_df[log_cols].max().tolist())
-				min_val = min(gid_t_df[log_cols].min().tolist())
-				gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
-
-				# create a colorbar 
-				plt.rcParams.update({'font.size': 20})
-				fig, ax = plt.subplots(figsize=(14, 1.5))
-				fig.subplots_adjust(bottom=0.5)
-				fig.patch.set_visible(False)
-				ax.patch.set_visible(False)
-
-				cmap = plt.get_cmap('Spectral_r')
-				norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
-
-				cb = mpl.colorbar.ColorbarBase(ax,
-												cmap=cmap,
-				                                norm=norm,
-				                                orientation='horizontal')
-				cb.set_label('log2(TPM)')
-				plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
-				plt.clf()
-				plt.close()
-
-			# create report
-			print('Generating report for {}'.format(gid))
-			pdf_name = create_fname(prefix, 
-						 indicate_dataset,
-						 indicate_novel,
-						 browser,
-						 ftype='report',
-						 gid=gid)
-			report = Report(prefix,
-							report_type,
-							datasets,
-							data_type,
-							novelty=novelty,
-							heatmap=heatmap)
-			report.add_page()
-
-			# loop through each transcript and add it to the report
-			for tid in report_tids:
-				entry = gid_t_df.loc[tid]
-				## TODO would be faster if I didn't have to compute these names twice....
-				## ie once in plot_each_transcript and once here
-				fname = create_fname(prefix,
-									 indicate_dataset,
-									 indicate_novel, 
-									 browser,
-									 tid=entry.tid)
-				report.add_transcript(entry, fname)
-			report.write_pdf(pdf_name)
-
-	# generate a report for one gene; used for parallelization
-	def create_gene_report(self, gid, datasets, include_unexpressed):
-
-		# subset based on gid
-		t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
-
-		# if user doesn't care about datasets, just show all transcripts
-		if not datasets:
-			include_unexpressed = True
-		# user only wants transcript isoforms that appear in their data
-		if not include_unexpressed:
-			counts_cols = self.get_count_cols(datasets)
-			report_tids = t_df.loc[t_df[counts_cols].sum(axis=1)>0, 'tid']
+		# determine report type
+		if not browser:
+			report_type = 'swan'
 		else:
-			report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
+			report_type = 'browser'
+
+		# parallel
+		# launch report jobs on different threads
+		with Pool() as pool:
+			pool.starmap(create_gene_report, zip(gids, repeat(self), repeat(t_df),
+				repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
+				repeat(indicate_novel), repeat(browser), repeat(report_type),
+				repeat(novelty), repeat(heatmap)))
+
+		# # not parallel
+		# # loop through each gid and create the report
+		# for gid in gids:
+
+		# 	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
+
+		# 	# plot each transcript with these settings
+		# 	print('Plotting transcripts for {}'.format(gid))
+		# 	self.plot_each_transcript(report_tids, prefix,
+		# 							  indicate_dataset,
+		# 							  indicate_novel,
+		# 							  browser=browser)
+
+		# 	# if we're plotting tracks, we need a scale as well
+		# 	if not browser:
+		# 		report_type = 'swan'
+		# 	else:
+		# 		self.pg.plot_browser_scale()
+		# 		self.save_fig(prefix+'_browser_scale.png')
+		# 		report_type = 'browser'
+
+		# 	# subset on gene
+		# 	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
+
+		# 	if heatmap:
+		# 		# take log2(tpm) and gene-normalize 
+		# 		count_cols = ['{}_counts'.format(d) for d in datasets]
+		# 		log_cols = ['{}_log_tpm'.format(d) for d in datasets]
+		# 		norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
+		# 		gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
+		# 		max_val = max(gid_t_df[log_cols].max().tolist())
+		# 		min_val = min(gid_t_df[log_cols].min().tolist())
+		# 		gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
+
+		# 		# create a colorbar 
+		# 		plt.rcParams.update({'font.size': 20})
+		# 		fig, ax = plt.subplots(figsize=(14, 1.5))
+		# 		fig.subplots_adjust(bottom=0.5)
+		# 		fig.patch.set_visible(False)
+		# 		ax.patch.set_visible(False)
+
+		# 		cmap = plt.get_cmap('Spectral_r')
+		# 		norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+
+		# 		cb = mpl.colorbar.ColorbarBase(ax,
+		# 										cmap=cmap,
+		# 		                                norm=norm,
+		# 		                                orientation='horizontal')
+		# 		cb.set_label('log2(TPM)')
+		# 		plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
+		# 		plt.clf()
+		# 		plt.close()
+
+		# 	# create report
+		# 	print('Generating report for {}'.format(gid))
+		# 	pdf_name = create_fname(prefix, 
+		# 				 indicate_dataset,
+		# 				 indicate_novel,
+		# 				 browser,
+		# 				 ftype='report',
+		# 				 gid=gid)
+		# 	report = Report(prefix,
+		# 					report_type,
+		# 					datasets,
+		# 					data_type,
+		# 					novelty=novelty,
+		# 					heatmap=heatmap)
+		# 	report.add_page()
+
+		# 	# loop through each transcript and add it to the report
+		# 	for tid in report_tids:
+		# 		entry = gid_t_df.loc[tid]
+		# 		## TODO would be faster if I didn't have to compute these names twice....
+		# 		## ie once in plot_each_transcript and once here
+		# 		fname = create_fname(prefix,
+		# 							 indicate_dataset,
+		# 							 indicate_novel, 
+		# 							 browser,
+		# 							 tid=entry.tid)
+		# 		report.add_transcript(entry, fname)
+		# 	report.write_pdf(pdf_name)
 
 	##########################################################################
 	############################# Error handling #############################
@@ -1454,3 +1442,86 @@ class SwanGraph(Graph):
 ##########################################################################
 ################################## Extras ################################
 ##########################################################################
+
+# generate a report for one gene; used for parallelization
+def create_gene_report(gid, sg, t_df, 
+	datasets, data_type,
+	prefix,
+	indicate_dataset, indicate_novel,
+	browser, 
+	report_type, novelty, heatmap):
+
+	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
+
+	# plot each transcript with these settings
+	print('Plotting transcripts for {}'.format(gid))
+	sg.plot_each_transcript(report_tids, prefix,
+							  indicate_dataset,
+							  indicate_novel,
+							  browser=browser)
+
+	# if we're plotting tracks, we need a scale as well
+	if browser:
+		sg.pg.plot_browser_scale()
+		save_fig(prefix+'_browser_scale.png')
+
+	# subset on gene
+	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
+
+	if heatmap:
+		# take log2(tpm) and gene-normalize 
+		count_cols = ['{}_counts'.format(d) for d in datasets]
+		log_cols = ['{}_log_tpm'.format(d) for d in datasets]
+		norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
+		gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
+		max_val = max(gid_t_df[log_cols].max().tolist())
+		min_val = min(gid_t_df[log_cols].min().tolist())
+		gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
+
+		# create a colorbar 
+		plt.rcParams.update({'font.size': 20})
+		fig, ax = plt.subplots(figsize=(14, 1.5))
+		fig.subplots_adjust(bottom=0.5)
+		fig.patch.set_visible(False)
+		ax.patch.set_visible(False)
+
+		cmap = plt.get_cmap('Spectral_r')
+		norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+
+		cb = mpl.colorbar.ColorbarBase(ax,
+										cmap=cmap,
+		                                norm=norm,
+		                                orientation='horizontal')
+		cb.set_label('log2(TPM)')
+		plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
+		plt.clf()
+		plt.close()
+
+	# create report
+	print('Generating report for {}'.format(gid))
+	pdf_name = create_fname(prefix, 
+				 indicate_dataset,
+				 indicate_novel,
+				 browser,
+				 ftype='report',
+				 gid=gid)
+	report = Report(prefix,
+					report_type,
+					datasets,
+					data_type,
+					novelty=novelty,
+					heatmap=heatmap)
+	report.add_page()
+
+	# loop through each transcript and add it to the report
+	for tid in report_tids:
+		entry = gid_t_df.loc[tid]
+		## TODO would be faster if I didn't have to compute these names twice....
+		## ie once in plot_each_transcript and once here
+		fname = create_fname(prefix,
+							 indicate_dataset,
+							 indicate_novel, 
+							 browser,
+							 tid=entry.tid)
+		report.add_transcript(entry, fname)
+	report.write_pdf(pdf_name)

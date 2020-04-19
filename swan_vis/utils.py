@@ -158,8 +158,17 @@ def format_for_in(l):
         l = list(l)
     if type(l) is str:
         l = [l]
-
     return "(" + ','.join(['"' + str(x) + '"' for x in l]) + ")" 
+
+# saves current figure named oname. clears the figure space so additional
+# plotting can be done
+def save_fig(oname):
+	check_dir_loc(oname)
+	plt.axis('off')
+	plt.tight_layout()
+	plt.savefig(oname, format='png', dpi=100)
+	plt.clf()
+	plt.close()
 
 
 	
