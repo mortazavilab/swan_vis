@@ -9,6 +9,8 @@ import copy
 from collections import defaultdict
 import sqlite3
 import pickle
+import anndata
+import diffxpy.api as de
 from multiprocessing import Pool
 from itertools import repeat
 from swan_vis.utils import *
@@ -25,6 +27,10 @@ class SwanGraph(Graph):
 
 			# only a SwanGraph should have a plotted graph
 			self.pg = PlottedGraph()
+
+			# possibly? only a SwanGraph should have DEG and DET data
+			self.degs = defaultdict()
+			self.dets = defaultdict()
 
 		else:
 			check_file_loc(file, 'SwanGraph')
@@ -49,7 +55,8 @@ class SwanGraph(Graph):
 
 	# add dataset into graph from gtf
 	def add_dataset(self, col, fname, dname=None,
-					counts_file=None, count_cols=None):
+					counts_file=None, count_cols=None, 
+					include_isms=False):
 
 		# make sure that input dataset name is not
 		# already in any of the df col spaces
@@ -95,6 +102,9 @@ class SwanGraph(Graph):
 				temp.create_dfs_db(fname, dname)
 			self.merge_dfs(temp, col)
 
+		# remove isms if we have access to that information
+		if 'novelty' in self.t_df.columns and not include_isms:
+			self.t_df = self.t_df.loc[self.t_df.novelty != 'ISM']
 
 		# order node ids by genomic position, add node types,
 		# and create graph
@@ -979,103 +989,226 @@ class SwanGraph(Graph):
 
 		return genes, g_df
 
-	# find differentially expressed genes
-	# d1 = list or string containing first set of datasets to analyze
-	# d2 = list or string containing second set of datasets to analyze
-	# the above two will be compared for differential experssion
-	def find_differentially_expressed_genes(self, d1, d2):
+	# # find differentially expressed genes
+	# # d1 = list or string containing first set of datasets to analyze
+	# # d2 = list or string containing second set of datasets to analyze
+	# # the above two will be compared for differential experssion
+	# def find_differentially_expressed_genes(self, d1, d2):
 
-		# first check to see if the queried expression data is in the graph
-		if type(d1) != list: d1 = [d1]
-		if type(d2) != list: d2 = [d2]
-		datasets = d1+d2
-		self.check_abundances(datasets)
+	# 	# first check to see if the queried expression data is in the graph
+	# 	if type(d1) != list: d1 = [d1]
+	# 	if type(d2) != list: d2 = [d2]
+	# 	datasets = d1+d2
+	# 	self.check_abundances(datasets)
 
-		# group t_df into gene df and sum up abundances
-		# both across genes and across datasets
-		t_df = self.t_df.copy(deep=True)
-		d1_cols = self.get_tpm_cols(d1)
-		d2_cols = self.get_tpm_cols(d2)
-		keep_cols = d1_cols+d2_cols+['gid']
-		g_df = t_df[keep_cols].groupby('gid').sum()
+	# 	# group t_df into gene df and sum up abundances
+	# 	# both across genes and across datasets
+	# 	t_df = self.t_df.copy(deep=True)
+	# 	d1_cols = self.get_tpm_cols(d1)
+	# 	d2_cols = self.get_tpm_cols(d2)
+	# 	keep_cols = d1_cols+d2_cols+['gid']
+	# 	g_df = t_df[keep_cols].groupby('gid').sum()
 
-		# make sure we're taking the mean expression
-		g_df['d1_mean_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
-		g_df['d2_mean_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
+	# 	# make sure we're taking the mean expression
+	# 	g_df['d1_mean_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
+	# 	g_df['d2_mean_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
 
-		# add pseudocounts for each gene
-		g_df.d1_mean_tpm = g_df.d1_mean_tpm + 1
-		g_df.d2_mean_tpm = g_df.d2_mean_tpm + 1
+	# 	# add pseudocounts for each gene
+	# 	g_df.d1_mean_tpm = g_df.d1_mean_tpm + 1
+	# 	g_df.d2_mean_tpm = g_df.d2_mean_tpm + 1
 
-		# calculate log2 fold change and order g_df based on magnitude
-		# of fold change
-		g_df['log_fold_change'] = np.log2(g_df.d1_mean_tpm/g_df.d2_mean_tpm)
-		g_df['abs_log_fold_change'] = np.absolute(g_df.log_fold_change)
-		g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
+	# 	# calculate log2 fold change and order g_df based on magnitude
+	# 	# of fold change
+	# 	g_df['log_fold_change'] = np.log2(g_df.d1_mean_tpm/g_df.d2_mean_tpm)
+	# 	g_df['abs_log_fold_change'] = np.absolute(g_df.log_fold_change)
+	# 	g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
 
-		# top 10 in case the user doesn't care about whole df
-		genes = g_df.index.tolist()[:10]
+	# 	# top 10 in case the user doesn't care about whole df
+	# 	genes = g_df.index.tolist()[:10]
 
-		return genes, g_df
+	# 	return genes, g_df
 
-	# find differentially expressed transcripts
-	def find_differentially_expressed_transcripts(self, d1, d2):
+	def find_differentially_expressed_genes_diffxpy(self, dataset_groups, q=0.05, n_genes=10):
+
+		# format expression data to be used by diffxpy
+		ann = self.create_gene_anndata(dataset_groups)
+
+		# test, subset on adj. pval <= 0.05, then sort by log2fc
+		test = de.test.wald(
+		    data=ann,
+		    formula_loc="~ 1 + condition",
+		    factor_loc_totest="condition")
+		test = test.summary()
+		test = test.loc[test.qval <= q]
+		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+		if len(test.index) < n_genes:
+			genes = test.gene.tolist()
+		else:
+			genes = test.gene.head(n_genes).tolist()
+		return genes, test
+
+	def find_differentially_expressed_transcripts_diffxpy(self, d1, d2, q=0.05, n_transcripts=10):
+
+		# format expression data to be used by diffxpy
+		ann = self.create_transcript_anndata(dataset_groups)
+
+		# test, subset on adj. pval <= 0.05, then sort by log2fc
+		results = de.test.wald(
+		    data=ann,
+		    formula_loc="~ 1 + condition",
+		    factor_loc_totest="condition")
+		test = results.summary()
+		test = test.loc[test.qval <= q].copy(deep=True)
+		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+		test.rename({'gene': 'transcript'}, axis=1, inplace=True)
+		if len(test.index) < n_transcripts:
+			transcripts = test.transcripts.tolist()
+		else:
+			transcripts = test.transcript.head(n_transcripts).tolist()
+		return transcripts, test
+
+	def get_de_and_not_de_transcripts(self, dataset_groups):
+		ann = self.create_transcript_anndata(dataset_groups)
+		results = de.test.wald(data=ann,
+			formula_loc="~ 1 + condition",
+			factor_loc_totest="condition")
+		test = results.summary()
+		test.rename({'gene': 'transcript'}, axis=1, inplace=True)
+
+		gnames = self.t_df[['tid', 'gname']].copy(deep=True)
+		gnames.reset_index(drop=True, inplace=True)
+		test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
+		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+
+		det = test.loc[test.qval < 0.05]
+		not_det = test.loc[test.qval >= 0.05]
+		genes_w_det = det.gname.tolist()
+		not_det = not_det.loc[not_det.gname.isin(genes_w_det)]
+		df = pd.concat([det, not_det])
+		df = df.loc[df.gname.duplicated(keep=False)]
+
+		return df
+
+
+	# # find differentially expressed transcripts
+	# def find_differentially_expressed_transcripts(self, d1, d2):
 		
-		# first check to see if the queried expression data is in the graph
-		if type(d1) != list: d1 = [d1]
-		if type(d2) != list: d2 = [d2]
-		datasets = d1+d2
-		self.check_abundances(datasets)
+	# 	# first check to see if the queried expression data is in the graph
+	# 	if type(d1) != list: d1 = [d1]
+	# 	if type(d2) != list: d2 = [d2]
+	# 	datasets = d1+d2
+	# 	self.check_abundances(datasets)
+
+	# 	# group t_df into gene df and sum up abundances
+	# 	# both across genes and across datasets
+	# 	t_df = self.t_df.copy(deep=True)
+	# 	d1_cols = self.get_tpm_cols(d1)
+	# 	d2_cols = self.get_tpm_cols(d2)
+	# 	keep_cols = d1_cols+d2_cols+['gid']
+	# 	g_df = t_df[keep_cols].groupby('gid').sum()
+
+	# 	# make sure we're taking the mean expression
+	# 	g_df['d1_mean_gene_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
+	# 	g_df['d2_mean_gene_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
+
+	# 	# add pseudocounts for each gene
+	# 	g_df.d1_mean_gene_tpm = g_df.d1_mean_gene_tpm + 1
+	# 	g_df.d2_mean_gene_tpm = g_df.d2_mean_gene_tpm + 1
+
+	# 	# also calculate transcript isoform-level expression
+	# 	# and add pseudocounts
+	# 	t_df['d1_mean_tpm'] = t_df[d1_cols].sum(axis=1)/len(d1_cols)+1
+	# 	t_df['d2_mean_tpm'] = t_df[d2_cols].sum(axis=1)/len(d2_cols)+1
+
+	# 	# merge g_df and t_df to get gene expression and transcript
+	# 	# expression in the same dataframe
+	# 	keep_cols = ['gid', 'd1_mean_gene_tpm', 'd2_mean_gene_tpm']
+	# 	g_df.reset_index(inplace=True)
+	# 	t_df = t_df.merge(g_df[keep_cols], on='gid')
+
+
+	# 	# calculate the isoform fraction as defined by Vitting-Seerup
+	# 	# (2017)
+	# 	t_df['d1_if'] = t_df['d1_mean_tpm']/t_df['d1_mean_gene_tpm']
+	# 	t_df['d2_if'] = t_df['d2_mean_tpm']/t_df['d2_mean_gene_tpm']
+
+	# 	# calculate the log2 fold change of isoform fraction per transcript
+	# 	t_df['log_fold_change'] = np.log2(t_df.d1_if/t_df.d2_if)
+	# 	t_df['abs_log_fold_change'] = np.absolute(t_df.log_fold_change)
+
+	# 	# groupby to create g_df (again I guess) and sum up over log2
+	# 	# if changes
+	# 	keep_cols = ['gid', 'abs_log_fold_change']
+	# 	g_df = t_df[keep_cols].groupby('gid').sum()
+	# 	g_df.reset_index(inplace=True)
+
+	# 	# sort by largest change
+	# 	t_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
+	# 	g_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
+	# 	genes = g_df.head(10).gid.tolist()
+
+	# 	return genes, g_df, t_df
+
+	# return an anndata object that can be used to perform different 
+	# differential gene expression tests using the diffxpy module
+	def create_gene_anndata(self, dataset_groups):
 
 		# group t_df into gene df and sum up abundances
 		# both across genes and across datasets
 		t_df = self.t_df.copy(deep=True)
-		d1_cols = self.get_tpm_cols(d1)
-		d2_cols = self.get_tpm_cols(d2)
-		keep_cols = d1_cols+d2_cols+['gid']
-		g_df = t_df[keep_cols].groupby('gid').sum()
+		dataset_cols = []
+		all_dataset_cols = []
+		for group in dataset_groups:
+			tpm_cols = self.get_tpm_cols(group)
+			dataset_cols.append(tpm_cols)
+			all_dataset_cols.extend(tpm_cols)
 
-		# make sure we're taking the mean expression
-		g_df['d1_mean_gene_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
-		g_df['d2_mean_gene_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
+		keep_cols = all_dataset_cols+['gid']
+		g_df = t_df[keep_cols].groupby('gid').sum()
 
 		# add pseudocounts for each gene
-		g_df.d1_mean_gene_tpm = g_df.d1_mean_gene_tpm + 1
-		g_df.d2_mean_gene_tpm = g_df.d2_mean_gene_tpm + 1
+		g_df[all_dataset_cols] = g_df[all_dataset_cols] + 1
 
-		# also calculate transcript isoform-level expression
-		# and add pseudocounts
-		t_df['d1_mean_tpm'] = t_df[d1_cols].sum(axis=1)/len(d1_cols)+1
-		t_df['d2_mean_tpm'] = t_df[d2_cols].sum(axis=1)/len(d2_cols)+1
+		# create obs, var, and x entries for the anndata object
+		ann_x = g_df.to_numpy().T 
+		ann_var = pd.DataFrame(index=g_df.index)
+		ann_obs = pd.DataFrame(columns=['batch'],
+							   data=all_dataset_cols)
+		ann_obs['condition'] = np.nan
+		for i, group in enumerate(dataset_cols):
+			ann_obs.loc[ann_obs.batch.isin(group),  'condition'] = i
+		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
 
-		# merge g_df and t_df to get gene expression and transcript
-		# expression in the same dataframe
-		keep_cols = ['gid', 'd1_mean_gene_tpm', 'd2_mean_gene_tpm']
-		g_df.reset_index(inplace=True)
-		t_df = t_df.merge(g_df[keep_cols], on='gid')
+		return ann
 
+	# returns an anndata object that can be used to perform different 
+	# differential transcript expression tests using diffxpy
+	def create_transcript_anndata(self, dataset_groups):
 
-		# calculate the isoform fraction as defined by Vitting-Seerup
-		# (2017)
-		t_df['d1_if'] = t_df['d1_mean_tpm']/t_df['d1_mean_gene_tpm']
-		t_df['d2_if'] = t_df['d2_mean_tpm']/t_df['d2_mean_gene_tpm']
+		# group t_df into gene df and sum up abundances
+		# both across genes and across datasets
+		t_df = self.t_df.copy(deep=True)
+		dataset_cols = []
+		all_dataset_cols = []
+		for group in dataset_groups:
+			tpm_cols = self.get_tpm_cols(group)
+			dataset_cols.append(tpm_cols)
+			all_dataset_cols.extend(tpm_cols)
 
-		# calculate the log2 fold change of isoform fraction per transcript
-		t_df['log_fold_change'] = np.log2(t_df.d1_if/t_df.d2_if)
-		t_df['abs_log_fold_change'] = np.absolute(t_df.log_fold_change)
+		# add pseudocounts for each transcript
+		t_df[all_dataset_cols] = t_df[all_dataset_cols] + 1
 
-		# groupby to create g_df (again I guess) and sum up over log2
-		# if changes
-		keep_cols = ['gid', 'abs_log_fold_change']
-		g_df = t_df[keep_cols].groupby('gid').sum()
-		g_df.reset_index(inplace=True)
+		# create obs, var, and x entries for the anndata object
+		ann_x = t_df[all_dataset_cols].to_numpy().T 
+		ann_var = pd.DataFrame(index=t_df.index)
+		ann_obs = pd.DataFrame(columns=['batch'],
+							   data=all_dataset_cols)
+		ann_obs['condition'] = np.nan
+		for i, group in enumerate(dataset_cols):
+			ann_obs.loc[ann_obs.batch.isin(group),  'condition'] = i
+		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
 
-		# sort by largest change
-		t_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
-		g_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
-		genes = g_df.head(10).gid.tolist()
-
-		return genes, g_df, t_df
+		return ann
 
 	##########################################################################
 	######################## Loading/saving SwanGraphs #####################
@@ -1104,6 +1237,9 @@ class SwanGraph(Graph):
 		self.pg = graph.pg
 		self.G = graph.G
 
+		# self.degs = graph.degs
+		# self.dets = graph.dets
+
 		picklefile.close()
 
 		print('Graph from {} loaded'.format(fname))
@@ -1117,6 +1253,9 @@ class SwanGraph(Graph):
 				   indicate_dataset=False,
 				   indicate_novel=False,
 				   abundance=False):
+
+		if gid not in self.t_df.gid.tolist():
+			gid = self.get_gid_from_gname(gid)
 
 		self.check_plotting_args(indicate_dataset, indicate_novel)
 		self.check_gene(gid)
@@ -1218,7 +1357,10 @@ class SwanGraph(Graph):
 		# check to see if input genes are in the graph
 		if type(gids) != list:
 			gids = [gids]
-		for gid in gids:
+		for i, gid in enumerate(gids):
+			if gid not in self.t_df.gid.tolist():
+				gid = self.get_gid_from_gname(gid)
+				gids[i] = gid
 			self.check_gene(gid)
 
 		# check to see if these plotting settings will play together
@@ -1525,3 +1667,4 @@ def create_gene_report(gid, sg, t_df,
 							 tid=entry.tid)
 		report.add_transcript(entry, fname)
 	report.write_pdf(pdf_name)
+

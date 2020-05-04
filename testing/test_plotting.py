@@ -109,6 +109,13 @@ class TestPlotting(object):
 		# indicate_dataset b
 		sg = plot8(sg, gene2_tids, gene1_locs, gene1_edges)
 
+		# plot a gene using indicate_dataset
+
+		# add a new dataset to the graph and plot the same gene has not been 
+		# in plotted_graph.py yet
+
+		# add a new dataset to the graph and plot a transcript from a different gene
+
 def plot1(sg, tids, locs, edges):
 	sg.plot_graph('ENSG01')
 	check_subset(sg, tids, edges, locs)

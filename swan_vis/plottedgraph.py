@@ -156,6 +156,8 @@ class PlottedGraph(Graph):
 
 		# linearly-related sizes
 		edge_width = -x/18 + (121/18)
+		if edge_width < 1:
+			edge_width = 1
 
 		# assign fields to plotted graph object 
 		self.pos = pos
@@ -411,7 +413,7 @@ class PlottedGraph(Graph):
 				tick_coords = [t for t in tick_coords if t > start]
 			else:
 				tick_coords = [t for t in tick_coords if t < start]
-				
+
 			# remove ticks that are after the end of the last exon
 			stop = loc_df.loc[exons[-1][1], 'coord']
 			if strand == '+':
