@@ -137,11 +137,6 @@ class PlottedGraph(Graph):
 		pos = defaultdict()
 		ordered_nodes = self.ordered_nodes
 
-		# check if forward or reverse strand 
-		# is the first node in the ordered list a TSS or TES? 
-		if self.loc_df.loc[ordered_nodes[0], 'TES']:
-			ordered_nodes.reverse()
-
 		y_coord = 0
 		x_coords = np.linspace(-1, 1, len(ordered_nodes))
 		for x_coord, n in zip(x_coords, ordered_nodes): 
@@ -240,11 +235,18 @@ class PlottedGraph(Graph):
 
 	# get the curve/style of the edge
 	def get_edge_curve(self, x, ordered_edges, edge_dict):
+		print('ordered nodes')
+		print(self.ordered_nodes)
+		print('ordered edges')
+		print(ordered_edges)
+		print('edge id')
+		print(x.edge_id)
 
 		# over 20 nodes, all should be curved
 		if len(ordered_edges) < 20:
 			if x.edge_id in ordered_edges:
 				return edge_dict['straight']
+				print('hello you should be in here')
 
 		# make the arcs pretty
 		dist = self.pos[x.v2][0] - self.pos[x.v1][0]
@@ -518,6 +520,11 @@ class PlottedGraph(Graph):
 		coords = self.loc_df.coord.tolist()
 		ordered_nodes = [i[0] for i in sorted(zip(loc_ids, coords),
 			key=lambda x: x[1])]
+
+		# check if forward or reverse strand 
+		if self.strand == '-':
+			ordered_nodes.reverse()
+			
 		return ordered_nodes
 
 	# orders edges by those present in the transcript and those not present in the transcript
