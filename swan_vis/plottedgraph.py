@@ -235,18 +235,11 @@ class PlottedGraph(Graph):
 
 	# get the curve/style of the edge
 	def get_edge_curve(self, x, ordered_edges, edge_dict):
-		print('ordered nodes')
-		print(self.ordered_nodes)
-		print('ordered edges')
-		print(ordered_edges)
-		print('edge id')
-		print(x.edge_id)
 
 		# over 20 nodes, all should be curved
 		if len(ordered_edges) < 20:
 			if x.edge_id in ordered_edges:
 				return edge_dict['straight']
-				print('hello you should be in here')
 
 		# make the arcs pretty
 		dist = self.pos[x.v2][0] - self.pos[x.v1][0]
@@ -524,7 +517,6 @@ class PlottedGraph(Graph):
 		# check if forward or reverse strand 
 		if self.strand == '-':
 			ordered_nodes.reverse()
-			
 		return ordered_nodes
 
 	# orders edges by those present in the transcript and those not present in the transcript

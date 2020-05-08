@@ -28,9 +28,11 @@ class SwanGraph(Graph):
 			# only a SwanGraph should have a plotted graph
 			self.pg = PlottedGraph()
 
-			# possibly? only a SwanGraph should have DEG and DET data
-			self.degs = defaultdict()
-			self.dets = defaultdict()
+			# only a SwanGraph should have DEG and DET data
+			self.deg_test = pd.DataFrame()
+			self.deg_test_groups = ''
+			self.det_test = pd.DataFrame()
+			self.det_test_groups = ''
 
 		else:
 			check_file_loc(file, 'SwanGraph')
@@ -1045,40 +1047,6 @@ class SwanGraph(Graph):
 		ir_genes = list(set(ir_genes))
 		return ir_genes
 
-	# # find genes with isoforms that contain novel intron retention events
-	# def old_find_es_genes(self):
-
-	# 	# get only novel edges
-	# 	if 'annotation' not in self.edge_df.columns:
-	# 		raise Exception('Cannot find novel IR events without '
-	# 			'annotation in SwanGraph.')
-	# 	edge_ids = self.edge_df.loc[ \
-	# 		(self.edge_df.annotation == False)& \
-	# 		(self.edge_df.edge_type == 'intron'), 'edge_id']
-
-	# 	# get subset of transcripts that are novel to look for ir edges in
-	# 	nt_df = self.t_df.loc[self.t_df.annotation == False]
-
-	# 	# for each edge, see if the subgraph between the edge vertices 
-	# 	# contains an exoninc edge
-	# 	es_genes = []
-	# 	for eid in edge_ids:
-	# 		sub_nodes = [i for i in range(eid[0]+1,eid[1])]
-	# 		sub_G = self.G.subgraph(sub_nodes)
-	# 		sub_edges = list(sub_G.edges())
-	# 		sub_edge_types = self.edge_df.loc[sub_edges, 'edge_type'].tolist()
-	# 		sub_edge_types = list(set(sub_edge_types))
-	# 		if 'exon' in sub_edge_types:
-	# 			es_t_df = nt_df[[eid in vertex_to_edge_path(x) \
-	# 				for x in nt_df.path.values.tolist()]]
-	# 			if len(es_t_df) == 0:
-	# 				continue
-	# 			else:
-	# 				gids = list(set(es_t_df.gid.values.tolist()))
-	# 				es_genes.extend(gids)
-	# 	es_genes = list(set(es_genes))
-	# 	return es_genes
-
 	# find genes with isoforms that contain novel exon skipping events
 	def find_es_genes(self):
 
@@ -1135,44 +1103,135 @@ class SwanGraph(Graph):
 		es_genes = list(set(es_genes))
 		return es_genes
 
-	def find_differentially_expressed_genes_diffxpy(self, dataset_groups, q=0.05, n_genes=10):
-
+	# run differential expression test for genes
+	def de_gene_test(self, dataset_groups):
 		# format expression data to be used by diffxpy
 		ann = self.create_gene_anndata(dataset_groups)
 
-		# test, subset on adj. pval <= 0.05, then sort by log2fc
+		# test
 		test = de.test.wald(
 		    data=ann,
 		    formula_loc="~ 1 + condition",
 		    factor_loc_totest="condition")
 		test = test.summary()
-		test = test.loc[test.qval <= q]
+
+		# add gene name column
+		gnames = self.t_df[['gid', 'gname']].copy(deep=True)
+		gnames.reset_index(drop=True, inplace=True)
+		test = test.merge(gnames, how='left', left_on='gene', right_on='gid')
+		test.drop_duplicates(inplace=True)
+
+		# sort on log2fc
 		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-		if len(test.index) < n_genes:
-			genes = test.gene.tolist()
+
+		# assign the summary table to the parent object
+		self.deg_test = test
+		self.deg_test_groups = dataset_groups
+
+		return test
+
+	# subset de genes on user's qval cutoff, and return the top n_genes
+	# if n_genes not given, will return all genes called de by qval cutoff
+	def get_de_genes(self, q=0.05, n_genes=None):
+
+		# make sure we have the result of a deg test first!
+		if self.deg_test.empty:
+			raise Exception('Cannot find DE genes without test results. '
+				'Run de_gene_test first.')
+
+		# subset on q value 
+		test = self.deg_test.loc[self.deg_test.qval <= q].copy(deep=True)
+
+		# list and the df of the top de genes according qval threshold
+		if not n_genes:
+			genes = test.gname.tolist()
 		else:
-			genes = test.gene.head(n_genes).tolist()
+			if n_genes < len(test.index):
+				n_genes = len(test.index)
+				test = test.head(n_genes)
+				genes = test.gname.tolist()
 		return genes, test
 
-	def find_differentially_expressed_transcripts_diffxpy(self, d1, d2, q=0.05, n_transcripts=10):
-
+	# run differential expression test for transcripts
+	def de_transcript_test(self, dataset_groups):
 		# format expression data to be used by diffxpy
 		ann = self.create_transcript_anndata(dataset_groups)
 
-		# test, subset on adj. pval <= 0.05, then sort by log2fc
-		results = de.test.wald(
+		# test
+		test = de.test.wald(
 		    data=ann,
 		    formula_loc="~ 1 + condition",
 		    factor_loc_totest="condition")
-		test = results.summary()
-		test = test.loc[test.qval <= q].copy(deep=True)
-		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+		test = test.summary()
 		test.rename({'gene': 'transcript'}, axis=1, inplace=True)
-		if len(test.index) < n_transcripts:
-			transcripts = test.transcripts.tolist()
+
+		# add gene name column
+		gnames = self.t_df[['tid', 'gname']].copy(deep=True)
+		gnames.reset_index(drop=True, inplace=True)
+		test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
+
+		# sort on log2fc
+		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+
+		# assign the summary table to the parent object
+		self.det_test = test
+		self.det_test_groups = dataset_groups
+
+		return test
+
+	# subset de transcripts on user's qval cutoff, and return the top n_transcripts
+	# if n_transcripts not given, will return all transcripts called de by qval cutoff
+	def get_de_transcripts(self, q=0.05, n_transcripts=None):
+
+		# make sure we have the result of a deg test first!
+		if self.det_test.empty:
+			raise Exception('Cannot find DE transcripts without test results. '
+				'Run de_transcript_test first.')
+
+		# subset on q value 
+		test = self.det_test.loc[self.det_test.qval <= q].copy(deep=True)
+
+		# list and the df of the top de genes according qval threshold
+		if not n_transcripts:
+			tids = test.gname.tolist()
 		else:
-			transcripts = test.transcript.head(n_transcripts).tolist()
-		return transcripts, test
+			if n_transcripts < len(test.index):
+				n_transcripts = len(test.index)
+				n_transcripts = test.head(n_transcripts)
+				tids = test.transcript.tolist()
+		return tids, test
+
+	# find transcript isoforms that are DE where the 
+	# parent gene for the isoform is not DE. should be semi-indicative
+	# of isoform switching
+	def find_isoform_switching_genes(self, q=0.05, n_genes=None):
+
+		# make sure both deg and det tests have been run
+		if self.det_test.empty or self.deg_test.empty:
+			raise Exception('Cannot find isoform switches without test results. '
+				'Run de_gene_test and de_transcript_test first.')
+
+		# subset for genes that aren't DE
+		not_degs = self.deg_test.loc[self.deg_test.qval > q]
+		print(not_degs[['gname', 'qval']].head())
+		not_degs = not_degs.gname
+		print(not_degs.head())
+
+		# subset for dets
+		dets = self.det_test.loc[self.det_test.qval <= q]
+
+		# merge on gene id 
+		switches = dets.merge(not_degs, how='inner', on='gname')
+
+		# list and the df of the top de genes according qval threshold
+		if not n_genes:
+			genes = switches.gname.tolist()
+		else:
+			if n_genes < len(switches.index):
+				n_genes = len(switches.index)
+				switches = switches.head(n_genes)
+				switches = switches.gname.tolist()
+		return genes, switches
 
 	def get_de_and_not_de_transcripts(self, dataset_groups):
 		ann = self.create_transcript_anndata(dataset_groups)
@@ -1195,6 +1254,45 @@ class SwanGraph(Graph):
 		df = df.loc[df.gname.duplicated(keep=False)]
 
 		return df
+
+	# def find_differentially_expressed_genes_diffxpy(self, dataset_groups, q=0.05, n_genes=10):
+
+	# 	# format expression data to be used by diffxpy
+	# 	ann = self.create_gene_anndata(dataset_groups)
+
+	# 	# test, subset on adj. pval <= 0.05, then sort by log2fc
+	# 	test = de.test.wald(
+	# 	    data=ann,
+	# 	    formula_loc="~ 1 + condition",
+	# 	    factor_loc_totest="condition")
+	# 	test = test.summary()
+	# 	test = test.loc[test.qval <= q]
+	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+	# 	if len(test.index) < n_genes:
+	# 		genes = test.gene.tolist()
+	# 	else:
+	# 		genes = test.gene.head(n_genes).tolist()
+	# 	return genes, test
+
+	# def find_differentially_expressed_transcripts_diffxpy(self, d1, d2, q=0.05, n_transcripts=10):
+
+	# 	# format expression data to be used by diffxpy
+	# 	ann = self.create_transcript_anndata(dataset_groups)
+
+	# 	# test, subset on adj. pval <= 0.05, then sort by log2fc
+	# 	results = de.test.wald(
+	# 	    data=ann,
+	# 	    formula_loc="~ 1 + condition",
+	# 	    factor_loc_totest="condition")
+	# 	test = results.summary()
+	# 	test = test.loc[test.qval <= q].copy(deep=True)
+	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+	# 	test.rename({'gene': 'transcript'}, axis=1, inplace=True)
+	# 	if len(test.index) < n_transcripts:
+	# 		transcripts = test.transcripts.tolist()
+	# 	else:
+	# 		transcripts = test.transcript.head(n_transcripts).tolist()
+	# 	return transcripts, test
 
 	# return an anndata object that can be used to perform different 
 	# differential gene expression tests using the diffxpy module
@@ -1284,8 +1382,10 @@ class SwanGraph(Graph):
 		self.pg = graph.pg
 		self.G = graph.G
 
-		# self.degs = graph.degs
-		# self.dets = graph.dets
+		self.deg_test = graph.deg_test
+		self.deg_test_groups = graph.deg_test_groups
+		self.det_test = graph.det_test
+		self.det_test_groups = graph.det_test_groups
 
 		picklefile.close()
 
