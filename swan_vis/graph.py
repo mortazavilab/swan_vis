@@ -304,7 +304,6 @@ class Graph:
 
 	# get the gene id from the transcript id
 	def get_gid_from_tid(self, tid):
-		print(self.t_df.loc[tid, 'gid'])
 		return self.t_df.loc[tid, 'gid']
 
 	# returns the min and max coordinates of an input gene
@@ -371,5 +370,9 @@ def subset_on_gene(sg, gid):
 	subset_sg.create_graph_from_dfs()
 
 	return subset_sg
+
+# convert a list of vertex ids to a list of edge ids
+def vertex_to_edge_path(path):
+	return [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])]
 
 

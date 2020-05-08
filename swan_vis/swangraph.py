@@ -14,7 +14,7 @@ import diffxpy.api as de
 from multiprocessing import Pool
 from itertools import repeat
 from swan_vis.utils import *
-from swan_vis.graph import Graph
+from swan_vis.graph import *
 from swan_vis.plottedgraph import PlottedGraph
 from swan_vis.report import Report
 
@@ -989,44 +989,151 @@ class SwanGraph(Graph):
 
 		return genes, g_df
 
-	# # find differentially expressed genes
-	# # d1 = list or string containing first set of datasets to analyze
-	# # d2 = list or string containing second set of datasets to analyze
-	# # the above two will be compared for differential experssion
-	# def find_differentially_expressed_genes(self, d1, d2):
+	# find genes with isoforms that contain novel intron retention events
+	def find_ir_genes(self):
 
-	# 	# first check to see if the queried expression data is in the graph
-	# 	if type(d1) != list: d1 = [d1]
-	# 	if type(d2) != list: d2 = [d2]
-	# 	datasets = d1+d2
-	# 	self.check_abundances(datasets)
+		# get only novel edges
+		if 'annotation' not in self.edge_df.columns:
+			raise Exception('Cannot find novel IR events without '
+				'annotation in SwanGraph.')
 
-	# 	# group t_df into gene df and sum up abundances
-	# 	# both across genes and across datasets
-	# 	t_df = self.t_df.copy(deep=True)
-	# 	d1_cols = self.get_tpm_cols(d1)
-	# 	d2_cols = self.get_tpm_cols(d2)
-	# 	keep_cols = d1_cols+d2_cols+['gid']
-	# 	g_df = t_df[keep_cols].groupby('gid').sum()
+		edge_ids = self.edge_df.loc[ \
+			(self.edge_df.annotation == False)& \
+			(self.edge_df.edge_type == 'exon'), 'edge_id']
+		print('Analyzing {} exonic edges for IR'.format(len(edge_ids)))
 
-	# 	# make sure we're taking the mean expression
-	# 	g_df['d1_mean_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
-	# 	g_df['d2_mean_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
+		# get subset of transcripts that are novel to look for ir edges in
+		nt_df = self.t_df.loc[self.t_df.annotation == False]
+		
+		# for each edge, see if the subgraph between the edge vertices 
+		# contains an exonic edge
+		ir_genes = []
+		for i, eid in enumerate(edge_ids):
+			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
+			sub_G = self.G.subgraph(sub_nodes)
+			sub_edges = list(sub_G.edges())
+			sub_edges = self.edge_df.loc[sub_edges]
+			sub_edges = sub_edges.loc[sub_edges.edge_type == 'intron']
 
-	# 	# add pseudocounts for each gene
-	# 	g_df.d1_mean_tpm = g_df.d1_mean_tpm + 1
-	# 	g_df.d2_mean_tpm = g_df.d2_mean_tpm + 1
+			if len(sub_edges.index) > 0:
 
-	# 	# calculate log2 fold change and order g_df based on magnitude
-	# 	# of fold change
-	# 	g_df['log_fold_change'] = np.log2(g_df.d1_mean_tpm/g_df.d2_mean_tpm)
-	# 	g_df['abs_log_fold_change'] = np.absolute(g_df.log_fold_change)
-	# 	g_df.sort_values(by='abs_log_fold_change', ascending=False, inplace=True)
+				# transcripts that contain the exon-skipping edge
+				cand_t_df = nt_df[[eid in vertex_to_edge_path(x) \
+					for x in nt_df.path.values.tolist()]]
 
-	# 	# top 10 in case the user doesn't care about whole df
-	# 	genes = g_df.index.tolist()[:10]
+				# circumvent the ISM bug
+				if len(cand_t_df) == 0:
+					continue
 
-	# 	return genes, g_df
+				# does at least one of the retained introns belong
+				# to the same gene as the retaining edge?
+				else:
+					# genes that contain the intron-retaining edge edge
+					cand_genes = cand_t_df.gid.values.tolist()
+					cand_g_df = self.t_df.loc[self.t_df.gid.isin(cand_genes)]
+
+					# check if the retained edges are in one of the 
+					# intron-retaining genes (wow this is confusing)
+					for gid in cand_genes:
+						if gid in ir_genes: continue
+						for cand_eid in sub_edges.index:
+							temp_df = cand_g_df[[cand_eid in vertex_to_edge_path(x) \
+									for x in cand_g_df.path.values.tolist()]]
+							if len(temp_df.index) > 0:
+								ir_genes.append(gid)
+
+		ir_genes = list(set(ir_genes))
+		return ir_genes
+
+	# # find genes with isoforms that contain novel intron retention events
+	# def old_find_es_genes(self):
+
+	# 	# get only novel edges
+	# 	if 'annotation' not in self.edge_df.columns:
+	# 		raise Exception('Cannot find novel IR events without '
+	# 			'annotation in SwanGraph.')
+	# 	edge_ids = self.edge_df.loc[ \
+	# 		(self.edge_df.annotation == False)& \
+	# 		(self.edge_df.edge_type == 'intron'), 'edge_id']
+
+	# 	# get subset of transcripts that are novel to look for ir edges in
+	# 	nt_df = self.t_df.loc[self.t_df.annotation == False]
+
+	# 	# for each edge, see if the subgraph between the edge vertices 
+	# 	# contains an exoninc edge
+	# 	es_genes = []
+	# 	for eid in edge_ids:
+	# 		sub_nodes = [i for i in range(eid[0]+1,eid[1])]
+	# 		sub_G = self.G.subgraph(sub_nodes)
+	# 		sub_edges = list(sub_G.edges())
+	# 		sub_edge_types = self.edge_df.loc[sub_edges, 'edge_type'].tolist()
+	# 		sub_edge_types = list(set(sub_edge_types))
+	# 		if 'exon' in sub_edge_types:
+	# 			es_t_df = nt_df[[eid in vertex_to_edge_path(x) \
+	# 				for x in nt_df.path.values.tolist()]]
+	# 			if len(es_t_df) == 0:
+	# 				continue
+	# 			else:
+	# 				gids = list(set(es_t_df.gid.values.tolist()))
+	# 				es_genes.extend(gids)
+	# 	es_genes = list(set(es_genes))
+	# 	return es_genes
+
+	# find genes with isoforms that contain novel exon skipping events
+	def find_es_genes(self):
+
+		# get only novel edges
+		if 'annotation' not in self.edge_df.columns:
+			raise Exception('Cannot find novel IR events without '
+				'annotation in SwanGraph.')
+
+		edge_ids = self.edge_df.loc[ \
+			(self.edge_df.annotation == False)& \
+			(self.edge_df.edge_type == 'intron'), 'edge_id']
+		print('Analyzing {} intronic edges for ES'.format(len(edge_ids)))
+
+		# get subset of transcripts that are novel to look for ir edges in
+		nt_df = self.t_df.loc[self.t_df.annotation == False]
+
+		# for each edge, see if the subgraph between the edge vertices 
+		# contains an exonic edge
+		es_genes = []
+		for eid in edge_ids:
+			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
+			sub_G = self.G.subgraph(sub_nodes)
+			sub_edges = list(sub_G.edges())
+			sub_edges = self.edge_df.loc[sub_edges]
+			sub_edges = sub_edges.loc[sub_edges.edge_type == 'exon']
+
+			if len(sub_edges.index) > 0:
+
+				# transcripts that contain the exon-skipping edge
+				skip_t_df = nt_df[[eid in vertex_to_edge_path(x) \
+					for x in nt_df.path.values.tolist()]]
+
+				# circumvent the ISM bug
+				if len(skip_t_df) == 0:
+					continue
+
+				# does at least one of the skipped exons belong
+				# to the same gene as the skipping edge?
+				else:
+					# genes that contain the exon-skipping edge
+					skip_genes = skip_t_df.gid.values.tolist()
+					skip_g_df = self.t_df.loc[self.t_df.gid.isin(skip_genes)]
+
+					# check if the skipped edges are in one of the 
+					# exon-skipping genes (wow this is confusing)
+					for gid in skip_genes:
+						if gid in es_genes: continue
+						for skip_eid in sub_edges.index:
+							temp_df = skip_g_df[[skip_eid in vertex_to_edge_path(x) \
+									for x in skip_g_df.path.values.tolist()]]
+							if len(temp_df.index) > 0:
+								es_genes.append(gid)
+
+		es_genes = list(set(es_genes))
+		return es_genes
 
 	def find_differentially_expressed_genes_diffxpy(self, dataset_groups, q=0.05, n_genes=10):
 
@@ -1088,66 +1195,6 @@ class SwanGraph(Graph):
 		df = df.loc[df.gname.duplicated(keep=False)]
 
 		return df
-
-
-	# # find differentially expressed transcripts
-	# def find_differentially_expressed_transcripts(self, d1, d2):
-		
-	# 	# first check to see if the queried expression data is in the graph
-	# 	if type(d1) != list: d1 = [d1]
-	# 	if type(d2) != list: d2 = [d2]
-	# 	datasets = d1+d2
-	# 	self.check_abundances(datasets)
-
-	# 	# group t_df into gene df and sum up abundances
-	# 	# both across genes and across datasets
-	# 	t_df = self.t_df.copy(deep=True)
-	# 	d1_cols = self.get_tpm_cols(d1)
-	# 	d2_cols = self.get_tpm_cols(d2)
-	# 	keep_cols = d1_cols+d2_cols+['gid']
-	# 	g_df = t_df[keep_cols].groupby('gid').sum()
-
-	# 	# make sure we're taking the mean expression
-	# 	g_df['d1_mean_gene_tpm'] = g_df[d1_cols].sum(axis=1)/len(d1_cols)
-	# 	g_df['d2_mean_gene_tpm'] = g_df[d2_cols].sum(axis=1)/len(d2_cols)
-
-	# 	# add pseudocounts for each gene
-	# 	g_df.d1_mean_gene_tpm = g_df.d1_mean_gene_tpm + 1
-	# 	g_df.d2_mean_gene_tpm = g_df.d2_mean_gene_tpm + 1
-
-	# 	# also calculate transcript isoform-level expression
-	# 	# and add pseudocounts
-	# 	t_df['d1_mean_tpm'] = t_df[d1_cols].sum(axis=1)/len(d1_cols)+1
-	# 	t_df['d2_mean_tpm'] = t_df[d2_cols].sum(axis=1)/len(d2_cols)+1
-
-	# 	# merge g_df and t_df to get gene expression and transcript
-	# 	# expression in the same dataframe
-	# 	keep_cols = ['gid', 'd1_mean_gene_tpm', 'd2_mean_gene_tpm']
-	# 	g_df.reset_index(inplace=True)
-	# 	t_df = t_df.merge(g_df[keep_cols], on='gid')
-
-
-	# 	# calculate the isoform fraction as defined by Vitting-Seerup
-	# 	# (2017)
-	# 	t_df['d1_if'] = t_df['d1_mean_tpm']/t_df['d1_mean_gene_tpm']
-	# 	t_df['d2_if'] = t_df['d2_mean_tpm']/t_df['d2_mean_gene_tpm']
-
-	# 	# calculate the log2 fold change of isoform fraction per transcript
-	# 	t_df['log_fold_change'] = np.log2(t_df.d1_if/t_df.d2_if)
-	# 	t_df['abs_log_fold_change'] = np.absolute(t_df.log_fold_change)
-
-	# 	# groupby to create g_df (again I guess) and sum up over log2
-	# 	# if changes
-	# 	keep_cols = ['gid', 'abs_log_fold_change']
-	# 	g_df = t_df[keep_cols].groupby('gid').sum()
-	# 	g_df.reset_index(inplace=True)
-
-	# 	# sort by largest change
-	# 	t_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
-	# 	g_df.sort_values('abs_log_fold_change', ascending=False, inplace=True)
-	# 	genes = g_df.head(10).gid.tolist()
-
-	# 	return genes, g_df, t_df
 
 	# return an anndata object that can be used to perform different 
 	# differential gene expression tests using the diffxpy module
@@ -1315,7 +1362,7 @@ class SwanGraph(Graph):
 							 indicate_novel=False,
 							 browser=False):
 
-		self.check_plotting_args(ndicate_dataset, indicate_novel, browser)
+		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
 
 		# loop through each transcript in the SwanGraph object
 		tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
@@ -1602,10 +1649,13 @@ def create_gene_report(gid, sg, t_df,
 							  indicate_novel,
 							  browser=browser)
 
+	# get a different prefix for saving colorbars and scales
+	gid_prefix = prefix+'_{}'.format(gid)
+
 	# if we're plotting tracks, we need a scale as well
 	if browser:
 		sg.pg.plot_browser_scale()
-		save_fig(prefix+'_browser_scale.png')
+		save_fig(gid_prefix+'_browser_scale.png')
 
 	# subset on gene
 	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
@@ -1635,7 +1685,7 @@ def create_gene_report(gid, sg, t_df,
 		                                norm=norm,
 		                                orientation='horizontal')
 		cb.set_label('log2(TPM)')
-		plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
+		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
 		plt.clf()
 		plt.close()
 
@@ -1647,7 +1697,7 @@ def create_gene_report(gid, sg, t_df,
 				 browser,
 				 ftype='report',
 				 gid=gid)
-	report = Report(prefix,
+	report = Report(gid_prefix,
 					report_type,
 					datasets,
 					data_type,
