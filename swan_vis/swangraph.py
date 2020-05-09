@@ -1114,11 +1114,13 @@ class SwanGraph(Graph):
 		    formula_loc="~ 1 + condition",
 		    factor_loc_totest="condition")
 		test = test.summary()
+		test.rename({'gene': 'gid'}, axis=1, inplace=True)
+
 
 		# add gene name column
 		gnames = self.t_df[['gid', 'gname']].copy(deep=True)
 		gnames.reset_index(drop=True, inplace=True)
-		test = test.merge(gnames, how='left', left_on='gene', right_on='gid')
+		test = test.merge(gnames, how='left', on='gid')
 		test.drop_duplicates(inplace=True)
 
 		# sort on log2fc
@@ -1163,12 +1165,12 @@ class SwanGraph(Graph):
 		    formula_loc="~ 1 + condition",
 		    factor_loc_totest="condition")
 		test = test.summary()
-		test.rename({'gene': 'transcript'}, axis=1, inplace=True)
+		test.rename({'gene': 'tid'}, axis=1, inplace=True)
 
 		# add gene name column
-		gnames = self.t_df[['tid', 'gname']].copy(deep=True)
+		gnames = self.t_df[['tid', 'gid', 'gname']].copy(deep=True)
 		gnames.reset_index(drop=True, inplace=True)
-		test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
+		test = test.merge(gnames, how='left', on='tid')
 
 		# sort on log2fc
 		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
@@ -1197,8 +1199,8 @@ class SwanGraph(Graph):
 		else:
 			if n_transcripts < len(test.index):
 				n_transcripts = len(test.index)
-				n_transcripts = test.head(n_transcripts)
-				tids = test.transcript.tolist()
+			n_transcripts = test.head(n_transcripts)
+			tids = test.transcript.tolist()
 		return tids, test
 
 	# find transcript isoforms that are DE where the 
@@ -1213,24 +1215,23 @@ class SwanGraph(Graph):
 
 		# subset for genes that aren't DE
 		not_degs = self.deg_test.loc[self.deg_test.qval > q]
-		print(not_degs[['gname', 'qval']].head())
-		not_degs = not_degs.gname
-		print(not_degs.head())
+		not_degs = not_degs.gid
 
 		# subset for dets
 		dets = self.det_test.loc[self.det_test.qval <= q]
 
 		# merge on gene id 
-		switches = dets.merge(not_degs, how='inner', on='gname')
+		switches = dets.merge(not_degs, how='inner', on='gid')
 
 		# list and the df of the top de genes according qval threshold
+		unique_genes = switches.gid.unique().tolist()
 		if not n_genes:
-			genes = switches.gname.tolist()
+			genes = unique_genes
 		else:
-			if n_genes < len(switches.index):
-				n_genes = len(switches.index)
-				switches = switches.head(n_genes)
-				switches = switches.gname.tolist()
+			if n_genes < len(unique_genes):
+				n_genes = len(unique_genes)
+			switches = switches.loc[switches.gid.isin(unique_genes[:n_genes])]
+			genes = unique_genes[:n_genes]
 		return genes, switches
 
 	def get_de_and_not_de_transcripts(self, dataset_groups):

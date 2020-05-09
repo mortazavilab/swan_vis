@@ -92,17 +92,12 @@ def check_file_loc(loc, ftype):
 # abundance
 # currently only works with TALON abundance files but can easily 
 # be updated to work with more types of abundance files
-def process_abundance_file(file, cols, talon=False):
+def process_abundance_file(file, cols):
 
 	if type(cols) != list: cols = [cols]
 
 	df = pd.read_csv(file, sep='\t')
 	keep_cols = ['annot_transcript_id']+cols	
-
-	# keep transcript novelty if from talon
-	if talon:
-		keep_cols += 'transcript_novelty'
-	df = df[keep_cols]
 
 	# get the counts
 	df['counts'] = df[cols].sum(axis=1)
