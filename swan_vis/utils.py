@@ -161,7 +161,7 @@ def save_fig(oname):
 	check_dir_loc(oname)
 	plt.axis('off')
 	plt.tight_layout()
-	plt.savefig(oname, format='png', dpi=100)
+	plt.savefig(oname, format='png', dpi=200)
 	plt.clf()
 	plt.close()
 
