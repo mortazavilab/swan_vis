@@ -170,9 +170,17 @@ class PlottedGraph(Graph):
 	# plotting settings?
 	def is_novel_or_in_dataset(self, x):
 		if self.indicate_novel and is_novel(x):
-			return 'k'
+			if self.graph_type == 'transcript_path' \
+			and x.vertex_id in self.path:
+				return 'k'
+			else:
+				return "#999999"
 		elif self.indicate_dataset and in_dataset(self.indicate_dataset, x):
-			return 'k'
+			if self.graph_type == 'transcript_path' \
+			and x.vertex_id in self.path:
+				return 'k'
+			else:
+				return "#999999"
 		return None
 
 	# get the node color 
