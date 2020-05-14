@@ -136,7 +136,7 @@ def plot1(sg, tids, locs, edges):
 
 def plot2(sg, tids, locs, edges):
 	sg.plot_transcript_path('ENST01')
-	sg.save_fig('scratch/enst01.png')
+	swan.save_fig('scratch/enst01.png')
 	check_subset(sg, tids, edges, locs)
 	node_colors_ctrl = [(0, 'light_blue'), (1, 'yellow'),
 			   (2, 'yellow'), (3, 'yellow'), 
@@ -176,6 +176,7 @@ def plot3(sg, tids, locs, edges):
 
 def plot4(sg, tids, locs, edges):
 	sg.plot_transcript_path('ENST01', indicate_novel=True)
+	swan.save_fig('scratch/ENST01_novel.png')
 	check_subset(sg, tids, edges, locs)
 	node_colors_ctrl = [(0, 'light_blue'), (1, 'yellow'),
 			   (2, 'yellow'), (3, 'yellow'), 
@@ -202,7 +203,7 @@ def plot4(sg, tids, locs, edges):
 
 def plot5(sg, tids, locs, edges):
 	sg.plot_transcript_path('ENST04')
-	sg.save_fig('scratch/enst04.png')
+	swan.save_fig('scratch/enst04.png')
 	check_subset(sg, tids, edges, locs)
 	node_colors_ctrl = [(0, 'gray_light_blue'), (1, 'gray_yellow'),
 			   (2, 'light_blue'), (3, 'yellow'), 
