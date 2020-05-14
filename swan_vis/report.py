@@ -102,7 +102,10 @@ class Report(FPDF):
 	# heatmap option
 	def footer(self):
 		if self.heatmap:
-			self.set_x(77.5)
+			if not self.novelty:
+				self.set_x(77.5)
+			else: 
+				self.set_x(90.5)
 			self.image(self.prefix+'_colorbar_scale.png',
 				w=90, h=135/14)
 
