@@ -55,6 +55,17 @@ class Graph:
 								'Datasets with abundance information '
 								'in graph are {}'.format(d, ab_cols))
 
+	# check that de tests have been run 
+	def check_de(self, de_type):
+		if de_type == 'transcript':
+			if not self.det_test.empty:
+				return True
+		elif de_type == 'gene':
+			if not self.deg_test.emtpy:
+				return False
+		else:
+			return False
+
 	# check if there are even any datasets
 	def check_if_any_datasets(self, task):
 		if self.datasets == None:

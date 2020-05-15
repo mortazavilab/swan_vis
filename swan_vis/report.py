@@ -11,7 +11,8 @@ class Report(FPDF):
 				 datasets,
 				 data_type, 
 				 novelty=False,
-				 heatmap=False):
+				 heatmap=False,
+				 include_qvals=False):
 		super().__init__(orientation='L')
 
 		# change margins
@@ -26,6 +27,7 @@ class Report(FPDF):
 		# booleans of what's in the report
 		self.heatmap = heatmap
 		self.novelty = novelty 
+		self.include_qvals = include_qvals
 
 		# the columns that we'll include
 		self.datasets = datasets
@@ -113,10 +115,31 @@ class Report(FPDF):
 	def add_transcript(self, entry, oname):
 
 		# entries should not be bolded
-		self.set_font('Arial', '', 10)
+		if self.include_qvals:
+			print()
+			print(entry.qval)
+			print(entry.significant)
+			if entry.significant:
+				self.set_font('Arial', 'B', 10)
+			else:
+				self.set_font('Arial', '', 10)
+		else:
+			self.set_font('Arial', '', 10)
 
 		# tid
 		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
+
+		# add qvals if needed
+		if self.include_qvals:
+			qval_x = self.get_x()
+			qval_y = self.get_y()
+			if entry.significant:
+				self.set_font('Arial', 'B', 6)
+			else:
+				self.set_font('Arial', '', 6)
+			self.text(qval_x-33.5, qval_y+15, 'qval = {:.2e}'.format(entry.qval))
+
+			self.set_font('Arial', '', 10)
 
 		# novelty, if necessary
 		if self.novelty: 

@@ -1008,7 +1008,7 @@ class SwanGraph(Graph):
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
 		
 		# for each edge, see if the subgraph between the edge vertices 
-		# contains an exonic edge
+		# contains an exonic edge  
 		ir_genes = []
 		for i, eid in enumerate(edge_ids):
 			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
@@ -1496,6 +1496,8 @@ class SwanGraph(Graph):
 				   novelty=False,
 				   heatmap=False,
 				   tpm=False,
+				   include_qvals=False,
+				   q=0.05,
 				   include_unexpressed=False,
 				   indicate_dataset=False, 
 				   indicate_novel=False,
@@ -1557,6 +1559,17 @@ class SwanGraph(Graph):
 		# subset t_df based on relevant tids and expression requirements
 		t_df = self.t_df[self.t_df.gid.isin(gids)].copy(deep=True)
 
+		# make sure de has been run if needed
+		if include_qvals:
+			self.check_de('transcript')
+			de_df = self.det_test
+			t_df = reset_dupe_index(t_df, 'tid')
+			t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
+			t_df['significant'] = False
+			t_df['significant'].loc[t_df.qval <= q] = True
+			print(t_df[['qval', 'significant']].head())
+			t_df = set_dupe_index(t_df, 'tid')
+
 		# if user doesn't care about datasets, just show all transcripts
 		if not datasets:
 			include_unexpressed = True
@@ -1614,7 +1627,7 @@ class SwanGraph(Graph):
 			pool.starmap(create_gene_report, zip(gids, repeat(self), repeat(t_df),
 				repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
 				repeat(indicate_novel), repeat(browser), repeat(report_type),
-				repeat(novelty), repeat(heatmap)))
+				repeat(novelty), repeat(heatmap), repeat(include_qvals)))
 
 		# # not parallel
 		# # loop through each gid and create the report
@@ -1739,7 +1752,8 @@ def create_gene_report(gid, sg, t_df,
 	prefix,
 	indicate_dataset, indicate_novel,
 	browser, 
-	report_type, novelty, heatmap):
+	report_type, novelty, heatmap, 
+	include_qvals):
 
 	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
 
@@ -1803,7 +1817,8 @@ def create_gene_report(gid, sg, t_df,
 					datasets,
 					data_type,
 					novelty=novelty,
-					heatmap=heatmap)
+					heatmap=heatmap,
+					include_qvals=include_qvals)
 	report.add_page()
 
 	# loop through each transcript and add it to the report
