@@ -173,11 +173,15 @@ class PlottedGraph(Graph):
 			if self.graph_type == 'transcript_path' \
 			and x.vertex_id in self.path:
 				return 'k'
+			elif self.graph_type == 'summary':
+				return 'k'
 			else:
 				return "#999999"
 		elif self.indicate_dataset and in_dataset(self.indicate_dataset, x):
 			if self.graph_type == 'transcript_path' \
 			and x.vertex_id in self.path:
+				return 'k'
+			elif self.graph_type == 'summary':
 				return 'k'
 			else:
 				return "#999999"

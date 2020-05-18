@@ -10,8 +10,8 @@ class TestMergeSGs(object):
 		a_gtf = 'input_files/annot.gtf'
 		b_gtf = 'input_files/annot_2.gtf'
 		sg = swan.SwanGraph()
-		sg.add_dataset('a', a_gtf)
-		sg.add_dataset('b', b_gtf)
+		sg.add_dataset('a', a_gtf, include_isms=True)
+		sg.add_dataset('b', b_gtf, include_isms=True)
 
 		print(sg.loc_df.head())
 		print(sg.edge_df.head())
@@ -164,9 +164,9 @@ class TestMergeSGs(object):
 		# dataset that does
 		print('Testing if novelty merging works...')
 		sg = swan.SwanGraph()
-		sg.add_dataset('a', a_gtf)
+		sg.add_dataset('a', a_gtf, include_isms=True)
 		sg.t_df['novelty'] = ['Known', 'NIC', 'ISM']
-		sg.add_dataset('b', b_gtf)
+		sg.add_dataset('b', b_gtf, include_isms=True)
 		test = sg.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
 		control = [('ENST01', 'Known'), ('ENST02', 'Undefined'), ('ENST08', 'Undefined'),
 				   ('ENST03', 'NIC'), ('ENST04', 'Undefined'), ('ENST07', 'ISM')]
@@ -176,7 +176,7 @@ class TestMergeSGs(object):
 		# that needs to be overwritten
 		print('Testing merging with novelty=undefined given a new label')
 		sg_b = swan.SwanGraph()
-		sg_b.add_dataset('b_2', b_gtf)
+		sg_b.add_dataset('b_2', b_gtf, include_isms=True)
 		sg_b.t_df['novelty'] = ['ISM', 'Antisense', 'Intergenic', 'Genomic']
 
 		print(sg.t_df)
@@ -191,11 +191,11 @@ class TestMergeSGs(object):
 		# both datasets have novelty categorizations
 		ab_gtf = 'input_files/annot_3.gtf'
 		sg_a = swan.SwanGraph()
-		sg_a.add_dataset('a', ab_gtf)
+		sg_a.add_dataset('a', ab_gtf, include_isms=True)
 		sg_a.t_df['novelty'] = ['Known', 'Known', 'ISM',
 								np.nan, 'NIC', 'NNC']
 		sg_b = swan.SwanGraph()
-		sg_b.add_dataset('b', ab_gtf)
+		sg_b.add_dataset('b', ab_gtf, include_isms=True)
 		sg_b.t_df['novelty'] = ['Known', 'ISM', np.nan,
 								'NIC', 'NNC', 'NNC']
 		sg_a.merge_dfs(sg_b, 'b')
@@ -206,8 +206,8 @@ class TestMergeSGs(object):
 
 		# neither dataset has novelty types
 		sg = swan.SwanGraph()
-		sg.add_dataset('a', a_gtf)
-		sg.add_dataset('b', b_gtf)
+		sg.add_dataset('a', a_gtf, include_isms=True)
+		sg.add_dataset('b', b_gtf, include_isms=True)
 		assert 'novelty' not in sg.t_df.columns
 
 def check_pairs(control, test):

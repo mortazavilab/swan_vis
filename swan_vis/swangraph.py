@@ -49,7 +49,7 @@ class SwanGraph(Graph):
 		col = 'annotation'
 
 		# use the add_dataset function to add stuff to graph
-		self.add_dataset(col, fname)
+		self.add_dataset(col, fname, include_isms=True)
 
 		# call all transcripts from the annotation "Known"
 		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
@@ -1256,45 +1256,6 @@ class SwanGraph(Graph):
 
 		return df
 
-	# def find_differentially_expressed_genes_diffxpy(self, dataset_groups, q=0.05, n_genes=10):
-
-	# 	# format expression data to be used by diffxpy
-	# 	ann = self.create_gene_anndata(dataset_groups)
-
-	# 	# test, subset on adj. pval <= 0.05, then sort by log2fc
-	# 	test = de.test.wald(
-	# 	    data=ann,
-	# 	    formula_loc="~ 1 + condition",
-	# 	    factor_loc_totest="condition")
-	# 	test = test.summary()
-	# 	test = test.loc[test.qval <= q]
-	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-	# 	if len(test.index) < n_genes:
-	# 		genes = test.gene.tolist()
-	# 	else:
-	# 		genes = test.gene.head(n_genes).tolist()
-	# 	return genes, test
-
-	# def find_differentially_expressed_transcripts_diffxpy(self, d1, d2, q=0.05, n_transcripts=10):
-
-	# 	# format expression data to be used by diffxpy
-	# 	ann = self.create_transcript_anndata(dataset_groups)
-
-	# 	# test, subset on adj. pval <= 0.05, then sort by log2fc
-	# 	results = de.test.wald(
-	# 	    data=ann,
-	# 	    formula_loc="~ 1 + condition",
-	# 	    factor_loc_totest="condition")
-	# 	test = results.summary()
-	# 	test = test.loc[test.qval <= q].copy(deep=True)
-	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-	# 	test.rename({'gene': 'transcript'}, axis=1, inplace=True)
-	# 	if len(test.index) < n_transcripts:
-	# 		transcripts = test.transcripts.tolist()
-	# 	else:
-	# 		transcripts = test.transcript.head(n_transcripts).tolist()
-	# 	return transcripts, test
-
 	# return an anndata object that can be used to perform different 
 	# differential gene expression tests using the diffxpy module
 	def create_gene_anndata(self, dataset_groups):
@@ -1400,7 +1361,7 @@ class SwanGraph(Graph):
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
 				   indicate_novel=False,
-				   abundance=False):
+				   prefix=None):
 
 		if gid not in self.t_df.gid.tolist():
 			gid = self.get_gid_from_gname(gid)
@@ -1414,11 +1375,25 @@ class SwanGraph(Graph):
 			indicate_novel=indicate_novel)
 		self.pg.plot_graph()
 
+		# if the user has provided a place to save
+		if prefix:
+			browser = False # can't plot browser for entire gene
+			fname = create_fname(prefix,
+								indicate_dataset,
+								indicate_novel,
+								browser,
+								ftype='summary',
+								gid=gid)
+			self.pg.plot_graph()
+			print('Saving summary graph for {} as {}'.format(gid, fname))
+			save_fig(fname)
+
 	# plot an input transcript's path through the summary graph 
 	def plot_transcript_path(self, tid,
 							 indicate_dataset=False,
 							 indicate_novel=False,
-							 browser=False):
+							 browser=False,
+							 prefix=None):
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
 		self.check_transcript(tid)
@@ -1429,6 +1404,19 @@ class SwanGraph(Graph):
 			indicate_novel=indicate_novel,
 			browser=browser)
 		self.pg.plot_graph()
+
+		# if the user has provided a place to save
+		if prefix:
+			fname = create_fname(prefix,
+								indicate_dataset,
+								indicate_novel,
+								browser,
+								ftype='path',
+								tid=tid)
+			self.pg.plot_graph()
+			print('Saving transcript path graph for {} as {}'.format(tid, fname))
+			save_fig(fname)
+
 
 	# plots each input transcript path through its gene's summary graph,
 	# and automatically saves them
@@ -1452,9 +1440,10 @@ class SwanGraph(Graph):
 								 indicate_dataset,
 								 indicate_novel,
 								 browser,
+								 ftype='path',
 								 tid=tid)
 			self.pg.plot_graph()
-			print('Saving plot for {} as {}'.format(tid, fname))
+			print('Saving transcript path graph for {} as {}'.format(tid, fname))
 			save_fig(fname)
 
 	# plots each transcript's path through the summary graph, and automatically saves them!
@@ -1462,6 +1451,10 @@ class SwanGraph(Graph):
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False):
+
+		if gid not in self.t_df.gid.tolist():
+			gid = self.get_gid_from_gname(gid)
+		self.check_gene(gid)
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
 
@@ -1478,9 +1471,10 @@ class SwanGraph(Graph):
 								 indicate_dataset,
 								 indicate_novel,
 								 browser,
+								 ftype='path',
 								 tid=tid)
 			self.pg.plot_graph()
-			print('Saving plot for {} as {}'.format(tid, fname))
+			print('Saving transcript path graph for {} as {}'.format(tid, fname))
 			save_fig(fname)
 
 	##########################################################################

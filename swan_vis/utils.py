@@ -119,7 +119,7 @@ def process_abundance_file(file, cols):
 # creates a file name based on input plotting arguments
 def create_fname(prefix, indicate_dataset,
 				 indicate_novel, browser,
-				 ftype='figure', tid=None, gid=None):
+				 ftype='summary', tid=None, gid=None):
 	fname = prefix
 	if indicate_dataset:
 		fname += '_{}'.format(indicate_dataset)
@@ -131,8 +131,10 @@ def create_fname(prefix, indicate_dataset,
 		fname += '_{}'.format(tid)
 	if gid: 
 		fname += '_{}'.format(gid)
-	if ftype == 'figure':
-		fname += '.png'
+	if ftype == 'summary':
+		fname += '_summary.png'
+	elif ftype == 'path':
+		fname += '_path.png'
 	elif ftype == 'report':
 		fname += '_report.pdf'
 	return fname

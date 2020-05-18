@@ -37,8 +37,10 @@ class Graph:
 		g_datasets = self.get_dataset_cols()
 		for d in datasets:
 			if d not in g_datasets:
+				print(d)
+				print(g_datasets)
 				raise Exception('Dataset {} not present in graph. '
-								'Datasets in graph are {}'.ppformat(d, g_datasets))
+								'Datasets in graph are {}'.format(d, g_datasets))
 
 
 	# check that input datasets have abundance data in the Graph:
@@ -309,8 +311,7 @@ class Graph:
 		try:
 			gid = self.t_df.loc[self.t_df.gname == gname, 'gid'].tolist()[0]
 		except:
-			print('Gene {} not found in SwanGraph.'.format(gname))
-			gid = None
+			gid = gname
 		return gid
 
 	# get the gene id from the transcript id

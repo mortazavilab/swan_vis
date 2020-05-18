@@ -183,7 +183,7 @@ def plot4(sg, tids, locs, edges):
 			   (4, 'yellow'), (5, 'orange'), (6, 'gray_orange')]
 	edgecolor_ctrl = [(0, None), (1, None),
 			   (2, None), (3, None), 
-			   (4, None), (5, None), (6, 'k')]
+			   (4, None), (5, None), (6, '#999999')]
 	curve_ctrl = [((0,1),None), ((1,2),None),
 			   ((2,3),None), ((3,4),None),
 			   ((4,5),None), ((0,3),'curved'),
@@ -223,6 +223,7 @@ def plot5(sg, tids, locs, edges):
 
 def plot6(sg, tids, locs, edges):
 	sg.plot_graph('ENSG02', indicate_dataset='a')
+	swan.save_fig('scratch/ensg02_dataset')
 	check_subset(sg, tids, edges, locs)
 	edgecolor_ctrl = [(0, 'k'), (1, 'k'),
 			   (2, None), (3, 'k'), 
