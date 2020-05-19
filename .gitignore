@@ -5,15 +5,12 @@ __pycache__/
 
 # figures
 figures/
-visual_tests/figures/
 
 # scratch
-Testing/scratch/
+testing/scratch/
 
-# big test input files
-visual_tests/input_files/wt*gtf
-visual_tests/input_files/5xFAD*gtf
-visual_tests/input_files/wt*tsv
+# whatever I ever put in here
+visual_tests/
 
 # other 
 .DS_Store
