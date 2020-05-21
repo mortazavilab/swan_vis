@@ -123,9 +123,9 @@ class Report(FPDF):
 			self.set_font('Arial', '', 10)
 
 		# tid
+		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
 		tid_x = self.get_x()
 		tid_y = self.get_y()
-		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
 
 		# add qvals if needed
 		if self.include_qvals:
@@ -135,9 +135,9 @@ class Report(FPDF):
 				self.set_font('Arial', 'B', 6)
 			else:
 				self.set_font('Arial', '', 6)
-			self.set_xy(tid_x, tid_y+4)
+			self.set_y(tid_y+12)
 			text = 'qval = {:.2e}'.format(entry.qval)
-			self.cell(50, self.entry_height, txt=text, border=False, align='C')
+			self.cell(50, 4, txt=text, border=False, align='C')
 			self.set_font('Arial', '', 10)
 			self.set_xy(curr_x, curr_y)
 

@@ -1556,11 +1556,12 @@ class SwanGraph(Graph):
 		# make sure de has been run if needed
 		if include_qvals:
 			self.check_de('transcript')
-			de_df = self.det_test
+			de_df = self.det_test.copy(deep=True)
 			t_df = reset_dupe_index(t_df, 'tid')
+			t_df['significant'] = False
 			t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
 			t_df['significant'] = False
-			t_df['significant'].loc[t_df.qval <= q] = True
+			t_df['significant'] = t_df.loc[t_df.qval <= q]
 			t_df = set_dupe_index(t_df, 'tid')
 
 		# if user doesn't care about datasets, just show all transcripts

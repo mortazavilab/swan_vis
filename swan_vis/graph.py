@@ -37,8 +37,6 @@ class Graph:
 		g_datasets = self.get_dataset_cols()
 		for d in datasets:
 			if d not in g_datasets:
-				print(d)
-				print(g_datasets)
 				raise Exception('Dataset {} not present in graph. '
 								'Datasets in graph are {}'.format(d, g_datasets))
 
