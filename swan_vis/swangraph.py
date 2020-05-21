@@ -1460,8 +1460,8 @@ class SwanGraph(Graph):
 
 		# loop through each transcript in the SwanGraph object
 		tids = self.t_df.loc[self.t_df.gid == gid, 'tid'].tolist()
-		print('Plotting {} transcripts for {}'.format(len(tids), gid))
 		print()
+		print('Plotting {} transcripts for {}'.format(len(tids), gid))
 		for tid in tids:
 			self.pg.init_plot_settings(self, tid=tid,
 				indicate_dataset=indicate_dataset,
@@ -1561,7 +1561,6 @@ class SwanGraph(Graph):
 			t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
 			t_df['significant'] = False
 			t_df['significant'].loc[t_df.qval <= q] = True
-			print(t_df[['qval', 'significant']].head())
 			t_df = set_dupe_index(t_df, 'tid')
 
 		# if user doesn't care about datasets, just show all transcripts
@@ -1752,6 +1751,7 @@ def create_gene_report(gid, sg, t_df,
 	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
 
 	# plot each transcript with these settings
+	print()
 	print('Plotting transcripts for {}'.format(gid))
 	sg.plot_each_transcript(report_tids, prefix,
 							  indicate_dataset,
@@ -1824,6 +1824,7 @@ def create_gene_report(gid, sg, t_df,
 							 indicate_dataset,
 							 indicate_novel, 
 							 browser,
+							 ftype='path',
 							 tid=entry.tid)
 		report.add_transcript(entry, fname)
 	report.write_pdf(pdf_name)

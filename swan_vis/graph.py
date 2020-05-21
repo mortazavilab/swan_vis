@@ -387,4 +387,3 @@ def subset_on_gene(sg, gid):
 def vertex_to_edge_path(path):
 	return [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])]
 
-

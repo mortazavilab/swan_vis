@@ -41,7 +41,6 @@ class Report(FPDF):
 		self.cmap = plt.get_cmap('Spectral_r')
 
 		# settings
-
 		self.entry_height = 20
 
 		# add extra room for the scale/colorbar if we're doing 
@@ -116,9 +115,6 @@ class Report(FPDF):
 
 		# entries should not be bolded
 		if self.include_qvals:
-			print()
-			print(entry.qval)
-			print(entry.significant)
 			if entry.significant:
 				self.set_font('Arial', 'B', 10)
 			else:
@@ -127,19 +123,23 @@ class Report(FPDF):
 			self.set_font('Arial', '', 10)
 
 		# tid
+		tid_x = self.get_x()
+		tid_y = self.get_y()
 		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
 
 		# add qvals if needed
 		if self.include_qvals:
-			qval_x = self.get_x()
-			qval_y = self.get_y()
+			curr_x = self.get_x()
+			curr_y = self.get_y()
 			if entry.significant:
 				self.set_font('Arial', 'B', 6)
 			else:
 				self.set_font('Arial', '', 6)
-			self.text(qval_x-33.5, qval_y+15, 'qval = {:.2e}'.format(entry.qval))
-
+			self.set_xy(tid_x, tid_y+4)
+			text = 'qval = {:.2e}'.format(entry.qval)
+			self.cell(50, self.entry_height, txt=text, border=False, align='C')
 			self.set_font('Arial', '', 10)
+			self.set_xy(curr_x, curr_y)
 
 		# novelty, if necessary
 		if self.novelty: 
