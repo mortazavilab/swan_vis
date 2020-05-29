@@ -36,6 +36,27 @@ class TestPlotting(object):
 		gene1_edge_df['edge_id'] = gene1_edge_df.apply(lambda x: 
 			(x.v1, x.v2), axis=1)
 
+		sg.loc_df = gene1_loc_df
+		sg.edge_df = gene1_edge_df
+		sg.t_df = gene1_t_df
+
+		sg.loc_df = create_dupe_index(sg.loc_df, 'vertex_id')
+		sg.loc_df = set_dupe_index(sg.loc_df, 'vertex_id')
+		sg.edge_df = create_dupe_index(sg.edge_df, 'edge_id')
+		sg.edge_df = set_dupe_index(sg.edge_df, 'edge_id')
+		sg.t_df = create_dupe_index(sg.t_df, 'tid')
+		sg.t_df = set_dupe_index(sg.t_df, 'tid')
+		sg.get_loc_types()
+
+		# testing
+		gene1_tids = gene1_t_df.tid.tolist()
+		gene1_locs = gene1_loc_df.vertex_id.tolist()
+		gene1_edges = gene1_edge_df.edge_id.tolist()
+
+		# 0th plot - gene summary graph of ENSG01
+		sg.datasets = ['annotation', 'a']
+		sg = plot0(sg, gene1_tids, gene1_locs, gene1_edges)
+
 		gene2_loc_df = pd.DataFrame({'chrom': [4, 4, 4, 4, 4, 4, 4],
 			'coord': [35, 30, 25, 20, 15, 10, 5],
 			'strand': ['-', '-', '-', '-', '-', '-', '-'],
@@ -76,12 +97,13 @@ class TestPlotting(object):
 		sg.get_loc_types()
 
 		# testing
-		gene1_tids = gene1_t_df.tid.tolist()
-		gene1_locs = gene1_loc_df.vertex_id.tolist()
-		gene1_edges = gene1_edge_df.edge_id.tolist()
 		gene2_tids = gene2_t_df.tid.tolist()
 		gene2_locs = gene2_loc_df.vertex_id.tolist()
 		gene2_edges = gene2_edge_df.edge_id.tolist()
+
+		# remake the same plot and force it to update
+		sg.datasets = ['annotation', 'a', 'b']
+		sg = plot0_5(sg, gene2_tids, gene1_locs, gene1_edges)
 
 		# first plot - gene summary graph of ENSG01
 		sg = plot1(sg, gene1_tids, gene1_locs, gene1_edges)
@@ -115,6 +137,51 @@ class TestPlotting(object):
 		# in plotted_graph.py yet
 
 		# add a new dataset to the graph and plot a transcript from a different gene
+
+def plot0(sg, tids, locs, edges):
+	sg.plot_graph('ENSG01')
+	check_subset(sg, tids, edges, locs)
+	node_colors_ctrl = [(0, 'light_blue'), (1, 'yellow'),
+			   (2, 'light_blue'), (3, 'yellow'), 
+			   (4, 'yellow'), (5, 'orange'), (6, 'orange')]
+	curve_ctrl = [((0,1),None), ((1,2),None),
+			   ((2,3),None), ((3,4),None),
+			   ((4,5),None), ((0,3),'curved'),
+			   ((4,6),'curved'),((1,4),'curved')]
+	edge_color_ctrl = [((0,1),'green'), ((1,2),'pink'),
+			   ((2,3),'green'), ((3,4),'pink'),
+			   ((4,5),'green'), ((0,3),'green'),
+			   ((4,6),'green'),((1,4),'pink')]
+	check_nodes(sg.pg.loc_df, node_colors_ctrl)
+	check_edges(sg.pg.edge_df, edge_color_ctrl, curve_ctrl)
+	return sg
+
+def plot0_5(sg, tids, locs, edges):
+	sg.plot_graph('ENSG02', indicate_dataset='a')
+	swan.save_fig('scratch/ensg02_dataset')
+	check_subset(sg, tids, edges, locs)
+	edgecolor_ctrl = [(0, 'k'), (1, 'k'),
+			   (2, None), (3, 'k'), 
+			   (4, 'k'), (5, 'k'), (6, 'k')]
+	node_colors_ctrl = [(0, 'light_blue'), (1, 'yellow'),
+			   (2, 'light_blue'), (3, 'yellow'), 
+			   (4, 'yellow'), (5, 'orange'), (6, 'orange')]
+	curve_ctrl = [((0,1),None), ((1,2),None),
+			   ((2,3),None), ((3,4),None),
+			   ((4,5),None), ((0,3),'curved'),
+			   ((4,6),'curved'),((1,4),'curved')]
+	edge_color_ctrl = [((0,1),'green'), ((1,2),'pink'),
+			   ((2,3),'green'), ((3,4),'pink'),
+			   ((4,5),'green'), ((0,3),'green'),
+			   ((4,6),'green'),((1,4),'pink')]
+	style_ctrl = [((0,1),'dashed'), ((1,2),None),
+			   ((2,3),None), ((3,4),'dashed'),
+			   ((4,5),'dashed'), ((0,3),'dashed'),
+			   ((4,6),'dashed'),((1,4),'dashed')]
+	check_nodes(sg.pg.loc_df, node_colors_ctrl, edgecolor_ctrl)
+	check_edges(sg.pg.edge_df, edge_color_ctrl, curve_ctrl, style_ctrl)
+	return sg
+
 
 def plot1(sg, tids, locs, edges):
 	sg.plot_graph('ENSG01')

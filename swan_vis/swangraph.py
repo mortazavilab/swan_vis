@@ -1044,6 +1044,8 @@ class SwanGraph(Graph):
 							if len(temp_df.index) > 0:
 								ir_genes.append(gid)
 
+		print('Found {} novel ir events from {} genes.'.format(len(ir_genes), 
+			len(list(set(ir_genes)))))
 		ir_genes = list(set(ir_genes))
 		return ir_genes
 
@@ -1100,6 +1102,8 @@ class SwanGraph(Graph):
 							if len(temp_df.index) > 0:
 								es_genes.append(gid)
 
+		print('Found {} novel es events from {} genes.'.format(len(es_genes),
+			len(list(set(es_genes)))))
 		es_genes = list(set(es_genes))
 		return es_genes
 
@@ -1560,8 +1564,7 @@ class SwanGraph(Graph):
 			t_df = reset_dupe_index(t_df, 'tid')
 			t_df['significant'] = False
 			t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
-			t_df['significant'] = False
-			t_df['significant'] = t_df.loc[t_df.qval <= q]
+			t_df['significant'] = t_df.qval <= q
 			t_df = set_dupe_index(t_df, 'tid')
 
 		# if user doesn't care about datasets, just show all transcripts

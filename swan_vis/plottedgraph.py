@@ -71,8 +71,16 @@ class PlottedGraph(Graph):
 		else:
 			self.graph_type = 'summary'
 
+
+		# if we have new datasets
+		if len(list(set(old_dataset_cols)-set(self.dataset_cols))) != 0:
+			self.new_gene(sg)
+			if not self.browser:
+				self.calc_node_edge_styles()
+				self.get_ordered_edges()
+
 		# plotting the same transcript
-		if old_tid == self.tid and self.tid != None:
+		elif old_tid == self.tid and self.tid != None:
 			if not browser: 
 				if old_indicate_dataset != self.indicate_dataset \
 				or old_indicate_novel != self.indicate_novel:
