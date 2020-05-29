@@ -8,6 +8,7 @@ figures/
 
 # scratch
 testing/scratch/
+testing/dana_driver.py
 
 # whatever I ever put in here
 visual_tests/
