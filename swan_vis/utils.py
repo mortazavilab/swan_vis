@@ -163,6 +163,40 @@ def format_for_in(l):
         l = [l]
     return "(" + ','.join(['"' + str(x) + '"' for x in l]) + ")" 
 
+# validate that a gtf has the correct fields and info in it
+def validate_gtf(fname):
+	df = pd.read_csv(fname, sep='\t', usecols=[2,8], comment='#',
+		names=['entry_type', 'fields'])
+
+	# first make sure that there are transcript and exon entries
+	missing_entry_type = False
+	missing_entry_types = []
+	entry_types = df.entry_type.unique().tolist()
+	if 'transcript' not in entry_types:
+		missing_entry_type = True
+		missing_entry_types.append('transcript')
+	if 'exon' not in entry_types:
+		missing_entry_type = True
+		missing_entry_types.append('exon')	
+	if missing_entry_type:
+		raise Exception('GTF is missing entry types {}'.format(missing_entry_types))
+
+	# next check if gene_id, transcript_id, and gene_name fields exist 
+	fields = df.loc[df.entry_type=='exon', 'fields'].tolist()[0]
+	missing_field = False
+	missing_fields = []
+	if not get_field_value('gene_id', fields):
+		missing_field = True
+		missing_fields.append('gene_id')
+	if not get_field_value('gene_name', fields):
+		missing_field = True		
+		missing_fields.append('gene_name')
+	if not get_field_value('transcript_id', fields):
+		missing_field = True
+		missing_fields.append('transcript_id')
+	if missing_field:
+		raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
+		
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
 def save_fig(oname):
