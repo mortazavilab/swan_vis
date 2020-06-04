@@ -92,12 +92,17 @@ def check_file_loc(loc, ftype):
 # abundance
 # currently only works with TALON abundance files but can easily 
 # be updated to work with more types of abundance files
-def process_abundance_file(file, cols):
+def process_abundance_file(file, cols, tid_col):
 
 	if type(cols) != list: cols = [cols]
 
 	df = pd.read_csv(file, sep='\t')
-	keep_cols = ['annot_transcript_id']+cols
+
+	# make sure that tid_col is even in the table
+	if tid_col not in df.columns:
+		raise Exception('Column {} not found in abundance file.'.format(tid_col))
+
+	keep_cols = [tid_col]+cols
 	df = df[keep_cols]	
 
 	# get the counts
@@ -113,7 +118,7 @@ def process_abundance_file(file, cols):
 	# set up for merging
 	cols += tpm_cols 
 	df.drop(cols, axis=1, inplace=True)
-	df.rename({'annot_transcript_id': 'tid'}, inplace=True, axis=1)
+	df.rename({tid_col: 'tid'}, inplace=True, axis=1)
 
 	return df
 

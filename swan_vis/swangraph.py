@@ -58,6 +58,7 @@ class SwanGraph(Graph):
 	# add dataset into graph from gtf
 	def add_dataset(self, col, fname, dname=None,
 					counts_file=None, count_cols=None, 
+					tid_col='annot_transcript_id',
 					include_isms=False):
 
 		# make sure that input dataset name is not
@@ -121,13 +122,12 @@ class SwanGraph(Graph):
 
 		# if we're also adding abundances
 		if counts_file and count_cols:
-			self.add_abundance(counts_file, count_cols, col)
+			self.add_abundance(counts_file, count_cols, col, tid_col)
 
 	# adds counts columns to t_df based on columns counts_cols found in 
-	# tsv counts_file. Relies on column annot_transcript_id to have the
-	# transcript id (tid) that is used to index t_df. 
-	# TODO make this more flexible in the future
-	def add_abundance(self, counts_file, count_cols, dataset_name):
+	# tsv counts_file. 
+	def add_abundance(self, counts_file, count_cols,
+					  dataset_name, tid_col):
 
 		# if the dataset we're trying to add counts too doesn't exist
 		if dataset_name not in self.datasets:
@@ -135,7 +135,7 @@ class SwanGraph(Graph):
 							'that is not in the graph. Add dataset to graph first.')
 
 		# get counts from input abundance file 
-		abundance_df = process_abundance_file(counts_file, count_cols)
+		abundance_df = process_abundance_file(counts_file, count_cols, tid_col)
 		abundance_df.rename({'tpm': '{}_tpm'.format(dataset_name),
 							 'counts': '{}_counts'.format(dataset_name)},
 							 axis=1, inplace=True)
