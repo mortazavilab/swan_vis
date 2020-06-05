@@ -10,7 +10,7 @@ Swan is a Python library designed for the analysis and visualization of transcri
 * [Input File Formats](#fileformats) -->
 
 ## What can Swan do?
-Swan can make informative plots [(tutorial)](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Visualization.ipynb), find differentially expressed genes and transcripts, find isoform-switching genes, and discover novel exon skipping and intron retention events [(tutorial)](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Analysis%20tools.ipynb).
+Swan can make informative plots, find differentially expressed genes and transcripts, find isoform-switching genes, and discover novel exon skipping and intron retention events.
 
 ## <a name="installation"></a>Installation
 Swan can be installed directly from PyPi. Run `pip install swan_vis` to install Swan's most recent release. Alternatively, the most recent commits can be installed by git cloning this repo and running `pip install .` in the downloaded directory.
