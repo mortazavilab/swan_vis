@@ -127,7 +127,7 @@ class SwanGraph(Graph):
 	# adds counts columns to t_df based on columns counts_cols found in 
 	# tsv counts_file. 
 	def add_abundance(self, counts_file, count_cols,
-					  dataset_name, tid_col):
+					  dataset_name, tid_col='annot_transcript_id'):
 
 		# if the dataset we're trying to add counts too doesn't exist
 		if dataset_name not in self.datasets:
@@ -612,9 +612,11 @@ class SwanGraph(Graph):
 			   start_vertex, end_vertex
 			   FROM transcripts t
 			   WHERE transcript_ID in
-			   (SELECT DISTINCT transcript_ID from observed)"""
+			   (SELECT DISTINCT transcript_ID from observed"""
 		if dname:
-			q += """ WHERE dataset='{}'""".format(dname)
+			q += """ WHERE dataset='{}')""".format(dname)
+		else: 
+			q += ')'
 
 		c.execute(q)
 		data = c.fetchall()
@@ -1199,7 +1201,7 @@ class SwanGraph(Graph):
 
 		# list and the df of the top de genes according qval threshold
 		if not n_transcripts:
-			tids = test.gname.tolist()
+			tids = test.tid.tolist()
 		else:
 			if n_transcripts < len(test.index):
 				n_transcripts = len(test.index)
@@ -1599,8 +1601,9 @@ class SwanGraph(Graph):
 					t_df[group_name] = t_df[group].any(axis=1)
 				# tpm values
 				else:
-					tpm_group_cols = self.get_tpm_cols(group)
-					t_df[group_name] = t_df[tpm_group_cols].mean(axis=1)
+					group_name += '_counts'
+					count_group_cols = self.get_count_cols(group)
+					t_df[group_name] = t_df[count_group_cols].mean(axis=1)
 			datasets = dataset_group_names
 			# report_cols = dataset_group_names
 
