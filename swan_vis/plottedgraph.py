@@ -349,6 +349,9 @@ class PlottedGraph(Graph):
 
 		self.plot_nodes()
 
+		# remove axis
+		plt.axis('off')
+
 	# plots edges from edge_df
 	def plot_edges(self):
 		for _, entry in self.edge_df.iterrows():
@@ -417,6 +420,9 @@ class PlottedGraph(Graph):
 		# reverse plot if we're on the minus strand
 		if strand == '-':
 			plt.gca().invert_xaxis()
+
+		# remove axis
+		plt.axis('off')
 
 		def get_tick_coords(loc_df, gene_len, exons, g_min, g_max, strand):
 
