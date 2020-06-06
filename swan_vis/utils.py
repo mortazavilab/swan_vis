@@ -102,6 +102,11 @@ def process_abundance_file(file, cols, tid_col):
 	if tid_col not in df.columns:
 		raise Exception('Column {} not found in abundance file.'.format(tid_col))
 
+	# make sure that cols are also in the table
+	for col in cols:
+		if col not in df.columns:
+			raise Exception('Dataset column {} not found in abundance file.'.format(col))
+
 	keep_cols = [tid_col]+cols
 	df = df[keep_cols]	
 
