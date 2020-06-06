@@ -13,6 +13,11 @@ testing/dana_driver.py
 # whatever I ever put in here
 visual_tests/
 
+# tutorials data
+tutorials/data/
+tutorials/swan.p
+tutorials/.ipynb_checkpoints/
+
 # other 
 .DS_Store
 
