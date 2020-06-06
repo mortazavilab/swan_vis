@@ -287,14 +287,14 @@ class TestGraph(object):
 
 	# tests get_strand_from_tid
 	def test_get_strand_from_tid(self):
-		a = get_dummy_sg()
-		a.loc_df.loc[1, 'strand'] = '-'
+		a = get_dummy_sg_b()
+		# a.loc_df.loc[1, 'strand'] = '-'
 
-		print(a.loc_df.head())
+		print(a.edge_df)
 
 		assert a.get_strand_from_tid(0) == '+'
-		assert a.get_strand_from_tid(1) == '-'
-		assert a.get_strand_from_tid(2) == '+'
+		assert a.get_strand_from_tid(1) == '+'
+		assert a.get_strand_from_tid(4) == '-'
 
 	# tests get_path_from_tid
 	def test_get_path_from_tid(self):
@@ -339,11 +339,11 @@ class TestGraph(object):
 							   			[9,10,11,12],
 							   			[9,11,12]]})
 		a.loc_df = pd.DataFrame({'vertex_id': [0,1,2,3,4,5,6,7,8,9,10,11,12], 
-								 'strand': ['+','+','+','+','+','-','-','-','-','-','-','-','-'],
 								 'chrom': [1,1,1,1,1,2,2,2,2,2,2,2,2],
 								 'coord': [0,1,2,3,4,5,6,7,8,9,10,11,12]})
 		a.edge_df = pd.DataFrame({'edge_id': [(0,1),(1,2),(2,3),(3,4),(5,6),(6,7),
-											  (7,8),(9,10),(10,11),(11,12)]})
+											  (7,8),(9,10),(9,11),(10,11),(11,12)],
+								  'strand': ['+','+','+','+','+','+','+','-','-','-','-']})
 		a.t_df = swan.create_dupe_index(a.t_df, 'tid')
 		a.t_df = swan.set_dupe_index(a.t_df, 'tid')
 		a.loc_df = swan.create_dupe_index(a.loc_df, 'vertex_id')
@@ -383,7 +383,7 @@ def get_dummy_sg(special=None):
 
 	loc_df = pd.DataFrame({'chrom': [1,1,1],
 		'coord': [1,3,2],
-		'strand': ['+', '+', '+'],
+		# 'strand': ['+', '+', '+'],
 		'vertex_id': [0,1,2]})
 	loc_df = swan.create_dupe_index(loc_df, 'vertex_id')
 	loc_df = swan.set_dupe_index(loc_df, 'vertex_id')
@@ -425,6 +425,33 @@ def get_dummy_sg(special=None):
 		a.t_df['dataset_a'] = True
 
 	return a
+
+def get_dummy_sg_b():
+	a = swan.SwanGraph()
+	a.t_df = pd.DataFrame({'tid': [0,1,2,3,4,5],
+						   'gid': [0,0,1,1,2,2],
+						   'path': [[0,1,2],
+						   			[2,3,4],
+						   			[5,6,7],
+						   			[6,7,8],
+						   			[9,10,11,12],
+						   			[9,11,12]]})
+	a.loc_df = pd.DataFrame({'vertex_id': [0,1,2,3,4,5,6,7,8,9,10,11,12], 
+							 # 'strand': ['+','+','+','+','+','-','-','-','-','-','-','-','-'],
+							 'chrom': [1,1,1,1,1,2,2,2,2,2,2,2,2],
+							 'coord': [0,1,2,3,4,5,6,7,8,9,10,11,12]})
+	a.edge_df = pd.DataFrame({'edge_id': [(0,1),(1,2),(2,3),(3,4),(5,6),(6,7),
+										  (7,8),(9,10),(9,11),(10,11),(11,12)],
+							  'strand': ['+','+','+','+','+','+','+','-','-','-','-']})
+	a.t_df = swan.create_dupe_index(a.t_df, 'tid')
+	a.t_df = swan.set_dupe_index(a.t_df, 'tid')
+	a.loc_df = swan.create_dupe_index(a.loc_df, 'vertex_id')
+	a.loc_df = swan.set_dupe_index(a.loc_df, 'vertex_id')
+	a.edge_df = swan.create_dupe_index(a.edge_df, 'edge_id')
+	a.edge_df = swan.set_dupe_index(a.edge_df, 'edge_id')
+
+	return a
+
 
 
 

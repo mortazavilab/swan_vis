@@ -14,7 +14,7 @@ class Graph:
 		self.tpm = []
 		
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
-									   'strand','vertex_id',
+									   'vertex_id',
 									   'TSS',
 									   'TES',
 									   'internal'])
@@ -113,21 +113,21 @@ class Graph:
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
 
-		# split loc_df into + and - strand parts
-		plus_loc_df = self.loc_df.loc[self.loc_df.strand == '+'].copy(deep=True)
-		minus_loc_df = self.loc_df.loc[self.loc_df.strand == '-'].copy(deep=True)
+		# # split loc_df into + and - strand parts
+		# plus_loc_df = self.loc_df.loc[self.loc_df.strand == '+'].copy(deep=True)
+		# minus_loc_df = self.loc_df.loc[self.loc_df.strand == '-'].copy(deep=True)
 
-		# sort each of the dfs by chrom, coord either ascending
-		# or descending based on strand
-		plus_loc_df.sort_values(['chrom', 'coord'],
+		# sort the df by chrom, coord 
+		self.loc_df.sort_values(['chrom', 'coord'],
 								 ascending=[True, True],
 								 inplace=True)
-		minus_loc_df.sort_values(['chrom', 'coord'],
-								  ascending=[True, False],
-								  inplace=True)
 
-		# concatenate the two dfs
-		self.loc_df = pd.concat([plus_loc_df, minus_loc_df])
+		# minus_loc_df.sort_values(['chrom', 'coord'],
+		# 						  ascending=[True, False],
+		# 						  inplace=True)
+
+		# # concatenate the two dfs
+		# self.loc_df = pd.concat([plus_loc_df, minus_loc_df])
 
 		# dictionary mapping vertex_id to new_id
 		self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]
@@ -194,11 +194,68 @@ class Graph:
 	def order_edge_df(self):
 		self.edge_df.sort_values(by=['v1', 'v2'], inplace=True)
 
-	# # order t_df columns
-	# def order_t_df_cols(self):
-	# 	cols = self.t_df.columns.tolist()
-	# 	order = ['gid', 'gname', 'path']
-	# 	self.t_df = self.t_df[['']]
+	# order the transcripts by expression of transcript, transcript id, 
+	# or start/end nodes.
+	# tss and tes options are meant to operate on a graph subset only 
+	# containing one gene so that there is only one strand
+	def order_transcripts(self, order='tid'):
+
+		# TODO make this take in a subset df subset by tid so 
+		# I can order considering strandedness
+
+		# order by transcript id
+		if order == 'tid':
+			ordered_tids = sorted(self.t_df.tid.tolist())
+			self.t_df = self.t_df.loc[ordered_tids]
+
+		# order by expression
+		elif order == 'expression':
+			tpm_cols = self.get_tpm_cols()
+
+			# make sure there are counts in the graph at all
+			if tpm_cols:
+				self.t_df['tpm_sum'] = self.t_df[tpm_cols].sum(axis=1)
+				self.t_df.sort_values(by='tpm_sum', 
+									  ascending=False, 
+									  inplace=True)
+				self.t_df.drop('tpm_sum', axis=1, inplace=True)
+			else: 
+				raise Exception('Cannot order by expression because '
+								'there is no expression data.')
+
+		# order by coordinate of tss 
+		elif order == 'tss':
+			self.t_df['start_coord'] = self.t_df.apply(lambda x: 
+				self.loc_df.loc[x.path[0], 'coord'], axis=1)
+
+			# watch out for strandedness
+			first_tid = self.t_df.tid.tolist()[0]
+			strand = self.get_strand_from_tid(first_tid)
+			if strand == '-':
+				ascending = False
+			else: 
+				ascending = True
+			self.t_df.sort_values(by='start_coord',
+								  ascending=ascending,
+								  inplace=True)
+			self.t_df.drop('start_coord', axis=1, inplace=True)
+			
+		# order by coordinate of tes
+		elif order == 'tes':
+			self.t_df['end_coord'] = self.t_df.apply(lambda x: 
+				self.loc_df.loc[x.path[-1], 'coord'], axis=1)
+
+			# watch out for strandedness
+			first_tid = self.t_df.tid.tolist()[0]
+			strand = self.get_strand_from_tid(first_tid)
+			if strand == '-':
+				ascending = False
+			else: 
+				ascending = True
+			self.t_df.sort_values(by='end_coord',
+								  ascending=ascending,
+								  inplace=True)
+			self.t_df.drop('end_coord', axis=1, inplace=True)
 
 	##########################################################################
 	####### Functions to switch back and forth between dfs and dicts #########
@@ -293,12 +350,18 @@ class Graph:
 
 	# gets strandedness of transcript from transcript id
 	def get_strand_from_tid(self, tid):
-		return self.loc_df.loc[self.t_df.loc[tid, 'path'][0], 'strand']
+		first_edge = tuple(self.t_df.loc[tid, 'path'][0:2])
+		strand = self.edge_df.loc[self.edge_df.edge_id==first_edge, 'strand']
+		return strand.values[0]
+		# return self.loc_df.loc[self.t_df.loc[tid, 'path'][0], 'strand']
 
 	# gets strandedness of transcript from gene id
 	def get_strand_from_gid(self, gid):
-		vertex = self.t_df.loc[self.t_df.gid == gid].path.tolist()[0][0]
-		return self.loc_df.loc[vertex, 'strand']
+		first_edge = tuple(self.t_df.loc[self.t_df.gid==gid].path.tolist()[0][0:2])
+		strand = self.edge_df.loc[self.edge_df.edge_id==first_edge, 'strand']
+		return strand.values[0]
+		# vertex = self.t_df.loc[self.t_df.gid == gid].path.tolist()[0][0]
+		# return self.loc_df.loc[vertex, 'strand']
 
 	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
@@ -341,6 +404,7 @@ class Graph:
 ##########################################################################
 
  # subset a graph based on a gene
+ # TODO can probably make this a class method...
 def subset_on_gene(sg, gid):
 
 	# make sure this gid is even in the Graph
