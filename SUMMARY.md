@@ -4,10 +4,10 @@
 
 ## Tutorials
 
-## Use headings to create page groups like this one​
+## Tutorials <a id="tutorials-1"></a>
 
-* [Tutorials](use-headings-to-create-page-groups-like-this-one/tutorials/README.md)
-  * [Getting started](use-headings-to-create-page-groups-like-this-one/tutorials/getting_started.md)
-  * [Visualization](use-headings-to-create-page-groups-like-this-one/tutorials/visualization.md)
-  * [Analysis](use-headings-to-create-page-groups-like-this-one/tutorials/analysis_tools.md)
+* [Tutorials](tutorials-1/tutorials/README.md)
+  * [Getting started](tutorials-1/tutorials/getting_started.md)
+  * [Visualization](tutorials-1/tutorials/visualization.md)
+  * [Analysis](tutorials-1/tutorials/analysis_tools.md)
 
