@@ -1,8 +1,12 @@
-# File format specifications
-
 File formats in bioinformatics are notoriously hard to standardize. We hope that this documentation provides the user with a clear idea of what is need as input into Swan.
 
-## GTF
+## Table of contents
+* [GTF](#gtf)
+* [Abundance matrix](#ab)
+* [TALON db](#talon_db)
+
+## <a name="gtf"></a>GTF
+ 
 In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must adhere to the following specifications:
 * transcript and exon entries in column 3 - this is a dependency we would like to remove in the future but for now this is the way it works
 * gene_id, gene_name, and transcript_id attributes (for transcripts and exons) in column 9
@@ -10,7 +14,6 @@ In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must ad
 * gene_ids, gene_names, and transcript_ids must be the same across datasets for proper dataset merging 
 
 Here is an example of what the first few lines of a GTF should look like:
-
 ```
 ##description: evidence-based annotation of the human genome (GRCh38), version 29 (Ensembl 94)
 ##provider: GENCODE
@@ -29,14 +32,14 @@ import swan_vis as swan
 swan.validate_gtf('test.gtf')
 ```
 
-## Abundance Matrix
+## <a name="ab"></a>Abundance matrix 
+
 Swan can load abundance information for more meaningful analysis and visualizations. To work with Swan, abundance matrices must:
 * Be tab-separated
 * Have a column containing transcript ids that are the same as those loaded via GTF or TALON db
 * Have a column containing counts of each transcript for a given dataset column name
 
 Luckily, the names of the column names to obtain transcript ids and counts from are flexible. If you were to add abundance to your SwanGraph with the following line, for instance
-
 ```python
 sg = swan.SwanGraph('swan.p')
 sg.add_abundance('counts_file.tsv', \
@@ -58,5 +61,6 @@ ENST00000445118.6	1
 ENST00000441765.5	0
 ```
 
-## TALON databases
+## <a name="talon_db"></a>TALON db
+
 Swan currently works with TALON databases created with TALON v5.0+
