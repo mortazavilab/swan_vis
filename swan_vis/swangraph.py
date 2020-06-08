@@ -74,7 +74,7 @@ class SwanGraph(Graph):
 				fname (str): Path to GTF or TALON db
 
 				# Only for loading from TALON
-				dname (str): Dataset name in TALON db to add transcripts from
+				dataset_name (str): Dataset name in TALON db to add transcripts from
 					Default=None
 				whitelist (str): TALON whitelist of transcripts to add.
 					Default: None

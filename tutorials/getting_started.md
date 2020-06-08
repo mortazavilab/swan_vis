@@ -47,8 +47,12 @@ wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_whitelist.csv
 cd ../
 ```
 
+## <a name="init"></a>Starting up Swan and initializing your SwanGraph
+
 
 ```python
+import swan_vis as swan
+
 annot_gtf = 'data/gencode.v29.annotation.gtf'
 hep_1_gtf = 'data/hepg2_1_talon.gtf'
 hep_2_gtf = 'data/hepg2_2_talon.gtf'
@@ -59,13 +63,6 @@ ab_file = 'data/all_talon_abundance_filtered.tsv'
 talon_db = 'data/talon.db'
 ```
 
-## <a name="init"></a>Starting up Swan and initializing your SwanGraph
-
-
-```python
-import swan_vis as swan
-```
-
 Initialize an empty SwanGraph and add the transcriptome annotation to the SwanGraph.
 
 
@@ -73,9 +70,6 @@ Initialize an empty SwanGraph and add the transcriptome annotation to the SwanGr
 sg = swan.SwanGraph()
 sg.add_annotation(annot_gtf)
 ```
-
-    Adding dataset annotation to the SwanGraph.
-
 
 ## <a name="gtf_ab"></a>Adding transcript models (GTF) and abundance information at the same time
 
@@ -100,13 +94,6 @@ sg.add_dataset('HFFc6_3', hff_3_gtf,
 	count_cols='hffc6_3')
 ```
 
-    Adding dataset HepG2_1 to the SwanGraph.
-    Adding dataset HepG2_2 to the SwanGraph.
-    Adding dataset HFFc6_1 to the SwanGraph.
-    Adding dataset HFFc6_2 to the SwanGraph.
-    Adding dataset HFFc6_3 to the SwanGraph.
-
-
 ##  <a name="save_load"></a>Saving and loading your SwanGraph
 
 Following this, you can save your SwanGraph so you can easily work with it again without re-adding all the data.
@@ -116,18 +103,12 @@ Following this, you can save your SwanGraph so you can easily work with it again
 sg.save_graph('swan')
 ```
 
-    Saving graph as swan.p
-
-
 And you can reload the graph again.
 
 
 ```python
 sg = swan.SwanGraph('swan.p')
 ```
-
-    Graph from swan.p loaded
-
 
 ##  <a name="gtf_ab_sep"></a>Adding transcript models (GTF) and abundance information separately
 
@@ -143,13 +124,6 @@ sg.add_dataset('HFFc6_1', hff_1_gtf)
 sg.add_dataset('HFFc6_2', hff_2_gtf)
 sg.add_dataset('HFFc6_3', hff_3_gtf)
 ```
-
-    Adding dataset annotation to the SwanGraph.
-    Adding dataset HepG2_1 to the SwanGraph.
-    Adding dataset HepG2_2 to the SwanGraph.
-    Adding dataset HFFc6_1 to the SwanGraph.
-    Adding dataset HFFc6_2 to the SwanGraph.
-    Adding dataset HFFc6_3 to the SwanGraph.
 
 
 If you have just added transcript models to the graph via `add_dataset()` and wish to add abundance information, this can be done using the `add_abundance()` function as seen below. Here, the string passed to `count_cols` is the column in the abundance file that corresponds to the dataset, and the argument passed to `dataset_name` is the name of the dataset that has already been added to the SwanGraph in the previous code block.
@@ -202,10 +176,4 @@ sg.add_dataset('Hffc6_3', talon_db,
 	counts_file=ab_file,
 	count_cols='hffc6_3')
 ```
-
-    Adding dataset HepG2_1 to the SwanGraph.
-    Adding dataset HepG2_2 to the SwanGraph.
-    Adding dataset Hffc6_1 to the SwanGraph.
-    Adding dataset Hffc6_2 to the SwanGraph.
-    Adding dataset Hffc6_3 to the SwanGraph.
 
