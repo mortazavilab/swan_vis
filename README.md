@@ -24,9 +24,9 @@ After installation with pip, to enable visualizations using dashed edges, run th
 
 ## Tutorials
 
-* [Getting started](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Getting%20started.ipynb): how to load data into Swan
-* [Visualization tools](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Visualization.ipynb): make gene and transcript-level plots to visualize the complexity of alternative splicing
-* [Analysis tools](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Analysis%20tools.ipynb): find differentially expressed genes and transcripts; find isoform-switching genes, discover novel intron retention and exon skipping events
+* [Getting started](tutorials/tutorials/getting_started.md): how to load data into Swan
+* [Visualization tools](tutorials/tutorials/visualization.md): make gene and transcript-level plots to visualize the complexity of alternative splicing
+* [Analysis tools](tutorials/tutorials/analysis_tools.md): find differentially expressed genes and transcripts; find isoform-switching genes, discover novel intron retention and exon skipping events
 
 ## Wiki links
 
