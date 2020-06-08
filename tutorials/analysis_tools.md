@@ -13,6 +13,9 @@ import swan_vis as swan
 sg = swan.SwanGraph('data/swan.p')
 ```
 
+    Graph from data/swan.p loaded
+
+
 ## <a name="deg"></a>Differential gene expression tests
 
 Differential gene expression testing in Swan is implemented via [diffxpy](https://github.com/theislab/diffxpy). To run the test, first partition the datasets that you have added to your SwanGraph into biological replicates. Then, use this grouping to run the differential expression test.
@@ -22,6 +25,11 @@ Differential gene expression testing in Swan is implemented via [diffxpy](https:
 dataset_groups = [['HepG2_1','HepG2_2'],['HFFc6_1','HFFc6_2','HFFc6_3']]
 sg.de_gene_test(dataset_groups)
 ```
+
+
+
+
+
 
 <div>
 <style scoped>
@@ -223,6 +231,9 @@ The results of this test are stored in `sg.deg_test` so they can be accessed lat
 sg.deg_test.head()
 ```
 
+
+
+
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
@@ -347,6 +358,9 @@ gene_summary.head()
     ['APOA2', 'ALB', 'AHSG', 'VIM', 'SERPINA1']
 
 
+
+
+
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
@@ -465,6 +479,37 @@ dataset_groups = [['HepG2_1','HepG2_2'],['HFFc6_1','HFFc6_2','HFFc6_3']]
 sg.de_transcript_test(dataset_groups);
 sg.det_test.head()
 ```
+
+    Transforming to str index.
+
+
+    training location model: False
+    training scale model: True
+    iter   0: ll=292114902.725192
+    iter   1: ll=292114902.725192, converged: 0.00% (loc: 100.00%, scale update: False), in 0.00sec
+    iter   2: ll=9689621.464688, converged: 0.64% (loc: 0.64%, scale update: True), in 418.70sec
+    iter   3: ll=9689621.464688, converged: 0.64% (loc: 100.00%, scale update: False), in 0.01sec
+    iter   4: ll=6067450.782106, converged: 8.86% (loc: 8.86%, scale update: True), in 358.75sec
+    iter   5: ll=6067450.782106, converged: 8.86% (loc: 100.00%, scale update: False), in 0.00sec
+    iter   6: ll=5861723.183757, converged: 13.56% (loc: 13.56%, scale update: True), in 342.13sec
+    iter   7: ll=5861723.183757, converged: 13.56% (loc: 100.00%, scale update: False), in 0.00sec
+    iter   8: ll=5184440.659661, converged: 15.97% (loc: 15.97%, scale update: True), in 287.90sec
+    iter   9: ll=5184440.659661, converged: 15.97% (loc: 100.00%, scale update: False), in 0.00sec
+    iter  10: ll=5184122.283550, converged: 99.89% (loc: 99.89%, scale update: True), in 233.61sec
+    iter  11: ll=5184122.283550, converged: 99.89% (loc: 100.00%, scale update: False), in 0.00sec
+    iter  12: ll=5183985.427572, converged: 99.97% (loc: 99.97%, scale update: True), in 7.50sec
+    iter  13: ll=5183985.427572, converged: 99.97% (loc: 100.00%, scale update: False), in 0.00sec
+    iter  14: ll=5183973.042257, converged: 100.00% (loc: 100.00%, scale update: True), in 7.33sec
+    iter  15: ll=5183973.042257, converged: 100.00% (loc: 100.00%, scale update: False), in 0.00sec
+    iter  16: ll=5183973.042257, converged: 100.00% (loc: 100.00%, scale update: True), in 5.85sec
+
+
+    /Users/fairliereese/miniconda3/lib/python3.7/site-packages/dask/array/core.py:2622: RuntimeWarning: divide by zero encountered in true_divide
+      size = (limit / dtype.itemsize / largest_block) ** (1 / len(autos))
+
+
+
+
 
 <div>
 <style scoped>
@@ -594,6 +639,9 @@ transcript_summary.head()
 ```
 
     ['ENST00000367990.7', 'ENST00000295897.8', 'ENST00000393087.8', 'ENST00000411641.6', 'ENST00000224237.9']
+
+
+
 
 
 <div>
@@ -726,6 +774,8 @@ is_table.head()
 ```
 
     ['ENSG00000197746.13', 'ENSG00000067225.17', 'ENSG00000117450.13', 'ENSG00000105254.11', 'ENSG00000177600.8']
+
+
 
 
 
