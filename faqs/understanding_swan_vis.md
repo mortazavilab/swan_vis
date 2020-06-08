@@ -40,11 +40,11 @@ Phenomena such as alternative 5'/3', and TSS/TES usage can be visualized from th
 
 Alternative 5' splice site usage for an exon can be seen when there are multiple incoming exonic \(green\) edges into a splice site that represents the start of an intron.
 
-![alt\_5](../.gitbook/assets/alt_5%20%281%29.png)
+![](../.gitbook/assets/alt_5%20%281%29.png)
 
-Alternative 3' splice site usage for an exon can be seen when there are multiple outgoing exonic \(green\) edges from a splice site that represents the end of an intron. 
+Alternative 3' splice site usage for an exon can be seen when there are multiple outgoing exonic \(green\) edges from a splice site that represents the end of an intron.
 
-![alt\_3](../.gitbook/assets/alt_3%20%281%29.png)
+![](../.gitbook/assets/alt_3%20%281%29.png)
 
 ## Exon skipping and intron retention
 
@@ -52,7 +52,7 @@ You can also visualize exon skipping and intron retention events in Swan graphs.
 
 Exon skipping in a SwanGraph consists of an intronic \(pink\) edge that completely spans an exonic \(green\) edge. This means that an exonic region of a one transcript model has been completely skipped over in another transcript model.
 
- ![exon\_skipping](../.gitbook/assets/exon_skipping%20%281%29.png)
+![](../.gitbook/assets/exon_skipping%20%281%29.png)
 
 In a SwanGraph, intron retention is the opposite of exon skipping. It is seen when an exonic \(green\) edge completely spans an intronic \(pink\) edge. This means that an intronic region from one transcript model has been included in a different transcript model.
 
