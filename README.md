@@ -14,13 +14,18 @@ Swan can make informative plots, find differentially expressed genes and transcr
 
 ## <a name="installation"></a>Installation
 Swan can be installed directly from PyPi. To install Swan's most recent release, run 
+
 `pip install swan_vis` 
 
 Alternatively, the most recent commits can be installed by git cloning this repo, moving to the swan_vis directory, and running
+
 `pip install .`
 
+
 After installation with pip, to enable visualizations using dashed edges, run the following command from anywhere in the terminal
+
 `swan_patch_networkx`
+
 
 ## Tutorials
 * [Getting started](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Getting%20started.ipynb): how to load data into Swan
