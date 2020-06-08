@@ -1,15 +1,11 @@
 # Visualization
 
 Swan offers many different visualization options to understand your transcriptomes. This tutorial includes instructions on the following:
-* Gene summary graphs
-* Transcript path graphs
-* Saving a figure
-* Swan reports
 
-<!-- * [Gene summary graphs](#gene_summary)
+* [Gene summary graphs](#gene_summary)
 * [Transcript path graphs](#transcript_path)
 * [Saving a figure](#save_fig)
-* [Swan reports](#swan_report) -->
+* [Swan reports](#swan_report)
 
 
 ```python
