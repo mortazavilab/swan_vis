@@ -23,7 +23,7 @@ Gene summary graphs display a high-level summary of the complexity of splicing w
 sg.plot_graph('ADRM1')
 ```
 
-![](../../.gitbook/assets/output_5_0.png)
+![](../.gitbook/assets/output_5_0.png)
 
 Gene summary graphs are a type of graph plot and therefore have plotting options that allow the user to highlight nodes and edges that are either not present in the annotation \(`indicate_novel`\) or those that come from a specific dataset \(`indicate_dataset`\).
 
@@ -33,7 +33,7 @@ For instance, say we want to highlight the nodes and edges that are not seen in 
 sg.plot_graph('ADRM1', indicate_novel=True)
 ```
 
-![](../../.gitbook/assets/output_8_0.png)
+![](../.gitbook/assets/output_8_0.png)
 
 Similarly, you can highlight the nodes that come from a specific dataset. Outlined nodes and dashed edges are those that are present in the queried dataset.
 
@@ -41,7 +41,7 @@ Similarly, you can highlight the nodes that come from a specific dataset. Outlin
 sg.plot_graph('ADRM1', indicate_dataset='HepG2_1')
 ```
 
-![](../../.gitbook/assets/output_10_0.png)
+![](../.gitbook/assets/output_10_0.png)
 
 ## Transcript path graphs
 
@@ -51,7 +51,7 @@ Transcript path graphs display the same structure as gene summary graphs but gra
 sg.plot_transcript_path('TALONT000301953')
 ```
 
-![](../../.gitbook/assets/output_13_0.png)
+![](../.gitbook/assets/output_13_0.png)
 
 There are also `indicate_novel` and `indicate_dataset` options that allow the user to highlight the nodes and edges that are not present in the annotation.
 
@@ -59,13 +59,13 @@ There are also `indicate_novel` and `indicate_dataset` options that allow the us
 sg.plot_transcript_path('TALONT000301953', indicate_novel=True)
 ```
 
-![](../../.gitbook/assets/output_15_0.png)
+![](../.gitbook/assets/output_15_0.png)
 
 ```python
 sg.plot_transcript_path('TALONT000301953', indicate_dataset='HFFc6_1')
 ```
 
-![](../../.gitbook/assets/output_16_0.png)
+![](../.gitbook/assets/output_16_0.png)
 
 For transcripts, there is also a unique option that allows you to generate the genome-browser style representation of a transcript, using the `browser` option.
 
@@ -73,7 +73,7 @@ For transcripts, there is also a unique option that allows you to generate the g
 sg.plot_transcript_path('TALONT000301953', browser=True)
 ```
 
-![](../../.gitbook/assets/output_18_0.png)
+![](../.gitbook/assets/output_18_0.png)
 
 ## Saving a figure
 
@@ -86,7 +86,7 @@ sg.plot_graph('ADRM1')
 swan.save_fig('figures/my_gene_summary.png')
 ```
 
-![](../../.gitbook/assets/output_23_0.png)
+![](../.gitbook/assets/output_23_0.png)
 
 The second way only requires one line of code and requires that the user pass the corresponding plotting function a `prefix` for the filename and path. The file will be automatically named according to the settings in the graph.
 
@@ -96,7 +96,7 @@ sg.plot_graph('ADRM1', indicate_novel=True, prefix='figures/adrm1')
 
 As you can see, here the gene name ADRM1 is not used to save the figure because we have encountered conflicing gene names in our internal use of Swan. To avoid these clashes, Swan automatically fetches the gene id associated with the first instance of the gene name it finds and uses it to save the graph, in the interest of not accidentally overwriting a preexisting file. &lt;!--
 
-![](../../.gitbook/assets/output_27_0.png)
+![](../.gitbook/assets/output_27_0.png)
 
 ## Swan reports
 
@@ -113,7 +113,7 @@ sg.gen_report('ADRM1',
               indicate_novel=True)
 ```
 
-![](../../.gitbook/assets/output_32_0.png)
+![](../.gitbook/assets/output_32_0.png)
 
 ```python
 sg.gen_report('ADRM1', prefix='figures/adrm1',
@@ -123,7 +123,7 @@ sg.gen_report('ADRM1', prefix='figures/adrm1',
               indicate_novel=True)
 ```
 
-![](../../.gitbook/assets/output_34_0.png)
+![](../.gitbook/assets/output_34_0.png)
 
 ```python
 sg.gen_report(['ADRM1','PSAP'], prefix='figures/multi_gene',
@@ -132,9 +132,9 @@ sg.gen_report(['ADRM1','PSAP'], prefix='figures/multi_gene',
             order='TSS')
 ```
 
-![](../../.gitbook/assets/output_36_0.png)
+![](../.gitbook/assets/output_36_0.png)
 
-![](../../.gitbook/assets/output_37_0.png)
+![](../.gitbook/assets/output_37_0.png)
 
 ```python
 sg.gen_report('ADRM1', prefix='figures/adrm1',
