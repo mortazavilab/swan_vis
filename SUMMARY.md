@@ -3,9 +3,7 @@
 * [Introduction](README.md)
 
 ## Tutorials
-
-* [Tutorials](tutorials/tutorials/README.md)
-  * [Getting started](tutorials/tutorials/getting_started.md)
-  * [Visualization](tutorials/tutorials/visualization.md)
-  * [Analysis](tutorials/tutorials/analysis_tools.md)
+* [Getting started](tutorials/getting_started.md)
+* [Visualization](tutorials/visualization.md)
+* [Analysis](tutorials/analysis_tools.md)
 
