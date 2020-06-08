@@ -1067,9 +1067,10 @@ class SwanGraph(Graph):
 		""" 
 		Runs a differential expression test on the gene level.
 			Parameters:
-				dataset_groups (list of str, len 2): Grouping of datasets 
+				dataset_groups (list of list of str, len 2): Grouping of datasets 
 					from the SwanGraph to be used in the differential
 					expression test
+					Example: [['data1','data2'],['data3','data4']]
 			Returns: 
 				test (pandas DataFrame): A summary table of the differential
 					expression test, including p and q-values, as well 
@@ -1142,9 +1143,10 @@ class SwanGraph(Graph):
 		""" 
 		Runs a differential expression test on the transcript level.
 			Parameters:
-				dataset_groups (list of str, len 2): Grouping of datasets 
+				dataset_groups (list of list of str, len 2): Grouping of datasets 
 					from the SwanGraph to be used in the differential
 					expression test
+					Example: [['data1','data2'],['data3','data4']]
 			Returns: 
 				test (pandas DataFrame): A summary table of the differential
 					expression test, including p and q-values, as well 
@@ -1397,6 +1399,7 @@ class SwanGraph(Graph):
 					Default: False
 				prefix (str): Path and file prefix to automatically save
 					the plotted figure
+					Default: None, won't automatically save 
 		"""
 
 		if gid not in self.t_df.gid.tolist():
@@ -1432,7 +1435,22 @@ class SwanGraph(Graph):
 		"""
 		Plots a path of a single transcript isoform through a gene summary 
 		SwanGraph.
-		Does not automatically save the figure by default! TODO
+			Parameters:
+				tid (str): Transcript id of transcript to plot
+				indicate_dataset (str): Dataset name from SwanGraph to
+					highlight with outlined nodes and dashed edges
+					Incompatible with indicate_novel
+					Default: False (no highlighting)
+				indicate_novel (bool): Highlight novel nodes and edges by 
+					outlining them and dashing them respectively
+					Incompatible with indicate_dataset
+					Default: False
+				browser (bool): Plot transcript models in genome browser-
+					style format. Incompatible with indicate_dataset and
+					indicate_novel
+				prefix (str): Path and file prefix to automatically save
+					the plotted figure
+					Default: None, won't automatically save
 		"""
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
@@ -1457,15 +1475,27 @@ class SwanGraph(Graph):
 			print('Saving transcript path graph for {} as {}'.format(tid, fname))
 			save_fig(fname)
 
-
-	# plots each input transcript path through its gene's summary graph,
-	# and automatically saves them
 	def plot_each_transcript(self, tids, prefix,
 						indicate_dataset=False,
 						indicate_novel=False,
 						browser=False):
 		"""
-		TODO
+		Plot each input transcript and automatically save figures
+			Parameters:
+				tids (list of str): List of transcript ids to plot
+				prefix (str): Path and file prefix to automatically save
+					the plotted figures
+				indicate_dataset (str): Dataset name from SwanGraph to
+					highlight with outlined nodes and dashed edges
+					Incompatible with indicate_novel
+					Default: False (no highlighting)
+				indicate_novel (bool): Highlight novel nodes and edges by 
+					outlining them and dashing them respectively
+					Incompatible with indicate_dataset
+					Default: False
+				browser (bool): Plot transcript models in genome browser-
+					style format. Incompatible with indicate_dataset and
+					indicate_novel
 		"""
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
@@ -1489,13 +1519,27 @@ class SwanGraph(Graph):
 			print('Saving transcript path graph for {} as {}'.format(tid, fname))
 			save_fig(fname)
 
-	# plots each transcript's path through the summary graph, and automatically saves them!
 	def plot_each_transcript_in_gene(self, gid, prefix,
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False):
 		"""
-		TODO
+		Plot each transcript in a given gene and automatically save figures
+			Parameters:
+				gid (str): Gene id or gene name to plot transcripts from
+				prefix (str): Path and file prefix to automatically save
+					the plotted figures
+				indicate_dataset (str): Dataset name from SwanGraph to
+					highlight with outlined nodes and dashed edges
+					Incompatible with indicate_novel
+					Default: False (no highlighting)
+				indicate_novel (bool): Highlight novel nodes and edges by 
+					outlining them and dashing them respectively
+					Incompatible with indicate_dataset
+					Default: False
+				browser (bool): Plot transcript models in genome browser-
+					style format. Incompatible with indicate_dataset and
+					indicate_novel
 		"""
 
 		if gid not in self.t_df.gid.tolist():
@@ -1543,9 +1587,77 @@ class SwanGraph(Graph):
 				   indicate_novel=False,
 				   browser=False,
 				   order='expression'):
-
 		"""
-		TODO
+		Generates a PDF report for a given gene or list of genes according
+		to the user's input.
+			Parameters: 
+				gids (str or list of str): Gene ids or names to generate
+					reports for
+				prefix (str): Path and/or filename prefix to save PDF and
+					images used to generate the PDF
+
+				datasets (list of str): Datasets to include in the report
+					Default: Include columns for all datasets
+				dataset_groups (list of list of str): Datasets to average
+					together in the report and display as one column
+					Example: [['group1_1','group1_2'],['group2_1','group2_2']]
+				dataset_group_names (list of str): Names to give each group 
+					given by dataset_groups. Must be the same length as 
+					dataset_groups
+					Example: ['group1', 'group2']
+					Default: Will assign numbers 1 through length(dataset_group)
+
+				novelty (bool): Include a column to dipslay novelty type of
+					each transcript. Requires that a TALON GTF or DB has 
+					been used to load data in
+					Default: False
+
+				heatmap (bool): Display expression values in a heatmap
+					format. Requires that abundance information has been 
+					added to the SwanGraph
+					Default: False
+				tpm (bool): Display TPM value of each transcript/dataset 
+					combination, instead of presence/absence of each 
+					transcript. Requires that abundance information has
+					been added to the SwanGraph
+					Default:False
+
+				include_qvals (bool): Display q-val of each transcript's 
+					differential expression and bold entries found to be
+					differentially expressed. Requires that de_transcript_test
+					has been run, and that abundance information has been
+					added to the SwanGraph
+					Default: False
+				q (float): Q-value significance threshold to use when 
+					bolding transcripts if include_qvals = True.
+					Default: 0.05
+
+				include_unexpressed (bool): Add transcript entries to report
+					that are not expressed in any input dataset.
+					Default: False
+
+				indicate_dataset (str): Dataset name from SwanGraph to
+					highlight with outlined nodes and dashed edges
+					Incompatible with indicate_novel
+					Default: False (no highlighting)
+				indicate_novel (bool): Highlight novel nodes and edges by 
+					outlining them and dashing them respectively
+					Incompatible with indicate_dataset
+					Default: False
+				browser (bool): Plot transcript models in genome browser-
+					style format. Incompatible with indicate_dataset and
+					indicate_novel
+
+				order (str): Order to display transcripts in the report.
+					Options are 
+						'tid': alphabetically by transcript ID
+						'expression': cumulative expression from high to low
+							Requires that abundance information has been 
+							added to the SwanGraph
+						'tss': genomic coordinate of transcription start site
+						'tes': genomic coordinate of transcription end site
+					Default: 'expression' if abundance information is present,
+							 'tid' if not
 		"""
 
 		# check to see if input genes are in the graph
