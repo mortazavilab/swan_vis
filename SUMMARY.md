@@ -1,13 +1,13 @@
-‌# Summary​
+# Table of contents
+
+* [Introduction](README.md)
+
+## Tutorials
 
 ## Use headings to create page groups like this one​
 
-* [Tutorials](tutorials/README.md)    
-    * [Getting started](tutorials/getting_started.md)    
-    * [Visualization](tutorials/visualization.md)
-    * [Analysis](tutorials/analysis_tools.md)
-    
-<!-- * [FAQs](page2/README.md)    
-    * [Some child page](page2/page2-1.md)    
-    * [Some other child page](part2/page2-2.md)    
-    -->
+* [Tutorials](use-headings-to-create-page-groups-like-this-one/tutorials/README.md)
+  * [Getting started](use-headings-to-create-page-groups-like-this-one/tutorials/getting_started.md)
+  * [Visualization](use-headings-to-create-page-groups-like-this-one/tutorials/visualization.md)
+  * [Analysis](use-headings-to-create-page-groups-like-this-one/tutorials/analysis_tools.md)
+
