@@ -90,8 +90,6 @@ def check_file_loc(loc, ftype):
 
 # return a table indexed by transcript id with the appropriate 
 # abundance
-# currently only works with TALON abundance files but can easily 
-# be updated to work with more types of abundance files
 def process_abundance_file(file, cols, tid_col):
 
 	if type(cols) != list: cols = [cols]
@@ -159,19 +157,12 @@ def gtf_or_db(fname):
 		raise Exception('File type must be gtf or db. '
 			'Type received is {}'.format(ext))
 
-# Converts input to string that can be used for IN database query
-# originally written by Dana Wyman for TALON
-def format_for_in(l):    
-    if type(l) is tuple:
-        l = list(l)
-    if type(l) is str:
-        l = [l]
-    return "(" + ','.join(['"' + str(x) + '"' for x in l]) + ")" 
-
 # validate that a gtf has the correct fields and info in it
 def validate_gtf(fname):
 	df = pd.read_csv(fname, sep='\t', usecols=[2,8], comment='#',
 		names=['entry_type', 'fields'])
+	if df.empty:
+		raise Exception("GTF can't load correctly. Could be a header problem.")
 
 	# first make sure that there are transcript and exon entries
 	missing_entry_type = False
@@ -201,6 +192,34 @@ def validate_gtf(fname):
 		missing_fields.append('transcript_id')
 	if missing_field:
 		raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
+
+# depending on the strand, determine the start and stop
+# coords of an intron or exon
+def find_edge_start_stop(v1, v2, strand):
+	if strand == '-':
+		start = max([v1, v2])
+		stop = min([v1, v2])
+	elif strand == '+':
+		start = min([v1, v2])
+		stop = max([v1, v2])
+	return start, stop
+
+# get novelty types associated with each transcript
+def get_transcript_novelties(fields):
+	if fields['transcript_status'] == 'KNOWN':
+		return 'Known'
+	elif 'ISM_transcript' in fields:
+		return 'ISM'
+	elif 'NIC_transcript' in fields:
+		return 'NIC'
+	elif 'NNC_transcript' in fields:
+		return 'NNC'
+	elif 'antisense_transcript' in fields:
+		return 'Antisense'
+	elif 'intergenic_transcript' in fields:
+		return 'Intergenic'
+	elif 'genomic_transcript' in fields:
+		return 'Genomic' 
 		
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
@@ -211,11 +230,3 @@ def save_fig(oname):
 	plt.savefig(oname, format='png', dpi=200)
 	plt.clf()
 	plt.close()
-
-
-	
-
-
-
-
-

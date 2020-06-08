@@ -72,10 +72,6 @@ class Graph:
 			raise Exception('No datasets found in graph. '
 				'Cannot perform {}'.format(task))
 
-	# # check if the annotation is in the graph
-	# def check_annotation(self):
-	# 	datasets = self.get_dataset_cols()
-
 	# check if gid is in SwanGraph
 	def check_gene(self, gid):
 		if gid not in self.t_df.gid.tolist():
@@ -194,11 +190,6 @@ class Graph:
 	def order_edge_df(self):
 		self.edge_df.sort_values(by=['v1', 'v2'], inplace=True)
 
-	# # order t_df columns
-	# def order_t_df_cols(self):
-	# 	cols = self.t_df.columns.tolist()
-	# 	order = ['gid', 'gname', 'path']
-	# 	self.t_df = self.t_df[['']]
 
 	##########################################################################
 	####### Functions to switch back and forth between dfs and dicts #########

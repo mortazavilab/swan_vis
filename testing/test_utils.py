@@ -7,7 +7,8 @@ class TestUtils(object):
 # tests random utilities, from the utils.py file
 	def test_process_abundance_file(self):
 		file = 'input_files/test_abundance.tsv'
-		df = swan.process_abundance_file(file, ['count_1a', 'count_2a'])
+		df = swan.process_abundance_file(file, ['count_1a', 'count_2a'],
+			tid_col='annot_transcript_id')
 
 		print(df)
 		

@@ -14,6 +14,7 @@ import diffxpy.api as de
 from multiprocessing import Pool
 from itertools import repeat
 from swan_vis.utils import *
+from swan_vis.talon_utils import *
 from swan_vis.graph import *
 from swan_vis.plottedgraph import PlottedGraph
 from swan_vis.report import Report
@@ -59,7 +60,10 @@ class SwanGraph(Graph):
 		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
 		self.t_df.novelty.fillna('Undefined', inplace=True)
 
-	def add_dataset(self, col, fname, dname=None,
+	def add_dataset(self, col, fname,
+					dataset_name=None,
+					whitelist=None,
+					annot=None,
 					counts_file=None, count_cols=None, 
 					tid_col='annot_transcript_id',
 					include_isms=False):
@@ -68,14 +72,24 @@ class SwanGraph(Graph):
 			Parameters:
 				col (str): Name of column to add data to in the SwanGraph
 				fname (str): Path to GTF or TALON db
+
+				# Only for loading from TALON
 				dname (str): Dataset name in TALON db to add transcripts from
 					Default=None
+				whitelist (str): TALON whitelist of transcripts to add.
+					Default: None
+				annot (str): TALON annotation name in database to 
+					add transcripts from
+					Default: None
+
+				# Only if also adding abundance
 				counts_file (str): Path to tsv counts matrix
 					Default=None
 				count_cols (str or list of str): Column names in counts_file to use
 					Default=None
 				tid_col (str): Column name in counts_file containing transcript id
 					Default='annot_transcript_id'
+
 				include_isms (bool): Include ISMs from input dataset
 					Default=False
 		"""
@@ -107,7 +121,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				self.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				self.create_dfs_db(fname, dname)
+				self.create_dfs_db(fname, annot, whitelist, 'hepg2_1')
 
 			# add column to each df to indicate where data came from
 			self.loc_df[col] = True
@@ -121,7 +135,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				temp.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				temp.create_dfs_db(fname, dname)
+				temp.create_dfs_db(fname, annot, whitelist, 'hepg2_1')
 			self.merge_dfs(temp, col)
 
 		# remove isms if we have access to that information
@@ -208,14 +222,14 @@ class SwanGraph(Graph):
 		add_cols = b.t_df.columns
 		if 'novelty' not in existing_cols and 'novelty' in add_cols:
 			print('Novelty info not found for '
-			      'existing data. Transcripts '
-			      'without novelty information will be '
-			      'labelled "Undefined".')
+				  'existing data. Transcripts '
+				  'without novelty information will be '
+				  'labelled "Undefined".')
 		elif 'novelty' not in add_cols and 'novelty' in existing_cols:
 			print('Novelty info not found for '
-			     '{} data. Transcripts '
-			     'without novelty information will be '
-			     'labelled "Undefined".'.format(b_col))
+				 '{} data. Transcripts '
+				 'without novelty information will be '
+				 'labelled "Undefined".'.format(b_col))
 
 		# some df reformatting
 		self.t_df.reset_index(drop=True, inplace=True)
@@ -391,34 +405,6 @@ class SwanGraph(Graph):
 		# make sure file exists
 		check_file_loc(gtf_file, 'GTF')
 
-		# depending on the strand, determine the stard and stop
-		# coords of an intron or exon
-		def find_edge_start_stop(v1, v2, strand):
-			if strand == '-':
-				start = max([v1, v2])
-				stop = min([v1, v2])
-			elif strand == '+':
-				start = min([v1, v2])
-				stop = max([v1, v2])
-			return start, stop
-
-		# get novelty types associated with each transcript
-		def get_transcript_novelties_gtf(fields):
-			if fields['transcript_status'] == 'KNOWN':
-				return 'Known'
-			elif 'ISM_transcript' in fields:
-				return 'ISM'
-			elif 'NIC_transcript' in fields:
-				return 'NIC'
-			elif 'NNC_transcript' in fields:
-				return 'NNC'
-			elif 'antisense_transcript' in fields:
-				return 'Antisense'
-			elif 'intergenic_transcript' in fields:
-				return 'Intergenic'
-			elif 'genomic_transcript' in fields:
-				return 'Genomic'
-
 		# dictionaries to hold unique edges and transcripts
 		transcripts = {}
 		exons = {}
@@ -466,7 +452,7 @@ class SwanGraph(Graph):
 
 					# if we're using a talon gtf, add a novelty field
 					if from_talon:
-						novelty = get_transcript_novelties_gtf(attributes)
+						novelty = get_transcript_novelties(attributes)
 						entry['novelty'] = novelty
 
 					transcript = {tid: entry}
@@ -592,243 +578,212 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-	# create loc_df (for nodes), edge_df (for edges), and t_df (for paths)
-	def create_dfs_db(self, db, dname):
-
-		# are we pulling a specific dataset's observed transcripts
-		# from the database?
-		if dname == None:
-			print('No dataset name given.'
-				' Will fetch all observed transcripts'
-				' from {}'.format(db))
-		else:
-			print('Getting transcripts for {} from {}'.format(db, dname))
+	# create SwanGraph dataframes from a TALON db. Code very ripped from 
+	# TALON's create_GTF utility
+	def create_dfs_db(self, database, annot, whitelist, dataset):
 
 		# make sure file exists
-		check_file_loc(db, 'TALON DB')
+		check_file_loc(database, 'TALON DB')
 
-		# open db connection
-		conn = sqlite3.connect(db)
-		c = conn.cursor()
+		annot = check_annot_validity(annot, database)
 
-		# t_df
+		whitelist = handle_filtering(database, 
+											annot, 
+											True, 
+											whitelist, 
+											dataset)
+		# create separate gene and transcript whitelists
+		gene_whitelist = []
+		transcript_whitelist = []
+		for key,group in itertools.groupby(whitelist,operator.itemgetter(0)):
+			gene_whitelist.append(key)
+			for id_tuple in list(group):
+				transcript_whitelist.append(id_tuple[1])
 
-		# convert talon novelty values into human-readable values
-		def get_transcript_novelties_db(x):
-			if x.attribute == 'transcript_status':
-				return 'Known'
-			elif x.attribute == 'ISM_transcript':
-				return 'ISM'
-			elif x.attribute == 'NIC_transcript':
-				return 'NIC'
-			elif x.attribute == 'NNC_transcript':
-				return 'NNC'
-			elif x.attribute == 'antisense_transcript':
-				return 'Antisense'
-			elif x.attribute == 'intergenic_transcript':
-				return 'Intergenic'
-			elif x.attribute == 'genomic_transcript':
-				return 'Genomic'
+		# get gene, transcript, and exon annotations
+		gene_annotations = get_annotations(database, "gene", annot, 
+										   whitelist = gene_whitelist)  
+		transcript_annotations = get_annotations(database, "transcript", annot,
+												 whitelist = transcript_whitelist) 
+		exon_annotations = get_annotations(database, "exon", annot)
 
-		t_df = pd.DataFrame()
+		# get transcript data from the database
+		gene_2_transcripts = get_gene_2_transcripts(database, 
+							 transcript_whitelist)
 
-		# get talon tids from observed transcripts in input dataset
-		q = """SELECT transcript_ID, gene_ID, start_exon, jn_path, end_exon,
-			   start_vertex, end_vertex
-			   FROM transcripts t
-			   WHERE transcript_ID in
-			   (SELECT DISTINCT transcript_ID from observed"""
-		if dname:
-			q += """ WHERE dataset='{}')""".format(dname)
-		else: 
-			q += ')'
+		# get exon location info from database
+		exon_ID_2_location = fetch_exon_locations(database)
 
-		c.execute(q)
-		data = c.fetchall()
-		talon_tids, talon_gids, paths = zip(*[(i[0], i[1], i[2:]) for i in data])
-		paths = self.get_db_edge_paths(paths)
+		transcripts = {}
+		exons = {}
 
-		t_df['talon_tid'] = np.asarray(talon_tids)
-		t_df['talon_gid'] = np.asarray(talon_gids)
-		t_df['path'] = np.asarray(paths)
+		# loop through genes, transcripts, and exons
+		for gene_ID, transcript_tuples in gene_2_transcripts.items():
+			curr_annot = gene_annotations[gene_ID]
+			gene_annotation_dict = {}
+			for annot in curr_annot:
+				attribute = annot[3]
+				value = annot[4]
+				gene_annotation_dict[attribute] = value
+		
+			# get transcript entries
+			for transcript_entry in transcript_tuples:
+				transcript_ID = transcript_entry["transcript_ID"]
+				curr_transcript_annot = transcript_annotations[transcript_ID]
 
-		# get transcript ids and merge 
-		talon_tids = format_for_in(talon_tids)
-		q = """SELECT ID, value 
-			   FROM transcript_annotations
-			   WHERE attribute='transcript_id'
-			   AND ID in {}""".format(talon_tids)
-		tids = pd.read_sql_query(q, conn)
-		tids.rename({'value': 'tid', 'ID': 'talon_tid'},
-			axis=1, inplace=True)
-		t_df = t_df.merge(tids, on='talon_tid')
+				transcript_annotation_dict = {}
+				for annot in curr_transcript_annot:
+					attribute = annot[3]
+					value = annot[4]
+					transcript_annotation_dict[attribute] = value
+		  
+				tid = transcript_annotation_dict['transcript_id']
+				gid = gene_annotation_dict['gene_id']  
+				gname = gene_annotation_dict['gene_name']
+				strand = transcript_entry['strand'] 
+				novelty = get_transcript_novelties(transcript_annotation_dict)  
 
-		# get gene ids and merge
-		talon_gids = format_for_in(list(set(talon_gids)))
-		q = """SELECT ID, value 
-			   FROM gene_annotations
-			   WHERE attribute='gene_id'
-			   AND ID in {}""".format(talon_gids)
-		gids = pd.read_sql_query(q, conn)
-		gids.rename({'ID': 'talon_gid', 'value': 'gid'},
-			axis=1, inplace=True)
-		t_df = t_df.merge(gids, on='talon_gid')
+				# add transcript to dictionary 
+				entry = {'gid': gid,
+						 'gname': gname,
+						 'tid': tid,
+						 'strand': strand,
+						 'novelty': novelty,
+						 'exons': []}
+				transcript = {tid: entry}
+				transcripts.update(transcript)
+						 
+				if transcript_entry["n_exons"] != 1:
+					transcript_edges = [str(transcript_entry["start_exon"])] + \
+									   str(transcript_entry["jn_path"]).split(",")+ \
+									   [str(transcript_entry["end_exon"])]
+				else:
+					transcript_edges = [transcript_entry["start_exon"]]
 
-		# get gene names and merge
-		q = """SELECT ID, value 
-			   FROM gene_annotations
-			   WHERE attribute='gene_name'
-			   AND ID in {}""".format(talon_gids)
-		gnames = pd.read_sql_query(q, conn)
-		gnames.rename({'ID': 'talon_gid', 'value': 'gname'},
-			axis=1, inplace=True)
-		t_df = t_df.merge(gnames, on='talon_gid')
-		t_df.drop('talon_gid', axis=1, inplace=True)
+				# get exon entries
+				for exon_ID in transcript_edges[::2]:
+					exon_ID = int(exon_ID)
+					curr_exon_annot = exon_annotations[exon_ID]
 
-		# reorder columns
-		t_df = t_df[['tid', 'gid', 'gname', 'path', 'talon_tid']]
+					exon_annotation_dict = {}
+					for annot in curr_exon_annot:
+						attribute = annot[3]
+						value = annot[4]
+						exon_annotation_dict[attribute] = value
 
-		# get novelty types and merge
-		novelties = ['transcript_status', 'ISM_transcript', 'NIC_transcript', 
-					   'NNC_transcript', 'antisense_transcript', 
-					   'genomic_transcript', 'intergenic_transcript']
-		novelties = format_for_in(novelties)
-		q = """SELECT ta.ID, ta.attribute, ta.value 
-			   FROM transcript_annotations ta
-			   WHERE ta.attribute IN {}
-			   AND ta.ID IN {}
-			""".format(novelties, talon_tids)
-		novelties = pd.read_sql_query(q, conn)
-		novelties = novelties[novelties.value != 'NOVEL']
-		novelties['novelty'] = novelties.apply(lambda x:
-			get_transcript_novelties_db(x), axis=1)
-		novelties.drop(['attribute', 'value'], axis=1, inplace=True)
+					e_tuple = exon_ID_2_location[exon_ID]
+					chrom = e_tuple[0]
+					start = e_tuple[1]
+					stop = e_tuple[2]
+					strand = e_tuple[3]
+					start, stop = find_edge_start_stop(start, stop, strand)
+					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
 
-		t_df = t_df.merge(novelties, how='left',
-			left_on='talon_tid', right_on='ID')
-		t_df.drop(['talon_tid', 'ID'], axis=1, inplace=True)
+					# add novel exon to dictionary 
+					if eid not in exons:
+						edge = {eid: {'eid': eid,
+									  'chrom': chrom,
+									  'v1': start,
+									  'v2': stop,
+									  'strand': strand}}
+						exons.update(edge) 
 
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
+					# add this exon to the transcript's list of exons
+					if tid in transcripts:
+						transcripts[tid]['exons'].append(eid)
 
-		# edge_df
+		# once we have all transcripts, make loc_df
+		locs = {}
+		vertex_id = 0
+		for edge_id, edge in exons.items():
+			chrom = edge['chrom']
+			strand = edge['strand']
 
-		# get the list of edge ids we need to pull from db
-		edge_ids = list(set([str(n) for path in paths for n in path]))
-		# edge_str = '({})'.format(','.join(edge_ids))
-		edge_str = format_for_in(edge_ids)
+			v1 = edge['v1']
+			v2 = edge['v2']
 
-		q = """SELECT DISTINCT e.edge_ID, e.v1,
-				e.v2, e.strand, e.edge_type
-				FROM edge e 
-				JOIN vertex V ON e.v1=v.vertex_ID 
-			WHERE e.edge_ID IN {}""".format(edge_str)
+			# exon start
+			key = (chrom, v1, strand)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
+			# exon end
+			key = (chrom, v2, strand)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
 
-		c.execute(q)
-		edges = c.fetchall()
+		# add locs-indexed path to transcripts, and populate edges
+		edges = {}
+		# print(dict(list(transcripts.items())[:3]))
+		for _,t in transcripts.items():
+			t['path'] = []
+			strand = t['strand']
+			t_exons = t['exons']
 
-		edge_df = pd.DataFrame(edges, 
-			columns=['edge_id', 'v1', 'v2',
-					 'strand', 'edge_type'])
-		edge_df.v1 = edge_df.v1.map(int)
-		edge_df.v2 = edge_df.v2.map(int)
-		edge_df['talon_edge_id'] = edge_df.edge_id
-		edge_df['edge_id'] = edge_df.apply(lambda x: (int(x.v1), int(x.v2)), axis=1)
+			for i, exon_id in enumerate(t_exons):
+				# print('shouldnt u be in here')
+				# exit()
 
-		# loc_df
+				# pull some information from exon dict
+				exon = exons[exon_id]
+				chrom = exon['chrom']
+				v1 = exon['v1']
+				v2 = exon['v2']
+				strand = exon['strand']
 
-		# get the list of vertex ids we need to pull from db
-		edge_ids = edge_df.edge_id.tolist()
-		loc_ids = list(set([str(n) for edge_id in edge_ids for n in edge_id]))
-		loc_string = format_for_in(loc_ids)
+				# add current exon and subsequent intron 
+				# (if not the last exon) for each exon to edges
+				key = (chrom, v1, v2, strand)
+				v1_key = (chrom, v1, strand)
+				v2_key = (chrom, v2, strand)
+				edge_id = (locs[v1_key], locs[v2_key])
+				if key not in edges:
+					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
 
-		q = """SELECT loc.* FROM location loc
-			   WHERE loc.location_ID IN {}""".format(loc_string)
+				# add exon locs to path
+				t['path'] += list(edge_id)
 
-		c.execute(q)
-		locs = c.fetchall()
+				# if this isn't the last exon, we also needa add an intron
+				# this consists of v2 of the prev exon and v1 of the next exon
+				if i < len(t_exons)-1:
+					next_exon = exons[t_exons[i+1]]
+					v1 = next_exon['v1']
+					key = (chrom, v2, v1, strand)
+					v1_key = (chrom, v1, strand)
+					edge_id = (locs[v2_key], locs[v1_key])
+					if key not in edges:
+						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
 
-		loc_df = pd.DataFrame(locs,
-			columns=['location_ID', 'genome_build',
-					 'chrom', 'position'])
+		# turn transcripts, edges, and locs into dataframes
+		locs = [{'chrom': key[0],
+				 'coord': key[1],
+				 'strand': key[2],
+				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
+		loc_df = pd.DataFrame(locs)
 
-		# do some df reformatting, add strand
-		loc_df.drop('genome_build', axis=1, inplace=True)
-		loc_df.rename({'location_ID': 'vertex_id',
-					   'position': 'coord'},
-					   inplace=True, axis=1)
-		loc_df.vertex_id = loc_df.vertex_id.map(int)
+		edges = [{'v1': item['edge_id'][0],
+				  'v2': item['edge_id'][1], 
+				  'strand': key[3],
+				  'edge_id': item['edge_id'],
+				  'edge_type': item['edge_type']} for key, item in edges.items()]
+		edge_df = pd.DataFrame(edges)
 
-		# furnish the last bit of info in each df
-		t_df['path'] = t_df.apply(lambda x:
-			self.get_db_vertex_path(x, edge_df), axis=1)
+		transcripts = [{'tid': key,
+					'gid': item['gid'],
+					'gname': item['gname'],
+					'path': item['path'],
+					'novelty': item['novelty']} for key, item in transcripts.items()]
 
-		# get strandedness of each sj
-		extra_entries = pd.DataFrame(columns=['vertex_id', 'chrom',
-			'coord', 'strand', 'plus_vertex_id'])
-		loc_df['strand'] = np.nan
-		for index, entry in loc_df.iterrows():
+		t_df = pd.DataFrame(transcripts)	
 
-			# use v1 or v2 depending on where vertex is in edge
-			loc_id = entry.vertex_id
-			strands = edge_df.loc[(edge_df.v1==loc_id) | (edge_df.v2==loc_id), 'strand']
-			strands = list(set(strands.tolist()))
-
-			# if this sj is found on both the + and - strand,
-			# create a minus strand entry to add after the apply
-			# function is done. return the plus strand entry
-			if len(strands) > 1:
-				minus_entry = entry.copy(deep=True)
-				minus_entry.strand = '-'
-				minus_entry.vertex_id = len(loc_df.index)+len(extra_entries.index)+1
-				minus_entry['plus_vertex_id'] = entry.vertex_id
-				extra_entries = extra_entries.append(minus_entry)
-
-				loc_df.loc[index, 'strand'] = '+'
-			else:
-				loc_df.loc[index, 'strand'] = strands[0]
-		loc_df = loc_df.append(extra_entries, ignore_index=True, sort=True)
-
+		# final df formatting
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
-
-		# replace sjs in t_df paths that had to be introduced in extra entries
-		double_sjs = extra_entries.plus_vertex_id.tolist()
-		for tid, entry in t_df.iterrows():
-			path = entry.path
-			if any(x in path for x in double_sjs):
-				coords = loc_df.loc[path[:2], 'coord'].tolist()
-
-				# this transcript is on the minus strand
-				if coords[1] < coords[0]:
-					new_path = [extra_entries.loc[extra_entries.plus_vertex_id == n,
-						'vertex_id'].tolist()[0] if n in double_sjs else n for n in path]
-					t_df.at[tid, 'path'] = new_path
-
-		# also replace sjs in edge_df that had to be introduced in extra_entries
-		edge_df.drop('talon_edge_id', axis=1, inplace=True)
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
-		for eid, entry in edge_df.iterrows():
-			if any(x in eid for x in double_sjs):
-				coords = loc_df.loc[eid, 'coord'].tolist()	
-
-				# this edge is on the minus strand
-				if coords[1] < coords[0]:
-					new_eid = tuple([extra_entries.loc[extra_entries.plus_vertex_id == n, 'vertex_id'].tolist()[0] if n in double_sjs else n for n in eid])
-					edge_df.loc[[eid], 'v1'] = new_eid[0]
-					edge_df.loc[[eid], 'v2'] = new_eid[1]
-
-		# reset edge ids to use the ones updated from extra_entries
-		edge_df.reset_index(drop=True, inplace=True)
-		edge_df.v1 = pd.to_numeric(edge_df.v1)
-		edge_df.v2 = pd.to_numeric(edge_df.v2)
-		edge_df['edge_id'] = list(zip(edge_df.v1, edge_df.v2))
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-		# finally, drop unused column from loc_df
-		loc_df.drop('plus_vertex_id', axis=1, inplace=True)
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
 
 		self.loc_df = loc_df
 		self.edge_df = edge_df
@@ -851,27 +806,6 @@ class SwanGraph(Graph):
 		self.loc_df.loc[internal, 'internal'] = True
 		self.loc_df.loc[tss, 'TSS'] = True
 		self.loc_df.loc[tes, 'TES'] = True
-
-	# convert talon query into edge path
-	def get_db_edge_paths(self, paths):
-		edge_paths = []
-		for p in paths:
-			if p[1] == None:
-				edge_paths.append([p[0]])
-			else:
-				edge_paths.append(
-					[p[0], *[int(i) for i in p[1].split(',')], p[2]])
-		return edge_paths
-
-	# convert edge path to vertex path
-	def get_db_vertex_path(self, x, edge_df):
-		path = []
-		for i, e in enumerate(x.path): 
-			entry = edge_df.loc[edge_df.talon_edge_id == e]
-			if i == 0:
-				path.extend([entry.v1.values[0], entry.v2.values[0]])
-			else: path.append(entry.v2.values[0])
-		return path
 
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
@@ -1147,9 +1081,9 @@ class SwanGraph(Graph):
 
 		# test
 		test = de.test.wald(
-		    data=ann,
-		    formula_loc="~ 1 + condition",
-		    factor_loc_totest="condition")
+			data=ann,
+			formula_loc="~ 1 + condition",
+			factor_loc_totest="condition")
 		test = test.summary()
 		test.rename({'gene': 'gid'}, axis=1, inplace=True)
 
@@ -1222,9 +1156,9 @@ class SwanGraph(Graph):
 
 		# test
 		test = de.test.wald(
-		    data=ann,
-		    formula_loc="~ 1 + condition",
-		    factor_loc_totest="condition")
+			data=ann,
+			formula_loc="~ 1 + condition",
+			factor_loc_totest="condition")
 		test = test.summary()
 		test.rename({'gene': 'tid'}, axis=1, inplace=True)
 
@@ -1785,8 +1719,8 @@ class SwanGraph(Graph):
 
 		# 		cb = mpl.colorbar.ColorbarBase(ax,
 		# 										cmap=cmap,
-		# 		                                norm=norm,
-		# 		                                orientation='horizontal')
+		# 										norm=norm,
+		# 										orientation='horizontal')
 		# 		cb.set_label('log2(TPM)')
 		# 		plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
 		# 		plt.clf()
@@ -1851,6 +1785,258 @@ class SwanGraph(Graph):
 			if indicate_novel or indicate_dataset:
 				raise Exception('Cannot indicate_novel or indicate_dataset '
 								'with browser option.')
+ 
+#################### reeeeeeeeeee
+
+	def create_dfs_db(self, database, annot, whitelist, dataset):
+
+		# # are we pulling a specific dataset's observed transcripts
+		# # from the database?
+		# if dataset == None:
+		# 	print('No dataset name given.'
+		# 		' Will fetch all observed transcripts'
+		# 		' from {}'.format(db))
+		# else:
+		# 	print('Getting transcripts for {} from {}'.format(db, dataset))
+
+		# make sure file exists
+		check_file_loc(database, 'TALON DB')
+
+		annot = check_annot_validity(annot, database)
+
+		whitelist = handle_filtering(database, 
+											annot, 
+											True, 
+											whitelist, 
+											dataset)
+		# Create separate gene and transcript whitelists
+		gene_whitelist = []
+		transcript_whitelist = []
+		for key,group in itertools.groupby(whitelist,operator.itemgetter(0)):
+			gene_whitelist.append(key)
+			for id_tuple in list(group):
+				transcript_whitelist.append(id_tuple[1])
+
+		# Get gene, transcript, and exon annotations
+		gene_annotations = get_annotations(database, "gene", annot, 
+										   whitelist = gene_whitelist)  
+		transcript_annotations = get_annotations(database, "transcript", annot,
+												 whitelist = transcript_whitelist) 
+		exon_annotations = get_annotations(database, "exon", annot)
+
+		# print(dict(list(gene_annotations.items())[:3]))
+		# print(dict(list(transcript_annotations.items())[:3]))
+		# print(dict(list(exon_annotations.items())[:3]))
+		# exit()
+		# Get transcript data from the database
+		gene_2_transcripts = get_gene_2_transcripts(database, 
+							 transcript_whitelist)
+
+		# Get exon location info from database
+		exon_ID_2_location = fetch_exon_locations(database)
+
+		# print(dict(list(gene_2_transcripts.items())[:3]))
+		# print(dict(list(exon_ID_2_location.items())[:3]))
+		# exit()
+
+	 
+		# -------------------------------------------------------------
+
+
+		transcripts = {}
+		exons = {}
+
+		# Create a GTF entry for every gene
+		ind = 0
+		for gene_ID, transcript_tuples in gene_2_transcripts.items():
+
+			# if ind > 3: 
+			#	 exit()
+
+			curr_annot = gene_annotations[gene_ID]
+			gene_annotation_dict = {}
+			for annot in curr_annot:
+				attribute = annot[3]
+				value = annot[4]
+				gene_annotation_dict[attribute] = value
+
+			# #####
+			# print('genes')
+			# print(gene_annotation_dict['gene_id'])
+			# print(gene_annotation_dict['gene_name'])
+		
+			# Create a GTF entry for every transcript of this gene
+			for transcript_entry in transcript_tuples:
+				transcript_ID = transcript_entry["transcript_ID"]
+				curr_transcript_annot = transcript_annotations[transcript_ID]
+
+				transcript_annotation_dict = {}
+				for annot in curr_transcript_annot:
+					attribute = annot[3]
+					value = annot[4]
+					transcript_annotation_dict[attribute] = value
+
+				# ###
+				# print('transcripts')
+				# print(transcript_entry['strand'])
+				# print(transcript_annotation_dict['transcript_id']) 
+				# print(get_transcript_novelties(transcript_annotation_dict))		  
+				tid = transcript_annotation_dict['transcript_id']
+				gid = gene_annotation_dict['gene_id']  
+				gname = gene_annotation_dict['gene_name']
+				strand = transcript_entry['strand'] 
+				novelty = get_transcript_novelties(transcript_annotation_dict)  
+
+				# add transcript to dictionary 
+				entry = {'gid': gid,
+						 'gname': gname,
+						 'tid': tid,
+						 'strand': strand,
+						 'novelty': novelty,
+						 'exons': []}
+				transcript = {tid: entry}
+				transcripts.update(transcript)
+						 
+				if transcript_entry["n_exons"] != 1:
+					transcript_edges = [str(transcript_entry["start_exon"])] + \
+									   str(transcript_entry["jn_path"]).split(",")+ \
+									   [str(transcript_entry["end_exon"])]
+				else:
+					transcript_edges = [transcript_entry["start_exon"]]
+
+				# Create a GTF entry for every exon of this transcript (skip introns)
+				for exon_ID in transcript_edges[::2]:
+					exon_ID = int(exon_ID)
+					curr_exon_annot = exon_annotations[exon_ID]
+
+					exon_annotation_dict = {}
+					for annot in curr_exon_annot:
+						attribute = annot[3]
+						value = annot[4]
+						exon_annotation_dict[attribute] = value
+
+					###
+					# print('exons?')
+					# print(exon_ID_2_location[exon_ID])  
+					e_tuple = exon_ID_2_location[exon_ID]
+					chrom = e_tuple[0]
+					start = e_tuple[1]
+					stop = e_tuple[2]
+					strand = e_tuple[3]
+					start, stop = find_edge_start_stop(start, stop, strand)
+					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
+					# tid = exon_annotation_dict['transcript_id']
+					# print(tid)
+
+					# add novel exon to dictionary 
+					if eid not in exons:
+						edge = {eid: {'eid': eid,
+									  'chrom': chrom,
+									  'v1': start,
+									  'v2': stop,
+									  'strand': strand}}
+						exons.update(edge) 
+
+					# add this exon to the transcript's list of exons
+					if tid in transcripts:
+						transcripts[tid]['exons'].append(eid)
+
+		# once we have all transcripts, make loc_df
+		locs = {}
+		vertex_id = 0
+		for edge_id, edge in exons.items():
+			chrom = edge['chrom']
+			strand = edge['strand']
+
+			v1 = edge['v1']
+			v2 = edge['v2']
+
+			# exon start
+			key = (chrom, v1, strand)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
+			# exon end
+			key = (chrom, v2, strand)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
+
+		# add locs-indexed path to transcripts, and populate edges
+		edges = {}
+		# print(dict(list(transcripts.items())[:3]))
+		for _,t in transcripts.items():
+			t['path'] = []
+			strand = t['strand']
+			t_exons = t['exons']
+
+			for i, exon_id in enumerate(t_exons):
+				# print('shouldnt u be in here')
+				# exit()
+
+				# pull some information from exon dict
+				exon = exons[exon_id]
+				chrom = exon['chrom']
+				v1 = exon['v1']
+				v2 = exon['v2']
+				strand = exon['strand']
+
+				# add current exon and subsequent intron 
+				# (if not the last exon) for each exon to edges
+				key = (chrom, v1, v2, strand)
+				v1_key = (chrom, v1, strand)
+				v2_key = (chrom, v2, strand)
+				edge_id = (locs[v1_key], locs[v2_key])
+				if key not in edges:
+					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
+
+				# add exon locs to path
+				t['path'] += list(edge_id)
+
+				# if this isn't the last exon, we also needa add an intron
+				# this consists of v2 of the prev exon and v1 of the next exon
+				if i < len(t_exons)-1:
+					next_exon = exons[t_exons[i+1]]
+					v1 = next_exon['v1']
+					key = (chrom, v2, v1, strand)
+					v1_key = (chrom, v1, strand)
+					edge_id = (locs[v2_key], locs[v1_key])
+					if key not in edges:
+						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
+
+		# turn transcripts, edges, and locs into dataframes
+		locs = [{'chrom': key[0],
+				 'coord': key[1],
+				 'strand': key[2],
+				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
+		loc_df = pd.DataFrame(locs)
+
+		edges = [{'v1': item['edge_id'][0],
+				  'v2': item['edge_id'][1], 
+				  'strand': key[3],
+				  'edge_id': item['edge_id'],
+				  'edge_type': item['edge_type']} for key, item in edges.items()]
+		edge_df = pd.DataFrame(edges)
+
+		transcripts = [{'tid': key,
+					'gid': item['gid'],
+					'gname': item['gname'],
+					'path': item['path'],
+					'novelty': item['novelty']} for key, item in transcripts.items()]
+
+		t_df = pd.DataFrame(transcripts)	
+
+		# final df formatting
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
 
 ##########################################################################
 ################################## Extras ################################
@@ -1908,8 +2094,8 @@ def create_gene_report(gid, sg, t_df,
 
 		cb = mpl.colorbar.ColorbarBase(ax,
 										cmap=cmap,
-		                                norm=norm,
-		                                orientation='horizontal')
+										norm=norm,
+										orientation='horizontal')
 		cb.set_label('log2(TPM)')
 		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
 		plt.clf()
