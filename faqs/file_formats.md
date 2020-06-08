@@ -11,7 +11,8 @@ In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must ad
 
 Here is an example of what the first few lines of a GTF should look like:
 
-```##description: evidence-based annotation of the human genome (GRCh38), version 29 (Ensembl 94)
+```
+##description: evidence-based annotation of the human genome (GRCh38), version 29 (Ensembl 94)
 ##provider: GENCODE
 ##contact: gencode-help@ebi.ac.uk
 ##format: gtf
