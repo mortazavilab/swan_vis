@@ -5,8 +5,8 @@ Swan utilizes a representation of transcript structure and alternative splicing 
 ## Table of contents
 
 * [Basics](understanding_swan_vis.md#basics)
-* [Alternative splice site usage](understanding_swan_vis.md#alt_ss)
-* [Exon skipping and intron retention](understanding_swan_vis.md#es_ir)
+* [Alternative splice site usage](understanding_swan_vis.md#alternative-splice-site-usage)
+* [Exon skipping and intron retention](understanding_swan_vis.md#exon-skipping-and-intron-retention)
 
 ## Basics
 
