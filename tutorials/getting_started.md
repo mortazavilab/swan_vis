@@ -1,6 +1,6 @@
 # Getting started
 
-First, if you haven't already, make sure to [install Swan](../../#installation). After installing, you'll be able to run Swan from Python.
+First, if you haven't already, make sure to [install Swan](../#installation). After installing, you'll be able to run Swan from Python.
 
 Then, download the data and the reference transcriptome annotation from [here](https://hpc.oit.uci.edu/~freese/swan_files/). The bash commands to do so are given below.
 
