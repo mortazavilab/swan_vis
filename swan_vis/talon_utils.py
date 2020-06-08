@@ -3,6 +3,9 @@ import itertools
 import operator
 import sqlite3
 
+# All functions in this file written by Dana Wyman for TALON, and 
+# adapted to interface with TALON dbs
+
 # Converts input to string that can be used for IN database query
 def format_for_in(l):	
 	if type(l) is tuple:
