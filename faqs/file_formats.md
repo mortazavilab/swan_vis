@@ -10,6 +10,7 @@ In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must ad
 * gene_ids, gene_names, and transcript_ids must be the same across datasets for proper dataset merging 
 
 Here is an example of what the first few lines of a GTF should look like:
+
 ```##description: evidence-based annotation of the human genome (GRCh38), version 29 (Ensembl 94)
 ##provider: GENCODE
 ##contact: gencode-help@ebi.ac.uk
@@ -34,6 +35,7 @@ Swan can load abundance information for more meaningful analysis and visualizati
 * Have a column containing counts of each transcript for a given dataset column name
 
 Luckily, the names of the column names to obtain transcript ids and counts from are flexible. If you were to add abundance to your SwanGraph with the following line, for instance
+
 ```python
 sg = swan.SwanGraph('swan.p')
 sg.add_abundance('counts_file.tsv', \
