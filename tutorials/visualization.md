@@ -172,7 +172,7 @@ display(Image(filename='figures/adrm1_paper_novel_ENSG00000130706.12_report.png'
 
 
 ```python
-sg.gen_report('ADRM1', prefix='beep/adrm1',
+sg.gen_report('ADRM1', prefix='figures/adrm1',
               dataset_groups=[['HepG2_1','HepG2_2'],['HFFc6_1','HFFc6_2']],
               dataset_group_names=['HepG2', 'HFFc6'],
               heatmap=True,
