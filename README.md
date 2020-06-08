@@ -33,53 +33,7 @@ After installation with pip, to enable visualizations using dashed edges, run th
 * [Analysis tools](https://github.com/fairliereese/swan_vis/blob/master/tutorials/Analysis%20tools.ipynb): find differentially expressed genes and transcripts; find isoform-switching genes, discover novel intron retention and exon skipping events
 
 
-
-
-<!-- # <a name="vignette"></a>Vignette
-Here is an example of how to run Swan. 
-
-```python
-# import Swan library
-import swan_vis as swan
-
-# annotation and dataset transcriptome gtfs
-annot_gtf = 'example/annot_adrm1.gtf'
-hepg2_gtf = 'example/hepg2_adrm1.gtf'
-hffc6_gtf = 'example/hffc6_adrm1.gtf'
-
-# abundance table with counts for each transcript corresponding to datasets
-ab_file = 'example/abundance.tsv'
-
-# initialize an empty SwanGraph object
-sg = swan.SwanGraph()
-
-# add the annotation to the SwanGraph
-sg.add_annotation(annot_gtf)
-
-# add HepG2 and HFFc6 datasets to the SwanGraph along with the corresponding
-# abundance information
-sg.add_dataset('HepG2', hepg2_gtf,
-	counts_file=ab_file,
-	counts_cols='hepg2')
-sg.add_dataset('HFFc6', hffc6_gtf,
-	counts_file=ab_file,
-	counts_cols='hffc6')
-```
-
-# <a name="fileformats"></a>Input File Formats
-Currently, Swan works with several file types:
-* GTF, used to add transcript models
-	* Must have transcript entries. Future releases will only require exon entries.
-	* Last column must have gene_id, gene_name, and transcript_id entries. These entries must correspond across datasets to be properly compared.
-	* Swan includes a GTF validator that can be used to see if all the correct entires and fields are present in an input GTF it can be run from python as follows
-```python
-import swan_vis as swan
-swan.validate_gtf('example/annot.gtf')
-```
-* TALON database, used to add transcript models
-	* Currently, Swan has been tested with TALON databases from v5.0+.
-* Abundance matrix
-	* Each row in an abundance matrix corresponds to one transcript's expression. Each row must contain an entry corresponding to a transcript id from a dataset or annotation that has already been added to the SwanGraph.
-Please also see the files in the [example](https://github.com/fairliereese/swan_vis/tree/master/example) folder.
- -->
+## Wiki links
+* [Understanding Swan visualizations](https://github.com/fairliereese/swan_vis/wiki/Understanding-Swan-visualizations)
+* [Input file format specifications](https://github.com/fairliereese/swan_vis/wiki/File-format-specifications)
 
