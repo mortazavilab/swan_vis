@@ -28,10 +28,10 @@ After installation with pip, to enable visualizations using dashed edges, run th
 * [Visualization tools](tutorials/visualization.md): make gene and transcript-level plots to visualize the complexity of alternative splicing
 * [Analysis tools](tutorials/analysis_tools.md): find differentially expressed genes and transcripts; find isoform-switching genes, discover novel intron retention and exon skipping events
 
-## Wiki links
+## FAQs
 
-* [Understanding Swan visualizations](https://github.com/fairliereese/swan_vis/wiki/Understanding-Swan-visualizations)
-* [Input file format specifications](https://github.com/fairliereese/swan_vis/wiki/File-format-specifications)
+* [Understanding Swan visualizations](faqs/understanding_swan_vis.md)
+* [Input file format specifications](faqs/file_formats.md)
 
 Logo by the wonderful [Eamonn Casey](https://www.instagram.com/designsbyeamonn/)
 
