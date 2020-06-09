@@ -8,6 +8,27 @@ from swan_vis.utils import *
 # all functions that both subclasses will use are in here.
 class Graph:
 	def __init__(self):
+		""" 
+		A general graph class to represent a transcriptome.
+
+		Attributes
+		----------
+		datasets (list of str):
+			Names of datasets in the Graph
+		counts (list of str):
+			Names of columns holding counts in the Graph
+		tpm (list of str):
+			Names of columns holding tpm values in the Graph
+		loc_df (pandas DataFrame): 
+			DataFrame of all unique observed genomic 
+			coordinates in the transcriptome
+		edge_df (pandas DataFrame):
+			DataFrame of all unique observed exonic or intronic
+			combinations of splice sites in the transcriptome
+		t_df (pandas DataFrame): 
+			DataFrame of all unique transcripts found 
+			in the transcriptome
+		"""
 
 		self.datasets = []
 		self.counts = []

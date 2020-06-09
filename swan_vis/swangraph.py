@@ -20,6 +20,43 @@ from swan_vis.plottedgraph import PlottedGraph
 from swan_vis.report import Report
 
 class SwanGraph(Graph):
+	""" 
+	A graph class to represent a transcriptome and perform
+	plotting and analysis from it
+
+	Attributes
+	----------
+	datasets (list of str):
+		Names of datasets in the Graph
+	counts (list of str):
+		Names of columns holding counts in the Graph
+	tpm (list of str):
+		Names of columns holding tpm values in the Graph
+	loc_df (pandas DataFrame): 
+		DataFrame of all unique observed genomic 
+		coordinates in the transcriptome
+	edge_df (pandas DataFrame):
+		DataFrame of all unique observed exonic or intronic
+		combinations of splice sites in the transcriptome
+	t_df (pandas DataFrame): 
+		DataFrame of all unique transcripts found 
+		in the transcriptome
+	pg (swan PlottedGraph):
+		The PlottedGraph holds the information from the most 
+		recently made plot
+	deg_test (pandas DataFrame): 
+		A summary table of the results of a differential gene
+		expression test
+	deg_test_groups (list of str, len 2):
+		The configuration of groupings used to run the differential
+		gene expression test
+		det_test (pandas DataFrame): 
+		A summary table of the results of a differential transcript
+		expression test
+	det_test_groups (list of str, len 2):
+		The configuration of groupings used to run the differential
+		transcript expression test
+	"""
 
 	def __init__(self, file=None):
 
