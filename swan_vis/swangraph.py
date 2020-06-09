@@ -1800,7 +1800,9 @@ class SwanGraph(Graph):
 
 		# make sure de has been run if needed
 		if include_qvals:
-			self.check_de('transcript')
+			if not self.check_de('transcript'):
+				raise Exception('Differential transcript expression test needed '
+					'to use include_qvals. Run de_transcript_test.')
 			de_df = self.det_test.copy(deep=True)
 			t_df = reset_dupe_index(t_df, 'tid')
 			t_df['significant'] = False
