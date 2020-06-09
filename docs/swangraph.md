@@ -1,6 +1,7 @@
 Classes
 -------
 
+
 ```python
 SwanGraph(file=None)
 ``` 
@@ -44,6 +45,7 @@ Attributes:
 
 ### Methods
 
+
 ```python
 add_abundance(self, counts_file, count_cols, dataset_name, tid_col='annot_transcript_id')
 ```
@@ -60,6 +62,7 @@ Parameters:
                 Default='annot_transcript_id'
 ```
 
+
 ```python
 add_annotation(self, fname)
 ```
@@ -70,6 +73,7 @@ Adds an annotation from input fname to the SwanGraph.
 Parameters:
         fname (str): Path to annotation GTF
 ```
+
 
 ```python
 `add_dataset(self, col, fname, dataset_name=None, whitelist=None, annot=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False)
@@ -104,6 +108,7 @@ Parameters:
             Default=False
 ```
 
+
 ```python
 de_gene_test(self, dataset_groups)
 ```
@@ -126,6 +131,7 @@ Returns:
 
 ```
 
+
 ```python
 de_transcript_test(self, dataset_groups)
 ```
@@ -147,6 +153,7 @@ Returns:
                 as log fold change.
 ```
 
+
 ```python
 find_es_genes(self)
 ```
@@ -161,6 +168,7 @@ Returns:
                 at least one novel exon skipping event
 ```
 
+
 ```python
 find_ir_genes(self)
 ```
@@ -174,6 +182,7 @@ Returns:
         ir_genes (list of str): A list of gene ids from the SwanGraph with 
                 at least one novel intron retention event
 ```
+
 
 ```python
 find_isoform_switching_genes(self, q=0.05, n_genes=None)
@@ -198,6 +207,7 @@ Returns:
         switches (pandas DataFrame): Summary table of genes that are 
                 categorized as isoform switching
 ```
+
 
 ```python
 gen_report(self, gids, prefix, datasets='all', dataset_groups=False, dataset_group_names=False, novelty=False, heatmap=False, tpm=False, include_qvals=False, q=0.05, include_unexpressed=False, indicate_dataset=False, indicate_novel=False, browser=False, order='expression')
@@ -277,6 +287,7 @@ Parameters:
                                  'tid' if not
 ```
 
+
 ```python
 get_de_genes(self, q=0.05, n_genes=None)
 ```
@@ -300,6 +311,7 @@ Returns:
                 significance threshold
 ```
 
+
 ```python
 get_de_transcripts(self, q=0.05, n_transcripts=None)
 ```
@@ -321,6 +333,7 @@ Returns:
         test (pandas DataFrame): Summary table of transcripts that pass
                 the significance threshold  
 ```
+
 
 
 ```python
@@ -348,6 +361,7 @@ Parameters:
                 indicate_novel
 ```
 
+
 ```python
 plot_each_transcript_in_gene(self, gid, prefix, indicate_dataset=False, indicate_novel=False, browser=False)
 ```
@@ -372,6 +386,7 @@ Parameters:
                 style format. Incompatible with indicate_dataset and
                 indicate_novel
 ```
+
 
 ```python
 plot_graph(self, gid, indicate_dataset=False, indicate_novel=False, prefix=None)
@@ -398,6 +413,7 @@ Parameters:
                 Default: None, won't automatically save
 ```
 
+
 ```python
 plot_transcript_path(self, tid, indicate_dataset=False, indicate_novel=False, browser=False, prefix=None)
 ```
@@ -423,6 +439,7 @@ Parameters:
                 the plotted figure
                 Default: None, won't automatically save
 ```
+
 
 ```python
 save_graph(self, prefix)
