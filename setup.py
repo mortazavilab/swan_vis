@@ -20,8 +20,8 @@ setup(
           'diffxpy',
           'tensorflow',
           'tensorflow-probability',
-	  'pathlib'
-      ],
+	        'pathlib'
+    ],
   classifiers=[
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Science/Research ',    
