@@ -2,6 +2,7 @@
 
 Swan offers many different visualization options to understand your transcriptomes. This tutorial includes instructions on the following:
 
+Table of contents
 * [Gene summary graphs](visualization.md#gene-summary-graphs)
 * [Transcript path graphs](visualization.md#transcript-path-graphs)
 * [Saving a figure](visualization.md#saving-a-figure)
