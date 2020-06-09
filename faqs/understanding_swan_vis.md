@@ -1,3 +1,5 @@
+# Understanding Swan visualizations
+
 Swan utilizes a representation of transcript structure and alternative splicing that most people aren't familiar with. The goal of this guide is to help the user understand and interpret the graphical output format from Swan, in a step-by-step manner.
 
 ## Table of contents
@@ -55,3 +57,4 @@ Exon skipping in a SwanGraph consists of an intronic \(pink\) edge that complete
 In a SwanGraph, intron retention is the opposite of exon skipping. It is seen when an exonic \(green\) edge completely spans an intronic \(pink\) edge. This means that an intronic region from one transcript model has been included in a different transcript model.
 
 ![](../.gitbook/assets/intron_retention.png)
+

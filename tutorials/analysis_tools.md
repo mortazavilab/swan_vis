@@ -3,6 +3,7 @@
 Swan has several analysis options to use.
 
 Table of contents
+
 * [Differential gene expression](analysis_tools.md#differential-gene-expression-tests)
 * [Differential transcript expression](analysis_tools.md#differential-transcript-expression-tests)
 * [Isoform switching](analysis_tools.md#isoform-switching)

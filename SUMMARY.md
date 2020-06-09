@@ -14,4 +14,6 @@
 * [File format specifications](faqs/file_formats.md)
 
 ## Code documentation
-* [swan_vis.SwanGraph()](docs/swangraph.md)
+
+* [swan\_vis.SwanGraph\(\)](code-documentation/swangraph.md)
+

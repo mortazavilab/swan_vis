@@ -3,6 +3,7 @@
 Swan offers many different visualization options to understand your transcriptomes. This tutorial includes instructions on the following:
 
 Table of contents
+
 * [Gene summary graphs](visualization.md#gene-summary-graphs)
 * [Transcript path graphs](visualization.md#transcript-path-graphs)
 * [Saving a figure](visualization.md#saving-a-figure)
@@ -95,7 +96,7 @@ The second way only requires one line of code and requires that the user pass th
 sg.plot_graph('ADRM1', indicate_novel=True, prefix='figures/adrm1')
 ```
 
-As you can see, here the gene name ADRM1 is not used to save the figure because we have encountered conflicing gene names in our internal use of Swan. To avoid these clashes, Swan automatically fetches the gene id associated with the first instance of the gene name it finds and uses it to save the graph, in the interest of not accidentally overwriting a preexisting file. &lt;!--
+As you can see, here the gene name ADRM1 is not used to save the figure because we have encountered conflicing gene names in our internal use of Swan. To avoid these clashes, Swan automatically fetches the gene id associated with the first instance of the gene name it finds and uses it to save the graph, in the interest of not accidentally overwriting a preexisting file. 
 
 ![](../.gitbook/assets/output_27_0.png)
 

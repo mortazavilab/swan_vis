@@ -5,6 +5,7 @@ First, if you haven't already, make sure to [install Swan](../#installation). Af
 Then, download the data and the reference transcriptome annotation from [here](https://hpc.oit.uci.edu/~freese/swan_files/). The bash commands to do so are given below.
 
 Table of contents
+
 * [Example data download](getting_started.md#download-example-data)
 * [Starting and initializing your SwanGraph](getting_started.md#starting-up-swan-and-initializing-your-swangraph)
 * [Add transcript models \(GTF\) and abundance info](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time)
