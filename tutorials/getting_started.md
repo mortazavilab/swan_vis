@@ -4,6 +4,8 @@ First, if you haven't already, make sure to [install Swan](../#installation). Af
 
 Then, download the data and the reference transcriptome annotation from [here](https://hpc.oit.uci.edu/~freese/swan_files/). The bash commands to do so are given below.
 
+Swan offers two main ways for loading transcriptomes. You can either load models from [GTFs](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time), or from a [TALON db](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
+
 Table of contents
 
 * [Example data download](getting_started.md#download-example-data)
@@ -135,6 +137,9 @@ sg.add_abundance(ab_file, count_cols='hffc6_3', dataset_name='HFFc6_3')
 Swan is also directly compatible with TALON databases and can pull transcript models directly from them.
 
 ```python
+sg = swan.SwanGraph()
+sg.add_annotation(annot_gtf)
+
 hepg2_whitelist='data/hepg2_whitelist.csv'
 hffc6_whitelist='data/hffc6_whitelist.csv'
 ```
