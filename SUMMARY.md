@@ -5,8 +5,8 @@
 ## Tutorials
 
 * [Getting started](tutorials/getting_started.md)
-* [Visualization](tutorials/visualization.md)
 * [Analysis](tutorials/analysis_tools.md)
+* [Visualization](tutorials/visualization.md)
 
 ## FAQs
 
