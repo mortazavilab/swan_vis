@@ -33,5 +33,9 @@ After installation with pip, to enable visualizations using dashed edges, run th
 * [Understanding Swan visualizations](faqs/understanding_swan_vis.md)
 * [Input file format specifications](faqs/file_formats.md)
 
+## Comprehensive Documentation
+For full documentaion, please visit [our website](https://freese.gitbook.io/swan/)
+
+
 Logo by the wonderful [Eamonn Casey](https://www.instagram.com/designsbyeamonn/)
 
