@@ -45,7 +45,7 @@ Attributes:
 
 ### Methods
 
-
+#### add_abundance
 ```python
 add_abundance(self, counts_file, count_cols, dataset_name, tid_col='annot_transcript_id')
 ```
@@ -63,6 +63,7 @@ Parameters:
 ```
 
 
+#### add_annotation
 ```python
 add_annotation(self, fname)
 ```
@@ -75,8 +76,10 @@ Parameters:
 ```
 
 
+
+#### add_dataset
 ```python
-`add_dataset(self, col, fname, dataset_name=None, whitelist=None, annot=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False)
+add_dataset(self, col, fname, dataset_name=None, whitelist=None, annot=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False)
 ```
 
 Add transcripts from a dataset from either a GTF or a TALON database.
@@ -109,6 +112,8 @@ Parameters:
 ```
 
 
+
+#### de_gene_test
 ```python
 de_gene_test(self, dataset_groups)
 ```
@@ -132,6 +137,8 @@ Returns:
 ```
 
 
+
+#### de_transcript_test
 ```python
 de_transcript_test(self, dataset_groups)
 ```
@@ -154,6 +161,7 @@ Returns:
 ```
 
 
+#### find_es_genes
 ```python
 find_es_genes(self)
 ```
@@ -169,6 +177,7 @@ Returns:
 ```
 
 
+#### find_ir_genes
 ```python
 find_ir_genes(self)
 ```
@@ -184,6 +193,7 @@ Returns:
 ```
 
 
+#### find_isoform_switching_genes
 ```python
 find_isoform_switching_genes(self, q=0.05, n_genes=None)
 ```
@@ -209,6 +219,7 @@ Returns:
 ```
 
 
+#### gen_report
 ```python
 gen_report(self, gids, prefix, datasets='all', dataset_groups=False, dataset_group_names=False, novelty=False, heatmap=False, tpm=False, include_qvals=False, q=0.05, include_unexpressed=False, indicate_dataset=False, indicate_novel=False, browser=False, order='expression')
 ```
@@ -288,6 +299,7 @@ Parameters:
 ```
 
 
+#### get_de_genes
 ```python
 get_de_genes(self, q=0.05, n_genes=None)
 ```
@@ -312,6 +324,7 @@ Returns:
 ```
 
 
+#### get_de_transcripts
 ```python
 get_de_transcripts(self, q=0.05, n_transcripts=None)
 ```
@@ -336,6 +349,7 @@ Returns:
 
 
 
+#### plot_each_transcript
 ```python
 plot_each_transcript(self, tids, prefix, indicate_dataset=False, indicate_novel=False, browser=False)
 ```
@@ -362,6 +376,7 @@ Parameters:
 ```
 
 
+#### plot_each_transcript_in_gene
 ```python
 plot_each_transcript_in_gene(self, gid, prefix, indicate_dataset=False, indicate_novel=False, browser=False)
 ```
@@ -388,6 +403,7 @@ Parameters:
 ```
 
 
+#### plot_graph
 ```python
 plot_graph(self, gid, indicate_dataset=False, indicate_novel=False, prefix=None)
 ```
@@ -414,6 +430,7 @@ Parameters:
 ```
 
 
+#### plot_transcript_path
 ```python
 plot_transcript_path(self, tid, indicate_dataset=False, indicate_novel=False, browser=False, prefix=None)
 ```
@@ -441,6 +458,7 @@ Parameters:
 ```
 
 
+#### save_graph
 ```python
 save_graph(self, prefix)
 ```
