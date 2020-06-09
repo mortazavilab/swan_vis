@@ -19,7 +19,8 @@ setup(
           'seaborn',
           'diffxpy',
           'tensorflow',
-          'tensorflow-probability'
+          'tensorflow-probability',
+          'pathlib'
       ],
   classifiers=[
     'Development Status :: 3 - Alpha',
