@@ -13,3 +13,5 @@
 * [Understanding Swan visualizations](faqs/understanding_swan_vis.md)
 * [File format specifications](faqs/file_formats.md)
 
+## Code documentation
+* [Code documentation](docs/swangraph.html)
