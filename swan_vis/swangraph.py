@@ -24,38 +24,38 @@ class SwanGraph(Graph):
 	A graph class to represent a transcriptome and perform
 	plotting and analysis from it
 
-	Attributes
-	----------
-	datasets (list of str):
-		Names of datasets in the Graph
-	counts (list of str):
-		Names of columns holding counts in the Graph
-	tpm (list of str):
-		Names of columns holding tpm values in the Graph
-	loc_df (pandas DataFrame): 
-		DataFrame of all unique observed genomic 
-		coordinates in the transcriptome
-	edge_df (pandas DataFrame):
-		DataFrame of all unique observed exonic or intronic
-		combinations of splice sites in the transcriptome
-	t_df (pandas DataFrame): 
-		DataFrame of all unique transcripts found 
-		in the transcriptome
-	pg (swan PlottedGraph):
-		The PlottedGraph holds the information from the most 
-		recently made plot
-	deg_test (pandas DataFrame): 
-		A summary table of the results of a differential gene
-		expression test
-	deg_test_groups (list of str, len 2):
-		The configuration of groupings used to run the differential
-		gene expression test
-		det_test (pandas DataFrame): 
-		A summary table of the results of a differential transcript
-		expression test
-	det_test_groups (list of str, len 2):
-		The configuration of groupings used to run the differential
-		transcript expression test
+		Attributes:
+
+			datasets (list of str):
+				Names of datasets in the Graph
+			counts (list of str):
+				Names of columns holding counts in the Graph
+			tpm (list of str):
+				Names of columns holding tpm values in the Graph
+			loc_df (pandas DataFrame): 
+				DataFrame of all unique observed genomic 
+				coordinates in the transcriptome
+			edge_df (pandas DataFrame):
+				DataFrame of all unique observed exonic or intronic
+				combinations of splice sites in the transcriptome
+			t_df (pandas DataFrame): 
+				DataFrame of all unique transcripts found 
+				in the transcriptome
+			pg (swan PlottedGraph):
+				The PlottedGraph holds the information from the most 
+				recently made plot
+			deg_test (pandas DataFrame): 
+				A summary table of the results of a differential gene
+				expression test
+			deg_test_groups (list of str, len 2):
+				The configuration of groupings used to run the differential
+				gene expression test
+				det_test (pandas DataFrame): 
+				A summary table of the results of a differential transcript
+				expression test
+			det_test_groups (list of str, len 2):
+				The configuration of groupings used to run the differential
+				transcript expression test
 	"""
 
 	def __init__(self, file=None):
@@ -83,6 +83,7 @@ class SwanGraph(Graph):
 	def add_annotation(self, fname):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
+
 			Parameters:
 				fname (str): Path to annotation GTF
 		"""
@@ -106,7 +107,9 @@ class SwanGraph(Graph):
 					include_isms=False):
 		"""
 		Add transcripts from a dataset from either a GTF or a TALON database.
+
 			Parameters:
+
 				col (str): Name of column to add data to in the SwanGraph
 				fname (str): Path to GTF or TALON db
 
@@ -198,7 +201,9 @@ class SwanGraph(Graph):
 					  dataset_name, tid_col='annot_transcript_id'):
 		"""
 		Adds abundance information to an existing dataset in the SwanGraph.
+
 			Parameters:
+
 				counts_file (str): Path to tsv counts matrix
 				count_cols (str or list of str): Column names in counts_file to use
 				dataset_name (str): Name of SwanGraph dataset to associate abundance with
@@ -976,7 +981,9 @@ class SwanGraph(Graph):
 		"""
 		Finds all unique genes containing novel intron retention events. 
 		Requires that an annotation has been added to the SwanGraph.
+
 			Returns:
+
 				ir_genes (list of str): A list of gene ids from the SwanGraph with 
 					at least one novel intron retention event
 		"""
@@ -1040,7 +1047,9 @@ class SwanGraph(Graph):
 		"""
 		Finds all unique genes containing novel exon skipping events. 
 		Requires that an annotation has been added to the SwanGraph.
+
 			Returns:
+
 				es_genes (list of str): A list of gene ids from the SwanGraph with 
 					at least one novel exon skipping event
 		"""
@@ -1103,12 +1112,16 @@ class SwanGraph(Graph):
 	def de_gene_test(self, dataset_groups):
 		""" 
 		Runs a differential expression test on the gene level.
+
 			Parameters:
+
 				dataset_groups (list of list of str, len 2): Grouping of datasets 
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
+
 			Returns: 
+
 				test (pandas DataFrame): A summary table of the differential
 					expression test, including p and q-values, as well 
 					as log fold change.
@@ -1146,12 +1159,16 @@ class SwanGraph(Graph):
 		Subsets the differential gene expression test summary table based
 		on a q-value cutoff. Requires that de_gene_test has already been
 		run.
+
 			Parameters:
+
 				q (float): q-value threshold to declare a gene as significant
 					Default: 0.05
 				n_genes (int): Number of results to return. 
 					Default: None (returns all found significant)
+
 			Returns:
+
 				genes (list of str): List of gene names that pass the 
 					significance threshold
 				test (pandas DataFrame): Summary table of genes that pass the
@@ -1179,12 +1196,16 @@ class SwanGraph(Graph):
 	def de_transcript_test(self, dataset_groups):
 		""" 
 		Runs a differential expression test on the transcript level.
+
 			Parameters:
+
 				dataset_groups (list of list of str, len 2): Grouping of datasets 
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
+
 			Returns: 
+
 				test (pandas DataFrame): A summary table of the differential
 					expression test, including p and q-values, as well 
 					as log fold change.
@@ -1220,12 +1241,16 @@ class SwanGraph(Graph):
 		Subsets the differential transcript expression test summary table based
 		on a q-value cutoff. Requires that de_transcript_test has already been
 		run.
+
 			Parameters:
+
 				q (float): q-value threshold to declare a transcript as significant
 					Default: 0.05
 				n_transcripts (int): Number of results to return. 
 					Default: None (returns all found significant)
+
 			Returns:
+
 				tids (list of str): List of transcript ids that pass the 
 					significance threshold
 				test (pandas DataFrame): Summary table of transcripts that pass
@@ -1254,12 +1279,21 @@ class SwanGraph(Graph):
 		""" Finds isoform switching genes; genes that are not differentially
 			expressed but contain at least one transcript that is. Requires
 			that de_gene_test and de_transcript_test have been run.
+
 			Parameters:
+
 				q (float): q-value threshold to declare a gene/transcript 
 					as significant
 					Default: 0.05
 				n_genes (int): Number of results to return. 
 					Default: None (returns all found significant)
+			
+			Returns:
+
+				genes (list of str): List of gene names that are categorized as 
+					isoform switching
+				switches (pandas DataFrame): Summary table of genes that are 
+					categorized as isoform switching
 		"""
 
 		# make sure both deg and det tests have been run
@@ -1378,7 +1412,9 @@ class SwanGraph(Graph):
 	def save_graph(self, prefix):
 		"""
 		Saves the current SwanGraph in pickle format with the .p extension
+
 			Parameters: 
+
 				prefix (str): Path and filename prefix. Resulting file will 
 					be saved as prefix.p
 		"""
@@ -1423,7 +1459,9 @@ class SwanGraph(Graph):
 		"""
 		Plots a gene summary SwanGraph for an input gene.
 		Does not automatically save the figure by default!
+
 			Parameters:
+
 				gid (str): Gene ID to plot for (can also be gene name but 
 					we've seen non-unique gene names so use at your own risk!)
 				indicate_dataset (str): Dataset name from SwanGraph to
@@ -1472,7 +1510,9 @@ class SwanGraph(Graph):
 		"""
 		Plots a path of a single transcript isoform through a gene summary 
 		SwanGraph.
+
 			Parameters:
+
 				tid (str): Transcript id of transcript to plot
 				indicate_dataset (str): Dataset name from SwanGraph to
 					highlight with outlined nodes and dashed edges
@@ -1518,7 +1558,9 @@ class SwanGraph(Graph):
 						browser=False):
 		"""
 		Plot each input transcript and automatically save figures
+
 			Parameters:
+
 				tids (list of str): List of transcript ids to plot
 				prefix (str): Path and file prefix to automatically save
 					the plotted figures
@@ -1562,7 +1604,9 @@ class SwanGraph(Graph):
 							 browser=False):
 		"""
 		Plot each transcript in a given gene and automatically save figures
+
 			Parameters:
+
 				gid (str): Gene id or gene name to plot transcripts from
 				prefix (str): Path and file prefix to automatically save
 					the plotted figures
@@ -1627,7 +1671,9 @@ class SwanGraph(Graph):
 		"""
 		Generates a PDF report for a given gene or list of genes according
 		to the user's input.
+
 			Parameters: 
+
 				gids (str or list of str): Gene ids or names to generate
 					reports for
 				prefix (str): Path and/or filename prefix to save PDF and
@@ -1659,8 +1705,8 @@ class SwanGraph(Graph):
 					been added to the SwanGraph
 					Default:False
 
-				include_qvals (bool): Display q-val of each transcript's 
-					differential expression and bold entries found to be
+				include_qvals (bool): Display q-val of differential expression 
+					for each transcript and bold entries found to be
 					differentially expressed. Requires that de_transcript_test
 					has been run, and that abundance information has been
 					added to the SwanGraph
@@ -1817,7 +1863,7 @@ class SwanGraph(Graph):
 		# parallel
 		# launch report jobs on different threads
 		with Pool() as pool:
-			pool.starmap(create_gene_report, zip(gids, repeat(self), repeat(t_df),
+			pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
 				repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
 				repeat(indicate_novel), repeat(browser), repeat(report_type),
 				repeat(novelty), repeat(heatmap), repeat(include_qvals)))
@@ -1934,265 +1980,13 @@ class SwanGraph(Graph):
 			if indicate_novel or indicate_dataset:
 				raise Exception('Cannot indicate_novel or indicate_dataset '
 								'with browser option.')
- 
-#################### reeeeeeeeeee
-
-	def create_dfs_db(self, database, annot, whitelist, dataset):
-
-		# # are we pulling a specific dataset's observed transcripts
-		# # from the database?
-		# if dataset == None:
-		# 	print('No dataset name given.'
-		# 		' Will fetch all observed transcripts'
-		# 		' from {}'.format(db))
-		# else:
-		# 	print('Getting transcripts for {} from {}'.format(db, dataset))
-
-		# make sure file exists
-		check_file_loc(database, 'TALON DB')
-
-		annot = check_annot_validity(annot, database)
-
-		whitelist = handle_filtering(database, 
-											annot, 
-											True, 
-											whitelist, 
-											dataset)
-		# Create separate gene and transcript whitelists
-		gene_whitelist = []
-		transcript_whitelist = []
-		for key,group in itertools.groupby(whitelist,operator.itemgetter(0)):
-			gene_whitelist.append(key)
-			for id_tuple in list(group):
-				transcript_whitelist.append(id_tuple[1])
-
-		# Get gene, transcript, and exon annotations
-		gene_annotations = get_annotations(database, "gene", annot, 
-										   whitelist = gene_whitelist)  
-		transcript_annotations = get_annotations(database, "transcript", annot,
-												 whitelist = transcript_whitelist) 
-		exon_annotations = get_annotations(database, "exon", annot)
-
-		# print(dict(list(gene_annotations.items())[:3]))
-		# print(dict(list(transcript_annotations.items())[:3]))
-		# print(dict(list(exon_annotations.items())[:3]))
-		# exit()
-		# Get transcript data from the database
-		gene_2_transcripts = get_gene_2_transcripts(database, 
-							 transcript_whitelist)
-
-		# Get exon location info from database
-		exon_ID_2_location = fetch_exon_locations(database)
-
-		# print(dict(list(gene_2_transcripts.items())[:3]))
-		# print(dict(list(exon_ID_2_location.items())[:3]))
-		# exit()
-
-	 
-		# -------------------------------------------------------------
-
-
-		transcripts = {}
-		exons = {}
-
-		# Create a GTF entry for every gene
-		ind = 0
-		for gene_ID, transcript_tuples in gene_2_transcripts.items():
-
-			# if ind > 3: 
-			#	 exit()
-
-			curr_annot = gene_annotations[gene_ID]
-			gene_annotation_dict = {}
-			for annot in curr_annot:
-				attribute = annot[3]
-				value = annot[4]
-				gene_annotation_dict[attribute] = value
-
-			# #####
-			# print('genes')
-			# print(gene_annotation_dict['gene_id'])
-			# print(gene_annotation_dict['gene_name'])
-		
-			# Create a GTF entry for every transcript of this gene
-			for transcript_entry in transcript_tuples:
-				transcript_ID = transcript_entry["transcript_ID"]
-				curr_transcript_annot = transcript_annotations[transcript_ID]
-
-				transcript_annotation_dict = {}
-				for annot in curr_transcript_annot:
-					attribute = annot[3]
-					value = annot[4]
-					transcript_annotation_dict[attribute] = value
-
-				# ###
-				# print('transcripts')
-				# print(transcript_entry['strand'])
-				# print(transcript_annotation_dict['transcript_id']) 
-				# print(get_transcript_novelties(transcript_annotation_dict))		  
-				tid = transcript_annotation_dict['transcript_id']
-				gid = gene_annotation_dict['gene_id']  
-				gname = gene_annotation_dict['gene_name']
-				strand = transcript_entry['strand'] 
-				novelty = get_transcript_novelties(transcript_annotation_dict)  
-
-				# add transcript to dictionary 
-				entry = {'gid': gid,
-						 'gname': gname,
-						 'tid': tid,
-						 'strand': strand,
-						 'novelty': novelty,
-						 'exons': []}
-				transcript = {tid: entry}
-				transcripts.update(transcript)
-						 
-				if transcript_entry["n_exons"] != 1:
-					transcript_edges = [str(transcript_entry["start_exon"])] + \
-									   str(transcript_entry["jn_path"]).split(",")+ \
-									   [str(transcript_entry["end_exon"])]
-				else:
-					transcript_edges = [transcript_entry["start_exon"]]
-
-				# Create a GTF entry for every exon of this transcript (skip introns)
-				for exon_ID in transcript_edges[::2]:
-					exon_ID = int(exon_ID)
-					curr_exon_annot = exon_annotations[exon_ID]
-
-					exon_annotation_dict = {}
-					for annot in curr_exon_annot:
-						attribute = annot[3]
-						value = annot[4]
-						exon_annotation_dict[attribute] = value
-
-					###
-					# print('exons?')
-					# print(exon_ID_2_location[exon_ID])  
-					e_tuple = exon_ID_2_location[exon_ID]
-					chrom = e_tuple[0]
-					start = e_tuple[1]
-					stop = e_tuple[2]
-					strand = e_tuple[3]
-					start, stop = find_edge_start_stop(start, stop, strand)
-					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
-					# tid = exon_annotation_dict['transcript_id']
-					# print(tid)
-
-					# add novel exon to dictionary 
-					if eid not in exons:
-						edge = {eid: {'eid': eid,
-									  'chrom': chrom,
-									  'v1': start,
-									  'v2': stop,
-									  'strand': strand}}
-						exons.update(edge) 
-
-					# add this exon to the transcript's list of exons
-					if tid in transcripts:
-						transcripts[tid]['exons'].append(eid)
-
-		# once we have all transcripts, make loc_df
-		locs = {}
-		vertex_id = 0
-		for edge_id, edge in exons.items():
-			chrom = edge['chrom']
-			strand = edge['strand']
-
-			v1 = edge['v1']
-			v2 = edge['v2']
-
-			# exon start
-			key = (chrom, v1, strand)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
-			# exon end
-			key = (chrom, v2, strand)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
-
-		# add locs-indexed path to transcripts, and populate edges
-		edges = {}
-		# print(dict(list(transcripts.items())[:3]))
-		for _,t in transcripts.items():
-			t['path'] = []
-			strand = t['strand']
-			t_exons = t['exons']
-
-			for i, exon_id in enumerate(t_exons):
-				# print('shouldnt u be in here')
-				# exit()
-
-				# pull some information from exon dict
-				exon = exons[exon_id]
-				chrom = exon['chrom']
-				v1 = exon['v1']
-				v2 = exon['v2']
-				strand = exon['strand']
-
-				# add current exon and subsequent intron 
-				# (if not the last exon) for each exon to edges
-				key = (chrom, v1, v2, strand)
-				v1_key = (chrom, v1, strand)
-				v2_key = (chrom, v2, strand)
-				edge_id = (locs[v1_key], locs[v2_key])
-				if key not in edges:
-					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
-
-				# add exon locs to path
-				t['path'] += list(edge_id)
-
-				# if this isn't the last exon, we also needa add an intron
-				# this consists of v2 of the prev exon and v1 of the next exon
-				if i < len(t_exons)-1:
-					next_exon = exons[t_exons[i+1]]
-					v1 = next_exon['v1']
-					key = (chrom, v2, v1, strand)
-					v1_key = (chrom, v1, strand)
-					edge_id = (locs[v2_key], locs[v1_key])
-					if key not in edges:
-						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
-
-		# turn transcripts, edges, and locs into dataframes
-		locs = [{'chrom': key[0],
-				 'coord': key[1],
-				 'strand': key[2],
-				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
-		loc_df = pd.DataFrame(locs)
-
-		edges = [{'v1': item['edge_id'][0],
-				  'v2': item['edge_id'][1], 
-				  'strand': key[3],
-				  'edge_id': item['edge_id'],
-				  'edge_type': item['edge_type']} for key, item in edges.items()]
-		edge_df = pd.DataFrame(edges)
-
-		transcripts = [{'tid': key,
-					'gid': item['gid'],
-					'gname': item['gname'],
-					'path': item['path'],
-					'novelty': item['novelty']} for key, item in transcripts.items()]
-
-		t_df = pd.DataFrame(transcripts)	
-
-		# final df formatting
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
-
-		self.loc_df = loc_df
-		self.edge_df = edge_df
-		self.t_df = t_df
 
 ##########################################################################
 ################################## Extras ################################
 ##########################################################################
 
 # generate a report for one gene; used for parallelization
-def create_gene_report(gid, sg, t_df, 
+def _create_gene_report(gid, sg, t_df, 
 	datasets, data_type,
 	prefix,
 	indicate_dataset, indicate_novel,
