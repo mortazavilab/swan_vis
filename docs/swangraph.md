@@ -1,7 +1,7 @@
-Classes
--------
+## Classes
 
 
+### swan.Swangraph()
 ```python
 SwanGraph(file=None)
 ``` 
