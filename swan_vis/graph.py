@@ -219,6 +219,13 @@ class Graph:
 	# convert loc_df, edge_df, and t_df to dictionaries
 	def dfs_to_dicts(self):
 
+
+		# weird bug workaround - when an edge's coordinates and 
+		# strandedness are both used as an exon AND an intron...
+		dupe_eids = self.edge_df.loc[self.edge_df.edge_id.duplicated(), 'edge_id'].tolist()
+		for eid in dupe_eids:
+			self.edge_df = self.edge_df.loc[~((self.edge_df.edge_id==eid)&(self.edge_df.edge_type=='exon'))]
+
 		self.loc_df = self.loc_df.to_dict('index')
 		self.edge_df = self.edge_df.to_dict('index')
 		self.t_df = self.t_df.to_dict('index')
