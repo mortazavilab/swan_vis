@@ -16,7 +16,7 @@ In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must ad
 * gene\_id, gene\_name, and transcript\_id attributes \(for transcripts and exons\) in column 9
 * any non-data header lines must begin with \#
 * gene\_ids, gene\_names, and transcript\_ids must be the same across datasets for proper dataset merging 
-* exons must be appear in the order under the transcript entry to which they belong
+* exons must be in order under the transcript entry to which they belong
 
 Here is an example of what the first few lines of a GTF should look like:
 
