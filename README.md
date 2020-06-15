@@ -18,9 +18,9 @@ Swan can be installed directly from PyPi. To install Swan's most recent release,
 
 `pip install swan_vis`
 
-Alternatively, the most recent commits can be installed by git cloning [this repo](https://github.com/fairliereese/swan_vis), moving to the swan\_vis directory, and running
+<!-- Alternatively, the most recent commits can be installed by git cloning [this repo](https://github.com/fairliereese/swan_vis), moving to the swan\_vis directory, and running
 
-`pip install .`
+`pip install .` -->
 
 After installation with pip, to enable visualizations using dashed edges, run the following command from anywhere in the terminal
 
