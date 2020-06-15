@@ -11,8 +11,8 @@ import sqlite3
 import pickle
 import anndata
 import diffxpy.api as de
-from multiprocessing import Pool
-from itertools import repeat
+import multiprocessing
+Poofrom itertools import repeat
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -1667,7 +1667,8 @@ class SwanGraph(Graph):
 				   indicate_dataset=False, 
 				   indicate_novel=False,
 				   browser=False,
-				   order='expression'):
+				   order='expression',
+				   threads=1):
 		"""
 		Generates a PDF report for a given gene or list of genes according
 		to the user's input.
@@ -1741,6 +1742,10 @@ class SwanGraph(Graph):
 						'tes': genomic coordinate of transcription end site
 					Default: 'expression' if abundance information is present,
 							 'tid' if not
+
+				threads (int): Number of threads to use. Multithreading is 
+					recommended when making a large number of gene reports.
+					Default: 1. 
 		"""
 
 		# check to see if input genes are in the graph
@@ -1862,95 +1867,25 @@ class SwanGraph(Graph):
 		else:
 			report_type = 'browser'
 
-		# parallel
-		# launch report jobs on different threads
-		with Pool() as pool:
-			pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
-				repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
-				repeat(indicate_novel), repeat(browser), repeat(report_type),
-				repeat(novelty), repeat(heatmap), repeat(include_qvals)))
+		# make sure number of threads is compatible with the system
+		max_cores = multiprocessing.cpu_count()
+		if threads > max_cores:
+			threads = max_cores
 
-		# # not parallel
-		# # loop through each gid and create the report
-		# for gid in gids:
-
-		# 	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
-
-		# 	# plot each transcript with these settings
-		# 	print('Plotting transcripts for {}'.format(gid))
-		# 	self.plot_each_transcript(report_tids, prefix,
-		# 							  indicate_dataset,
-		# 							  indicate_novel,
-		# 							  browser=browser)
-
-		# 	# if we're plotting tracks, we need a scale as well
-		# 	if not browser:
-		# 		report_type = 'swan'
-		# 	else:
-		# 		self.pg.plot_browser_scale()
-		# 		self.save_fig(prefix+'_browser_scale.png')
-		# 		report_type = 'browser'
-
-		# 	# subset on gene
-		# 	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
-
-		# 	if heatmap:
-		# 		# take log2(tpm) and gene-normalize 
-		# 		count_cols = ['{}_counts'.format(d) for d in datasets]
-		# 		log_cols = ['{}_log_tpm'.format(d) for d in datasets]
-		# 		norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-		# 		gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
-		# 		max_val = max(gid_t_df[log_cols].max().tolist())
-		# 		min_val = min(gid_t_df[log_cols].min().tolist())
-		# 		gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
-
-		# 		# create a colorbar 
-		# 		plt.rcParams.update({'font.size': 20})
-		# 		fig, ax = plt.subplots(figsize=(14, 1.5))
-		# 		fig.subplots_adjust(bottom=0.5)
-		# 		fig.patch.set_visible(False)
-		# 		ax.patch.set_visible(False)
-
-		# 		cmap = plt.get_cmap('Spectral_r')
-		# 		norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
-
-		# 		cb = mpl.colorbar.ColorbarBase(ax,
-		# 										cmap=cmap,
-		# 										norm=norm,
-		# 										orientation='horizontal')
-		# 		cb.set_label('log2(TPM)')
-		# 		plt.savefig(prefix+'_colorbar_scale.png', format='png', dpi=200)
-		# 		plt.clf()
-		# 		plt.close()
-
-		# 	# create report
-		# 	print('Generating report for {}'.format(gid))
-		# 	pdf_name = create_fname(prefix, 
-		# 				 indicate_dataset,
-		# 				 indicate_novel,
-		# 				 browser,
-		# 				 ftype='report',
-		# 				 gid=gid)
-		# 	report = Report(prefix,
-		# 					report_type,
-		# 					datasets,
-		# 					data_type,
-		# 					novelty=novelty,
-		# 					heatmap=heatmap)
-		# 	report.add_page()
-
-		# 	# loop through each transcript and add it to the report
-		# 	for tid in report_tids:
-		# 		entry = gid_t_df.loc[tid]
-		# 		## TODO would be faster if I didn't have to compute these names twice....
-		# 		## ie once in plot_each_transcript and once here
-		# 		fname = create_fname(prefix,
-		# 							 indicate_dataset,
-		# 							 indicate_novel, 
-		# 							 browser,
-		# 							 tid=entry.tid)
-		# 		report.add_transcript(entry, fname)
-		# 	report.write_pdf(pdf_name)
+		# if there are fewer than 10 genes, the overhead for multiprocessing 
+		# takes longer 
+		if len(gids) < 10:
+			for gid in gids:
+				_create_gene_report(gid, self, t_df, datasets, data_type,
+					prefix, indicate_dataset, indicate_novel, browser,
+					report_type, novelty, heatmap, include_qvals) 
+		else:
+			# launch report jobs on different threads
+			with multiprocessing.Pool(threads) as pool:
+				pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
+					repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
+					repeat(indicate_novel), repeat(browser), repeat(report_type),
+					repeat(novelty), repeat(heatmap), repeat(include_qvals)))
 
 	##########################################################################
 	############################# Error handling #############################
