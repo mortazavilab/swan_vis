@@ -12,7 +12,7 @@ import pickle
 import anndata
 import diffxpy.api as de
 import multiprocessing
-Poofrom itertools import repeat
+from itertools import repeat
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -986,6 +986,8 @@ class SwanGraph(Graph):
 
 				ir_genes (list of str): A list of gene ids from the SwanGraph with 
 					at least one novel intron retention event
+				ir_transcripts (list of str): A list of transcript ids from the 
+					SwanGraph with at least one novel intron retention event
 		"""
 
 		# get only novel edges
@@ -1004,6 +1006,7 @@ class SwanGraph(Graph):
 		# for each edge, see if the subgraph between the edge vertices 
 		# contains an exonic edge  
 		ir_genes = []
+		ir_transcripts = []
 		for i, eid in enumerate(edge_ids):
 			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
 			sub_G = self.G.subgraph(sub_nodes)
@@ -1035,13 +1038,17 @@ class SwanGraph(Graph):
 						for cand_eid in sub_edges.index:
 							temp_df = cand_g_df[[cand_eid in vertex_to_edge_path(x) \
 									for x in cand_g_df.path.values.tolist()]]
+							tids = temp_df.tid.tolist()
 							if len(temp_df.index) > 0:
 								ir_genes.append(gid)
+								ir_transcripts.extend(tids)
 
 		print('Found {} novel ir events from {} genes.'.format(len(ir_genes), 
 			len(list(set(ir_genes)))))
 		ir_genes = list(set(ir_genes))
-		return ir_genes
+		ir_transcripts = list(set(ir_transcripts))
+
+		return ir_genes, ir_transcripts
 
 	def find_es_genes(self):
 		"""
@@ -1052,6 +1059,8 @@ class SwanGraph(Graph):
 
 				es_genes (list of str): A list of gene ids from the SwanGraph with 
 					at least one novel exon skipping event
+				es_transcripts (list of str): A list of transcript ids from the 
+					SwanGraph with at least one novel exon skipping event
 		"""
 
 		# get only novel edges
@@ -1070,6 +1079,7 @@ class SwanGraph(Graph):
 		# for each edge, see if the subgraph between the edge vertices 
 		# contains an exonic edge
 		es_genes = []
+		es_transcripts = []
 		for eid in edge_ids:
 			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
 			sub_G = self.G.subgraph(sub_nodes)
@@ -1101,13 +1111,17 @@ class SwanGraph(Graph):
 						for skip_eid in sub_edges.index:
 							temp_df = skip_g_df[[skip_eid in vertex_to_edge_path(x) \
 									for x in skip_g_df.path.values.tolist()]]
+							tids = temp_df.tid.tolist()
 							if len(temp_df.index) > 0:
 								es_genes.append(gid)
+								es_transcripts.extend(tids)
 
 		print('Found {} novel es events from {} genes.'.format(len(es_genes),
 			len(list(set(es_genes)))))
 		es_genes = list(set(es_genes))
-		return es_genes
+		es_transcripts = list(set(es_transcripts))
+
+		return es_genes, es_transcripts
 
 	def de_gene_test(self, dataset_groups):
 		""" 

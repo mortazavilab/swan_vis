@@ -170,6 +170,8 @@ Returns:
 
         es_genes (list of str): A list of gene ids from the SwanGraph with 
                 at least one novel exon skipping event
+        es_transcripts (list of str): A list of transcript ids from the 
+                SwanGraph with at least one novel exon skipping event
 ```
 
 ### find\_ir\_genes
@@ -185,6 +187,8 @@ Returns:
 
         ir_genes (list of str): A list of gene ids from the SwanGraph with 
                 at least one novel intron retention event
+        ir_transcripts (list of str): A list of transcript ids from the 
+                SwanGraph with at least one novel intron retention event
 ```
 
 ### find\_isoform\_switching\_genes
