@@ -215,7 +215,7 @@ Returns:
 ### gen\_report
 
 ```python
-gen_report(self, gids, prefix, datasets='all', dataset_groups=False, dataset_group_names=False, novelty=False, heatmap=False, tpm=False, include_qvals=False, q=0.05, include_unexpressed=False, indicate_dataset=False, indicate_novel=False, browser=False, order='expression')
+gen_report(self, gids, prefix, datasets='all', dataset_groups=False, dataset_group_names=False, novelty=False, heatmap=False, tpm=False, include_qvals=False, q=0.05, include_unexpressed=False, indicate_dataset=False, indicate_novel=False, browser=False, order='expression', threads=1)
 ```
 
 Generates a PDF report for a given gene or list of genes according to the user's input.
@@ -290,6 +290,10 @@ Parameters:
                         'tes': genomic coordinate of transcription end site
                 Default: 'expression' if abundance information is present,
                                  'tid' if not
+                                 
+        threads (int): Number of threads to use. Multithreading is 
+                recommended when making a large number of gene reports.
+                Default: 1. 
 ```
 
 ### get\_de\_genes
