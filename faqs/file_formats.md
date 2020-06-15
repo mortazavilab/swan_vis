@@ -16,6 +16,7 @@ In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must ad
 * gene\_id, gene\_name, and transcript\_id attributes \(for transcripts and exons\) in column 9
 * any non-data header lines must begin with \#
 * gene\_ids, gene\_names, and transcript\_ids must be the same across datasets for proper dataset merging 
+* exons must be in order under the transcript entry to which they belong
 
 Here is an example of what the first few lines of a GTF should look like:
 
@@ -30,7 +31,7 @@ chr1    HAVANA    transcript    11869    14409    .    +    .    gene_id "ENSG00
 chr1    HAVANA    exon    11869    12227    .    +    .    gene_id "ENSG00000223972.5"; transcript_id "ENST00000456328.2"; gene_type "transcribed_unprocessed_pseudogene"; gene_name "DDX11L1"; transcript_type "processed_transcript"; transcript_name "DDX11L1-202"; exon_number 1; exon_id "ENSE00002234944.1"; level 2; transcript_support_level "1"; tag "basic"; havana_gene "OTTHUMG00000000961.2"; havana_transcript "OTTHUMT00000362751.1";
 ```
 
-If you are having trouble with your GTF, Swan includes a quick GTF validator which can tell you if your file seems to have an unconventional header or lacks entries needed to run Swan. It cannot tell you if your gene/transcript names/ids match across datasets, however. The validator can be run as follows:
+If you are having trouble with your GTF, Swan includes a quick GTF validator which can tell you if your file seems to have an unconventional header or lacks entries needed to run Swan. It cannot tell you if your gene/transcript names/ids match across datasets, or if your exon entries are in the correct order after the corresponding transcript entry. The validator can be run as follows:
 
 ```python
 import swan_vis as swan
