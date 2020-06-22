@@ -39,6 +39,29 @@ class TestAddDatasets(object):
 		test = sg.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
 		check_pairs(control, test)
 
+	def test_weird_gtf(self):
+		sg = swan.SwanGraph()
+		sg.add_dataset('test', 'input_files/weird_gtf_entries.gtf')
+		print(sg.t_df)
+
+		# check each transcript 
+		tid = 'ENST00000002165.11_3'
+		path = sg.t_df.loc[tid, 'path']
+		print(path)
+		coords = sg.loc_df.loc[path, 'coord'].tolist()
+		ctrl_coords = [143832857, 143832548, 143828561,
+					   143828374, 143825389, 143825050,
+					   143823702, 143823492, 143823259,
+					   143823069, 143818634, 143818526, 
+					   143816984, 143815949]
+		check_pairs(ctrl_coords, coords)
+		tid = 'ENST00000514436.1'
+		path = sg.t_df.loc[tid, 'path']
+		print(path)
+		coords = sg.loc_df.loc[path, 'coord'].tolist()
+		ctrl_coords = [326096, 326569, 327348, 328112]
+		check_pairs(ctrl_coords, coords)
+
 def check_pairs(control, test):
 	print('control')
 	print(control)

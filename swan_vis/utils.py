@@ -204,6 +204,18 @@ def find_edge_start_stop(v1, v2, strand):
 		stop = max([v1, v2])
 	return start, stop
 
+# reorder the locations in a transcript's path based on
+# chromosomal coordinate
+# TODO
+def reorder_locs(path, strand, locs):
+	coords = [locs[i] for i in path]
+	path_coords = sorted(zip(path, coords), key=lambda x: x[1])
+	path = [i[0] for i in path_coords]
+	coords = [i[1][1] for i in path_coords]
+	if strand == '-':
+		path.reverse()
+	return path 
+
 # get novelty types associated with each transcript
 def get_transcript_novelties(fields):
 	if fields['transcript_status'] == 'KNOWN':

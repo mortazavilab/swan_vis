@@ -161,7 +161,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				self.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				self.create_dfs_db(fname, annot, whitelist, 'hepg2_1')
+				self.create_dfs_db(fname, annot, whitelist, dataset_name)
 
 			# add column to each df to indicate where data came from
 			self.loc_df[col] = True
@@ -175,7 +175,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				temp.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				temp.create_dfs_db(fname, annot, whitelist, 'hepg2_1')
+				temp.create_dfs_db(fname, annot, whitelist, dataset_name)
 			self.merge_dfs(temp, col)
 
 		# remove isms if we have access to that information
@@ -541,6 +541,9 @@ class SwanGraph(Graph):
 				locs[key] = vertex_id
 				vertex_id += 1
 
+		# create inverse loc dict to sort paths by
+		locs_inv = {v: k for k, v in locs.items()}
+
 		# add locs-indexed path to transcripts, and populate edges
 		edges = {}
 		for _,t in transcripts.items():
@@ -579,6 +582,10 @@ class SwanGraph(Graph):
 					edge_id = (locs[v2_key], locs[v1_key])
 					if key not in edges:
 						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
+
+			# sort the path based on chromosomal coordinates and strand
+			# in case there's some weird ordering in the gtf 
+			t['path'] = reorder_locs(t['path'], strand, locs_inv)
 
 		# turn transcripts, edges, and locs into dataframes
 		locs = [{'chrom': key[0],
