@@ -39,12 +39,11 @@ class TestAddDatasets(object):
 		test = sg.t_df.apply(lambda x: (x.tid, x.novelty), axis=1)
 		check_pairs(control, test)
 
-	def test_weird_gtf(self):
-		sg = swan.SwanGraph()
-		sg.add_dataset('test', 'input_files/weird_gtf_entries.gtf')
+	def test_minus_strand_unordered_gtf(self):
+		sg = process_gtf()
 		print(sg.t_df)
 
-		# check each transcript 
+		# check transcript 
 		tid = 'ENST00000002165.11_3'
 		path = sg.t_df.loc[tid, 'path']
 		print(path)
@@ -54,13 +53,68 @@ class TestAddDatasets(object):
 					   143823702, 143823492, 143823259,
 					   143823069, 143818634, 143818526, 
 					   143816984, 143815949]
-		check_pairs(ctrl_coords, coords)
+		assert ctrl_coords == coords
+		edge_ids = [(path[i],path[i+1]) for i in range(len(path)-1)]
+		for eid in edge_ids:
+			print(eid)
+			assert eid in sg.edge_df.index.tolist()
+
+	def test_plus_strand_unordered_gtf(self):
+		sg = process_gtf()
+		print(sg.t_df)
+
+		# check transcript
 		tid = 'ENST00000514436.1'
 		path = sg.t_df.loc[tid, 'path']
 		print(path)
 		coords = sg.loc_df.loc[path, 'coord'].tolist()
 		ctrl_coords = [326096, 326569, 327348, 328112]
-		check_pairs(ctrl_coords, coords)
+		assert ctrl_coords == coords
+		edge_ids = [(path[i],path[i+1]) for i in range(len(path)-1)]
+		for eid in edge_ids:
+			print(eid)
+			assert eid in sg.edge_df.index.tolist()
+
+	def test_unordered_gtf_numeric_coord_sort(self):
+		sg = process_gtf()
+		print(sg.t_df)
+
+		# check transcript
+		tid = 'ENST00000620134.4'
+		path = sg.t_df.loc[tid, 'path']
+		print(path)
+		coords = sg.loc_df.loc[path, 'coord'].tolist()
+		ctrl_coords = [138860, 138642, 138334, 138150,
+			130591, 130522, 119255, 119126, 117375, 117301,
+			112775, 112622, 110606, 110525, 100509, 100372, 
+			98301, 98145, 93325, 93219, 92725, 92596, 89902,
+			89713, 88890, 88698, 86870, 85820, 84595, 84274,]
+		assert ctrl_coords == coords
+		edge_ids = [(path[i],path[i+1]) for i in range(len(path)-1)]
+		for eid in edge_ids:
+			print(eid)
+			assert eid in sg.edge_df.index.tolist()
+
+	def test_weird_gtf_weird_chrom(self):
+		sg = process_gtf()
+		print(sg.t_df)
+
+		# check transcript
+		tid = 'TALONT000206784'
+		path = sg.t_df.loc[tid, 'path']
+		print(path)
+		coords = sg.loc_df.loc[path, 'coord'].tolist()
+		ctrl_coords = [115043, 114986, 112850, 112792, 62949, 61468]
+		assert ctrl_coords == coords
+		edge_ids = [(path[i],path[i+1]) for i in range(len(path)-1)]
+		for eid in edge_ids:
+			print(eid)
+			assert eid in sg.edge_df.index.tolist()
+
+def process_gtf():	
+	sg = swan.SwanGraph()
+	sg.add_dataset('test', 'input_files/weird_gtf_entries.gtf')
+	return sg 
 
 def check_pairs(control, test):
 	print('control')

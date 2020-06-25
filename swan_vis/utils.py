@@ -204,18 +204,27 @@ def find_edge_start_stop(v1, v2, strand):
 		stop = max([v1, v2])
 	return start, stop
 
-# reorder the locations in a transcript's path based on
-# chromosomal coordinate
-# TODO
-def reorder_locs(path, strand, locs):
-	coords = [locs[i] for i in path]
-	path_coords = sorted(zip(path, coords), key=lambda x: x[1])
-	path = [i[0] for i in path_coords]
-	coords = [i[1][1] for i in path_coords]
+# reorder exon ids from create_dfs_gtf
+def reorder_exons(exon_ids):
+	strand = exon_ids[0].split('_')[-2]
+	coords = [int(i.split('_')[-4]) for i in exon_ids]
+	exons = sorted(zip(exon_ids, coords), key=lambda x: x[1])
+	exons = [i[0] for i in exons]
 	if strand == '-':
-		path.reverse()
-	return path 
+		exons.reverse()
+	return exons
 
+# # reorder the locations in a transcript's path based on
+# # chromosomal coordinate
+# def reorder_locs(path, strand, locs):
+# 	coords = [locs[i] for i in path]
+# 	path_coords = sorted(zip(path, coords), key=lambda x: x[1])
+# 	path = [i[0] for i in path_coords]
+# 	coords = [i[1][1] for i in path_coords]
+# 	if strand == '-':
+# 		path.reverse()
+# 	return path 
+	
 # get novelty types associated with each transcript
 def get_transcript_novelties(fields):
 	if fields['transcript_status'] == 'KNOWN':

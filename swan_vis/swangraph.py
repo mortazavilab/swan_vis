@@ -541,15 +541,15 @@ class SwanGraph(Graph):
 				locs[key] = vertex_id
 				vertex_id += 1
 
-		# create inverse loc dict to sort paths by
-		locs_inv = {v: k for k, v in locs.items()}
-
 		# add locs-indexed path to transcripts, and populate edges
 		edges = {}
 		for _,t in transcripts.items():
 			t['path'] = []
 			strand = t['strand']
 			t_exons = t['exons']
+
+			# reorder exons that are in weird orders from the GTF
+			t_exons = reorder_exons(t_exons)
 
 			for i, exon_id in enumerate(t_exons):
 
@@ -582,10 +582,6 @@ class SwanGraph(Graph):
 					edge_id = (locs[v2_key], locs[v1_key])
 					if key not in edges:
 						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
-
-			# sort the path based on chromosomal coordinates and strand
-			# in case there's some weird ordering in the gtf 
-			t['path'] = reorder_locs(t['path'], strand, locs_inv)
 
 		# turn transcripts, edges, and locs into dataframes
 		locs = [{'chrom': key[0],
@@ -1018,7 +1014,13 @@ class SwanGraph(Graph):
 			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
-			sub_edges = self.edge_df.loc[sub_edges]
+			try:
+				sub_edges = self.edge_df.loc[sub_edges]
+			except:
+				for blop in sub_edges:
+					if blop not in self.edge_df.edge_id.tolist():
+						print(blop)
+						continue
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'intron']
 
 			if len(sub_edges.index) > 0:
