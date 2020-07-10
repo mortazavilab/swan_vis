@@ -79,7 +79,7 @@ Parameters:
 ### add\_dataset
 
 ```python
-add_dataset(self, col, fname, dataset_name=None, whitelist=None, annot=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False)
+add_dataset(self, col, fname, dataset_name=None, whitelist=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False)
 ```
 
 Add transcripts from a dataset from either a GTF or a TALON database.
@@ -94,9 +94,6 @@ Parameters:
     dataset_name (str): Dataset name in TALON db to add transcripts from
             Default=None
     whitelist (str): TALON whitelist of transcripts to add.
-            Default: None
-    annot (str): TALON annotation name in database to 
-            add transcripts from
             Default: None
 
     # Only if also adding abundance

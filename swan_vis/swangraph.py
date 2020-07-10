@@ -101,7 +101,6 @@ class SwanGraph(Graph):
 	def add_dataset(self, col, fname,
 					dataset_name=None,
 					whitelist=None,
-					annot=None,
 					counts_file=None, count_cols=None, 
 					tid_col='annot_transcript_id',
 					include_isms=False):
@@ -117,9 +116,6 @@ class SwanGraph(Graph):
 				dataset_name (str): Dataset name in TALON db to add transcripts from
 					Default=None
 				whitelist (str): TALON whitelist of transcripts to add.
-					Default: None
-				annot (str): TALON annotation name in database to 
-					add transcripts from
 					Default: None
 
 				# Only if also adding abundance
@@ -161,7 +157,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				self.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				self.create_dfs_db(fname, annot, whitelist, dataset_name)
+				self.create_dfs_db(fname, whitelist, dataset_name)
 
 			# add column to each df to indicate where data came from
 			self.loc_df[col] = True
@@ -175,7 +171,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				temp.create_dfs_gtf(fname)
 			elif ftype == 'db':
-				temp.create_dfs_db(fname, annot, whitelist, dataset_name)
+				temp.create_dfs_db(fname, whitelist, dataset_name)
 			self.merge_dfs(temp, col)
 
 		# remove isms if we have access to that information
@@ -630,7 +626,7 @@ class SwanGraph(Graph):
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from 
 	# TALON's create_GTF utility
-	def create_dfs_db(self, database, annot, whitelist, dataset):
+	def create_dfs_db(self, database, whitelist, dataset):
 
 		# make sure file exists
 		check_file_loc(database, 'TALON DB')
@@ -638,7 +634,6 @@ class SwanGraph(Graph):
 		# annot = check_annot_validity(annot, database)
 
 		whitelist = handle_filtering(database, 
-											annot, 
 											True, 
 											whitelist, 
 											dataset)

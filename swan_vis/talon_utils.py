@@ -52,7 +52,7 @@ def parse_datasets(dataset, cursor):
 		raise ValueError("Dataset name '%s' not found in database" % dataset)
 	return dataset
 
-def handle_filtering(database, annot, observed, whitelist_file, dataset):
+def handle_filtering(database, observed, whitelist_file, dataset):
 	""" Determines which transcripts to allow in the analysis. This can be done
 		in two different ways. If no whitelist is included, then all of the
 		transcripts in the database are included (modified by 'observed'

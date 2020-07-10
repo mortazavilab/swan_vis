@@ -124,8 +124,7 @@ class TestAddDatasets(object):
 	
 	def test_no_gene_name_db(self):
 		sg = swan.SwanGraph()
-		sg.add_dataset('test', 'input_files/chr11_and_Tcf3_no_gname.db',
-			annot='gencode_vM7')
+		sg.add_dataset('test', 'input_files/chr11_and_Tcf3_no_gname.db')
 
 		gnames = sg.t_df.gname.tolist()
 		gids = sg.t_df.gid.tolist()
