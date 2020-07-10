@@ -483,6 +483,11 @@ class SwanGraph(Graph):
 
 					tid = attributes['transcript_id']
 					gid = attributes['gene_id']
+
+					# check if there's a gene name field and add one if not
+					if 'gene_name' not in attributes:
+						attributes['gene_name'] = attributes['gene_id']
+
 					gname = attributes['gene_name']
 
 					# add transcript to dictionary 
@@ -670,6 +675,10 @@ class SwanGraph(Graph):
 				attribute = annot[3]
 				value = annot[4]
 				gene_annotation_dict[attribute] = value
+
+			# check if there's a gene name field and add one if not
+			if 'gene_name' not in gene_annotation_dict:
+				gene_annotation_dict['gene_name'] = gene_annotation_dict['gene_id']
 		
 			# get transcript entries
 			for transcript_entry in transcript_tuples:

@@ -111,9 +111,31 @@ class TestAddDatasets(object):
 			print(eid)
 			assert eid in sg.edge_df.index.tolist()
 
+	# test to make sure adding a gtf without gene names
+	# should use the gene_id instead
+	def test_no_gene_name_gtf(self):
+		sg = swan.SwanGraph()
+		sg.add_dataset('test', 'input_files/Canx.gtf')
+
+		gnames = sg.t_df.gname.tolist()
+		gids = sg.t_df.gid.tolist()
+
+		assert gnames == gids
+	
+	def test_no_gene_name_db(self):
+		sg = swan.SwanGraph()
+		sg.add_dataset('test', 'input_files/chr11_and_Tcf3_no_gname.db',
+			annot='gencode_vM7')
+
+		gnames = sg.t_df.gname.tolist()
+		gids = sg.t_df.gid.tolist()
+
+		assert gnames == gids
+
 def process_gtf():	
 	sg = swan.SwanGraph()
 	sg.add_dataset('test', 'input_files/weird_gtf_entries.gtf')
+
 	return sg 
 
 def check_pairs(control, test):
