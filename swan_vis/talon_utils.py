@@ -145,8 +145,7 @@ def get_gene_transcript_map(db, whitelist):
 def get_annotations(database, feat_type, whitelist=None):
 	""" 
 		Extracts annotations from the gene/transcript/exon annotation table of
-		the database (depending on choice of feat_type). Limited to rows where
-		the annot_name column matches the value of annot.
+		the database (depending on choice of feat_type).
 
 		Returns:
 			annotation_dict: dictionary data structure in which the keys are
@@ -161,12 +160,10 @@ def get_annotations(database, feat_type, whitelist=None):
 	table_name = feat_type + "_annotations"
 
 	if whitelist == None:
-		query = "SELECT * FROM " + table_name + " WHERE annot_name = '" + annot + \
-		 "' OR source = 'TALON'"
+		query = "SELECT * FROM " + table_name
 	else:
 		whitelist_string = "(" + ','.join([str(x) for x in whitelist]) + ")"
-		query = "SELECT * FROM " + table_name + " WHERE (annot_name = '" + annot + \
-				"' OR source = 'TALON') AND ID IN " + whitelist_string
+		query = "SELECT * FROM " + table_name + " WHERE ID IN " + whitelist_string
 
 	cursor.execute(query)
 	annotation_tuples = cursor.fetchall()
@@ -175,44 +172,6 @@ def get_annotations(database, feat_type, whitelist=None):
 	sorted_annotations = sorted(annotation_tuples, key=lambda x: x[0]) 
 
 	# group by ID and store in a dictionary
-	ID_groups = {}
-	for key,group in itertools.groupby(sorted_annotations,operator.itemgetter(0)):
-		ID_groups[key] = list(group)
-
-	return ID_groups
-
-def get_annotations(database, feat_type, annot, whitelist = None):
-	""" Extracts annotations from the gene/transcript/exon annotation table of
-		the database (depending on choice of feat_type). Limited to rows where
-		the annot_name column matches the value of annot.
-
-		Returns:
-			annotation_dict: dictionary data structure in which the keys are
-							 gene/transcript/exon TALON IDs (depending on 
-							 choice of feat_type) and the value is a list of 
-							 annotation tuples.
-	"""
-	# Fetch the annotations
-	conn = sqlite3.connect(database)
-	cursor = conn.cursor()
-
-	table_name = feat_type + "_annotations"
-
-	if whitelist == None:
-		query = "SELECT * FROM " + table_name + " WHERE annot_name = '" + annot + \
-		 "' OR source = 'TALON'"
-	else:
-		whitelist_string = "(" + ','.join([str(x) for x in whitelist]) + ")"
-		query = "SELECT * FROM " + table_name + " WHERE (annot_name = '" + annot + \
-				"' OR source = 'TALON') AND ID IN " + whitelist_string
-
-	cursor.execute(query)
-	annotation_tuples = cursor.fetchall()
-
-	# Sort based on ID
-	sorted_annotations = sorted(annotation_tuples, key=lambda x: x[0]) 
-
-	# Group by ID and store in a dictionary
 	ID_groups = {}
 	for key,group in itertools.groupby(sorted_annotations,operator.itemgetter(0)):
 		ID_groups[key] = list(group)
@@ -298,33 +257,23 @@ def fetch_exon_locations(database):
 	conn.close() 
 	return exon_locations
 
-def check_annot_validity(annot, database):
-    """ Make sure that the user has entered a correct annotation name """
+# def check_annot_validity(annot, database):
+#     """ Make sure that the user has entered a correct annotation name """
 
-    conn = sqlite3.connect(database)
-    cursor = conn.cursor()
+#     conn = sqlite3.connect(database)
+#     cursor = conn.cursor()
 
-    cursor.execute("SELECT DISTINCT annot_name FROM gene_annotations")
-    annotations = [str(x[0]) for x in cursor.fetchall()]
-    conn.close()
+#     cursor.execute("SELECT DISTINCT annot_name FROM gene_annotations")
+#     annotations = [str(x[0]) for x in cursor.fetchall()]
+#     conn.close()
 
-    if "TALON" in annotations:
-        annotations.remove("TALON")
+#     if "TALON" in annotations:
+#         annotations.remove("TALON")
 
-    if annot == None:
-        if len(annotations) == 1:
-            annot = annotations[0]
+#     if annot not in annotations:
+#         message = "Annotation name '" + annot + \
+#                   "' not found in this database. Try one of the following: " + \
+#                   ", ".join(annotations)
+#         raise Exception(message)
 
-        else:
-            message = "Please provide a valid annotation name. " + \
-                  "In this database, your options are: " + \
-                  ", ".join(annotations)
-            raise Exception(message)
-
-    if annot not in annotations:
-        message = "Annotation name '" + annot + \
-                  "' not found in this database. Try one of the following: " + \
-                  ", ".join(annotations)
-        raise Exception(message)
-
-    return annot
+#     return annot

@@ -635,7 +635,7 @@ class SwanGraph(Graph):
 		# make sure file exists
 		check_file_loc(database, 'TALON DB')
 
-		annot = check_annot_validity(annot, database)
+		# annot = check_annot_validity(annot, database)
 
 		whitelist = handle_filtering(database, 
 											annot, 
@@ -651,11 +651,11 @@ class SwanGraph(Graph):
 				transcript_whitelist.append(id_tuple[1])
 
 		# get gene, transcript, and exon annotations
-		gene_annotations = get_annotations(database, "gene", annot, 
+		gene_annotations = get_annotations(database, "gene", 
 										   whitelist = gene_whitelist)  
-		transcript_annotations = get_annotations(database, "transcript", annot,
+		transcript_annotations = get_annotations(database, "transcript",
 												 whitelist = transcript_whitelist) 
-		exon_annotations = get_annotations(database, "exon", annot)
+		exon_annotations = get_annotations(database, "exon")
 
 		# get transcript data from the database
 		gene_2_transcripts = get_gene_2_transcripts(database, 
