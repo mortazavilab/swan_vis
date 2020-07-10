@@ -1000,6 +1000,8 @@ class SwanGraph(Graph):
 					at least one novel intron retention event
 				ir_transcripts (list of str): A list of transcript ids from the 
 					SwanGraph with at least one novel intron retention event
+				ir_edges (list of tuples): A list of exonic edges in the
+					SwanGraph that retain at least one intronic edge
 		"""
 
 		# get only novel edges
@@ -1017,19 +1019,16 @@ class SwanGraph(Graph):
 		
 		# for each edge, see if the subgraph between the edge vertices 
 		# contains an exonic edge  
+		ir_edges = []
 		ir_genes = []
 		ir_transcripts = []
 		for i, eid in enumerate(edge_ids):
 			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
-			try:
-				sub_edges = self.edge_df.loc[sub_edges]
-			except:
-				for blop in sub_edges:
-					if blop not in self.edge_df.edge_id.tolist():
-						print(blop)
-						continue
+			sub_edges = self.edge_df.loc[sub_edges]
+			# find edges that are intronic; if there are none, this is not
+			# an intron-retaining edge
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'intron']
 
 			if len(sub_edges.index) > 0:
@@ -1056,17 +1055,20 @@ class SwanGraph(Graph):
 						for cand_eid in sub_edges.index:
 							temp_df = cand_g_df[[cand_eid in vertex_to_edge_path(x) \
 									for x in cand_g_df.path.values.tolist()]]
-							tids = temp_df.tid.tolist()
+							tids = cand_t_df.tid.tolist()
 							if len(temp_df.index) > 0:
+								ir_edges.append(eid)
 								ir_genes.append(gid)
 								ir_transcripts.extend(tids)
 
-		print('Found {} novel ir events from {} genes.'.format(len(ir_genes), 
-			len(list(set(ir_genes)))))
 		ir_genes = list(set(ir_genes))
 		ir_transcripts = list(set(ir_transcripts))
+		ir_edges = list(set(ir_edges))
 
-		return ir_genes, ir_transcripts
+		print('Found {} novel ir events from {} transcripts.'.format(len(ir_genes), 
+			len(ir_transcripts)))
+
+		return ir_genes, ir_transcripts, ir_edges
 
 	def find_es_genes(self):
 		"""
@@ -1079,6 +1081,8 @@ class SwanGraph(Graph):
 					at least one novel exon skipping event
 				es_transcripts (list of str): A list of transcript ids from the 
 					SwanGraph with at least one novel exon skipping event
+				es_edges (list of tuples): A list of intronic edges in the 
+					SwanGraph that skip at least one exonic edge
 		"""
 
 		# get only novel edges
@@ -1096,18 +1100,23 @@ class SwanGraph(Graph):
 
 		# for each edge, see if the subgraph between the edge vertices 
 		# contains an exonic edge
+		es_edges = []
 		es_genes = []
 		es_transcripts = []
 		for eid in edge_ids:
+			# subgraph consisting of all nodes between the candidate
+			# exon-skipping edge coords in order and its edges
 			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
 			sub_edges = self.edge_df.loc[sub_edges]
+			# find edges that are exonic; if there are none, this is not 
+			# an exon-skipping edge
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'exon']
 
 			if len(sub_edges.index) > 0:
 
-				# transcripts that contain the exon-skipping edge
+				# transcripts that contain the candidate exon-skipping edge
 				skip_t_df = nt_df[[eid in vertex_to_edge_path(x) \
 					for x in nt_df.path.values.tolist()]]
 
@@ -1118,7 +1127,7 @@ class SwanGraph(Graph):
 				# does at least one of the skipped exons belong
 				# to the same gene as the skipping edge?
 				else:
-					# genes that contain the exon-skipping edge
+					# genes that contain the candidate exon-skipping edge
 					skip_genes = skip_t_df.gid.values.tolist()
 					skip_g_df = self.t_df.loc[self.t_df.gid.isin(skip_genes)]
 
@@ -1127,19 +1136,24 @@ class SwanGraph(Graph):
 					for gid in skip_genes:
 						if gid in es_genes: continue
 						for skip_eid in sub_edges.index:
+							# transcripts with the exons that are skipped
 							temp_df = skip_g_df[[skip_eid in vertex_to_edge_path(x) \
 									for x in skip_g_df.path.values.tolist()]]
-							tids = temp_df.tid.tolist()
+							tids = skip_t_df.tid.tolist()
 							if len(temp_df.index) > 0:
+								es_edges.append(eid)
 								es_genes.append(gid)
 								es_transcripts.extend(tids)
 
-		print('Found {} novel es events from {} genes.'.format(len(es_genes),
-			len(list(set(es_genes)))))
 		es_genes = list(set(es_genes))
 		es_transcripts = list(set(es_transcripts))
+		es_edges = list(set(es_edges))
 
-		return es_genes, es_transcripts
+		print('Found {} novel es events in {} transcripts.'.format(len(es_edges),
+			len(es_transcripts)))
+
+
+		return es_genes, es_transcripts, es_edges
 
 	def de_gene_test(self, dataset_groups):
 		""" 

@@ -172,6 +172,8 @@ Returns:
                 at least one novel exon skipping event
         es_transcripts (list of str): A list of transcript ids from the 
                 SwanGraph with at least one novel exon skipping event
+        es_edges (list of tuples): A list of intronic edges in the 
+            SwanGraph that skip at least one exonic edge
 ```
 
 ### find\_ir\_genes
@@ -189,6 +191,8 @@ Returns:
                 at least one novel intron retention event
         ir_transcripts (list of str): A list of transcript ids from the 
                 SwanGraph with at least one novel intron retention event
+        ir_edges (list of tuples): A list of exonic edges in the
+                SwanGraph that retain at least one intronic edge
 ```
 
 ### find\_isoform\_switching\_genes
