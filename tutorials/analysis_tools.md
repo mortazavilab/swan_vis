@@ -186,14 +186,14 @@ Swan can detect novel \(unannotated\) exon skipping and intron retention events.
 To obtain a list of genes containing novel exon skipping events, run the following code:
 
 ```python
-es_genes = sg.find_es_genes()
+es_genes, es_transcripts, es_edges = sg.find_es_genes()
 print(es_genes[:5])
 ```
 
 ```text
 Analyzing 893 intronic edges for ES
-Found 1021 novel es events from 285 genes.
-['ENSG00000130706.12', 'ENSG00000111237.18', 'ENSG00000101363.12', 'ENSG00000163069.12', 'ENSG00000132677.12']
+Found 285 novel es events in 298 transcripts.
+['ENSG00000089022.13', 'ENSG00000204525.16', 'ENSG00000138069.17', 'ENSG00000147955.16', 'ENSG00000183011.13']
 ```
 
 As usual, we can feed `es_genes` into `gen_report()` or individual gene ids from `es_genes` into `plot_graph()` to generate gene reports or gene summary graphs respectively.
@@ -201,14 +201,14 @@ As usual, we can feed `es_genes` into `gen_report()` or individual gene ids from
 To obtain a list of genes containing novel intron retention events, run the following code:
 
 ```python
-ir_genes = sg.find_ir_genes()
+ir_genes, ir_transcripts, ir_edges = sg.find_ir_genes()
 print(ir_genes[:5])
 ```
 
 ```text
 Analyzing 2185 exonic edges for IR
-Found 73 novel ir events from 47 genes.
-['ENSG00000213719.8', 'ENSG00000135480.15', 'ENSG00000196421.8', 'ENSG00000141505.11', 'ENSG00000030582.17']
+Found 47 novel ir events from 49 transcripts.
+['ENSG00000272779.1', 'ENSG00000179218.13', 'ENSG00000067167.7', 'ENSG00000104904.12', 'ENSG00000161203.13']
 ```
 
 As usual, we can feed `ir_genes` into `gen_report()` or individual gene ids from `ir_genes` into `plot_graph()` to generate gene reports or gene summary graphs respectively.
