@@ -28,6 +28,9 @@ class SwanGraph(Graph):
 
 			datasets (list of str):
 				Names of datasets in the Graph
+			var (pandas DataFrame): 
+				DataFrame of categorical variable designations for
+				each dataset in the SwanGraph
 			counts (list of str):
 				Names of columns holding counts in the Graph
 			tpm (list of str):
@@ -72,6 +75,9 @@ class SwanGraph(Graph):
 			self.det_test = pd.DataFrame()
 			self.det_test_groups = ''
 
+			# categorical variable assignments for each dataset
+			self.var = pd.DataFrame()
+
 		else:
 			check_file_loc(file, 'SwanGraph')
 			self.load_graph(file)
@@ -99,6 +105,7 @@ class SwanGraph(Graph):
 		self.t_df.novelty.fillna('Undefined', inplace=True)
 
 	def add_dataset(self, col, fname,
+					var=None,
 					dataset_name=None,
 					whitelist=None,
 					counts_file=None, count_cols=None, 
@@ -111,6 +118,8 @@ class SwanGraph(Graph):
 
 				col (str): Name of column to add data to in the SwanGraph
 				fname (str): Path to GTF or TALON db
+
+				var (dictionary): Attribute mapping to the dataset to be added
 
 				# Only for loading from TALON
 				dataset_name (str): Dataset name in TALON db to add transcripts from
@@ -192,6 +201,12 @@ class SwanGraph(Graph):
 		# if we're also adding abundances
 		if counts_file and count_cols:
 			self.add_abundance(counts_file, count_cols, col, tid_col)
+
+		# update the var table
+		if var:
+			pass
+			# TODO
+
  
 	def add_abundance(self, counts_file, count_cols,
 					  dataset_name, tid_col='annot_transcript_id'):

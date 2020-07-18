@@ -1,6 +1,7 @@
 from swan_vis.utils import *
 from fpdf import FPDF
 import matplotlib.pyplot as pyplot
+import seaborn as sns
 
 # report for genes - extension of FPDF class
 class Report(FPDF):
@@ -33,6 +34,17 @@ class Report(FPDF):
 		self.datasets = datasets
 		self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.report_cols)
+
+		# colors for each of the datasets
+		colors = sns.color_palette('nipy_spectral',
+			len(self.datasets))
+		self.dataset_colors = []
+		for i, d in enumerate(self.datasets):
+			color = colors[i]
+			r = color[0]*255	
+			g = color[1]*255
+			b = color[2]*255
+			self.dataset_colors.append((r,g,b))
 		
 		# prefix for files that we'll pull from 
 		self.prefix = prefix
@@ -73,23 +85,27 @@ class Report(FPDF):
 		self.set_font('Arial', 'B', 10)
 		
 		# transcript ID header
-		self.cell(50, self.header_height, 'Transcript ID', border=True, align='C')
+		self.cell(50, self.header_height, 'Transcript ID', border=False, align='C')
 
 		# novelty header (if needed)
 		if self.novelty:
-			self.cell(25, self.header_height, 'Novelty', border=True, align='C')
+			self.cell(25, self.header_height, 'Novelty', border=False, align='C')
 
 		# dataset ID headers
-		for col in self.datasets:
-			self.cell(self.w_dataset, self.header_height, col,
-					  border=True, align='C')
+		for color, col in zip(self.dataset_colors, self.datasets):
+			r = color[0]
+			g = color[1]
+			b = color[2]
+			self.set_fill_color(r, g, b)
+			self.cell(self.w_dataset, self.header_height, '',
+					  fill=True, align='C')
 
 		# in case we need to add the browser models
 		browser_scale_x = self.get_x()
 		browser_scale_y = self.get_y()
 
 		# transcript model header
-		self.cell(100, self.header_height, 'Transcript Model', border=True, align='C')
+		self.cell(100, self.header_height, 'Transcript Model', border=False, align='C')
 
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':
@@ -109,6 +125,35 @@ class Report(FPDF):
 				self.set_x(90.5)
 			self.image(self.prefix+'_colorbar_scale.png',
 				w=90, h=135/14)
+
+		# dataset color legends
+		start_y = self.get_y()-7
+		curr_y = start_y
+		curr_x = 0
+		self.set_font('Arial', '', 8)
+		for i, d in enumerate(self.datasets):
+
+			if i % 6 == 0 and i != 0:
+				if i == 12:
+					start_y = start_y + 12
+				curr_y = start_y
+				curr_x += 37
+ 
+			self.set_y(curr_y)
+			self.set_x(curr_x)
+
+			color = self.dataset_colors[i]
+			r = color[0]
+			g = color[1]
+			b = color[2]
+			self.set_fill_color(r, g, b)
+
+			self.cell(5, 5, '', fill=True)
+			self.cell(32, 5, d)
+
+			curr_y = curr_y + 6
+		self.set_font('Arial', '', 10)
+
 
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname):
