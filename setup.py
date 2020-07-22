@@ -4,11 +4,11 @@ setup(
   name = 'swan_vis',
   packages = ['swan_vis'],
   version = 'v1.0',
-  license='MIT',  description = 'swan is a tool for visualizing and analyzing transcript isoforms',
+  license='MIT', 
+  description = 'swan is a tool for visualizing and analyzing transcript isoforms',
   author = 'Fairlie Reese',
   author_email = 'fairlie.reese@gmail.com',
   url = 'https://github.com/mortazavilab/swan_vis/',
-  download_url = 'https://github.com/mortazavilab/swan_vis/archive/v1.0.tar.gz',
   keywords = ['swan', 'transcription', 'isoform', 'visualization'],
   install_requires=[
           'networkx',
