@@ -2049,6 +2049,7 @@ def _create_gene_report(gid, sg, t_df,
 					report_type,
 					datasets,
 					data_type,
+					self.var,
 					novelty=novelty,
 					heatmap=heatmap,
 					include_qvals=include_qvals)

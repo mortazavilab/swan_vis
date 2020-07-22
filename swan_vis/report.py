@@ -11,6 +11,7 @@ class Report(FPDF):
 				 report_type, 
 				 datasets,
 				 data_type, 
+				 var=None,
 				 novelty=False,
 				 heatmap=False,
 				 include_qvals=False):
@@ -35,7 +36,8 @@ class Report(FPDF):
 		self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.report_cols)
 
-		# colors for each of the datasets
+		# colors for each of the categorical variables
+		vars = s
 		colors = sns.color_palette('nipy_spectral',
 			len(self.datasets))
 		self.dataset_colors = []
