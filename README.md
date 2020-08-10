@@ -4,7 +4,7 @@
 
 Swan is a Python library designed for the analysis and visualization of transcriptomes, especially with long-read transcriptomes in mind. Users can merge transcriptomes from different datasets and explore transcript models distinct splicing and expression patterns across datasets. 
 
-Please visit the [Swan repository](https://github.com/mortazavilab/swan_vis)
+Please visit the [Swan repository](https://github.com/mortazavilab/swan_vis) to download and view the source code
 
 Also see the [Swan manuscript repository](https://github.com/fairliereese/swan_paper) for the exact commands used to do the analysis in our [manuscript](https://www.biorxiv.org/content/10.1101/2020.06.09.143024v1).
 
