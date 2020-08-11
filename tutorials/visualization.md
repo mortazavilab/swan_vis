@@ -181,7 +181,7 @@ sg.gen_report(['ADRM1','PSAP'], prefix='figures/multi_gene',
 ![](../.gitbook/assets/output_37_0.png)
 
 ```python
-# generate reports for the given genes
+# generate reports for the given gene
 # with the given prefix
 # display abundance information as a heatmap
 # include differential transcript expression test significance results

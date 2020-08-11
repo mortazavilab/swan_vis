@@ -6,6 +6,8 @@ If you don't want to process the raw data from square one and want to get starte
 
 You can download and view documentation for TALON [here](https://github.com/mortazavilab/TALON).
 
+Each of the below steps should be run in your Bash terminal
+
 ## Download reference genome and annotation
 ```bash
 mkdir data

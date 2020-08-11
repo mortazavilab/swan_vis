@@ -9,9 +9,9 @@ Swan offers two main ways for loading transcriptomes. You can either load models
 Please see the [input file format documentation](../faqs/file_formats.md) for specifics on how these files should be formatted.
 
 We've provided three examples on how to add data to your SwanGraph in the following tutorial. You only need to run one!
-1. [Using a GTF and abundance table together](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time)
-2. [Using a GTF and abundance table separately](getting_started.md#adding-transcript-models-gtf-and-abundance-information-separately)
-3. [Using a TALON database and abundance table together](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
+* [Using a GTF and abundance table together](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time)
+* [Using a GTF and abundance table separately](getting_started.md#adding-transcript-models-gtf-and-abundance-information-separately)
+* [Using a TALON database and abundance table together](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
 
 Other sections: 
 * [Example data download](getting_started.md#download-example-data)
