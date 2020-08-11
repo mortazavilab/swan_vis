@@ -2,9 +2,10 @@
 
 First, if you haven't already, make sure to [install Swan](../#installation). After installing, you'll be able to run Swan from Python.
 
-Then, download the data and the reference transcriptome annotation from [here](https://hpc.oit.uci.edu/~freese/swan_files/). The bash commands to do so are given below.
+Then, download the data and the reference transcriptome annotation from [here](http://crick.bio.uci.edu/freese/swan_files/). The bash commands to do so are given below.
 
-Swan offers two main ways for loading transcriptomes. You can either load models from [GTFs](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time), or from a [TALON db](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
+Swan offers two main ways for loading transcriptomes. You can either load models from [a properly-formatted GTF](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time), or from a [TALON db](getting_started.md#adding-transcript-models-talon-db-and-abundance-information).
+Please see the [input file format documentation](../faqs/file_formats.md) for specifics on how these files should be formatted. 
 
 Table of contents
 
@@ -18,39 +19,25 @@ Table of contents
 ## Download example data
 
 ```bash
+# run this block in your bash terminal
 mkdir data
 mkdir figures
 cd data/
 
-# gencode v29 human annotation
-wget https://hpc.oit.uci.edu/~freese/swan_files/gencode.v29.annotation.gtf
-
-# hepg2 data
-wget https://hpc.oit.uci.edu/~freese/swan_files/hepg2_1_talon.gtf
-wget https://hpc.oit.uci.edu/~freese/swan_files/hepg2_2_talon.gtf
-
-# hffc6 data
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_1_talon.gtf
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_2_talon.gtf
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_3_talon.gtf
-
-# abundance file
-wget https://hpc.oit.uci.edu/~freese/swan_files/all_talon_abundance_filtered.tsv
-
-# example saved SwanGraph
-wget https://hpc.oit.uci.edu/~freese/swan_files/swan.p
-
-# talon database
-wget https://hpc.oit.uci.edu/~freese/swan_files/talon.db
-
-# talon whitelists
-wget https://hpc.oit.uci.edu/~freese/swan_files/hepg2_whitelist.csv
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_whitelist.csv
+# download files
+wget http://crick.bio.uci.edu/freese/swan_files.tgz
+    
+# expand files 
+tar xzf swan_files.tgz
+mv swan_files/* .
+rm -r swan_files/
 
 cd ../
 ```
 
 ## Starting up Swan and initializing your SwanGraph
+
+The rest of the following code should be done in the Python shell, or run from a `.py` file. 
 
 ```python
 import swan_vis as swan
