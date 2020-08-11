@@ -1,60 +1,59 @@
-# Getting started
+#  Getting started: initializing, adding data, and saving your SwanGraph 
 
-First, if you haven't already, make sure to [install Swan](../#installation). After installing, you'll be able to run Swan from Python.
+First, if you haven't already, make sure to [install Swan](../#installation).
+After installing, you'll be able to run Swan from Python.
 
 Then, download the data and the reference transcriptome annotation from [here](https://hpc.oit.uci.edu/~freese/swan_files/). The bash commands to do so are given below.
 
-Swan offers two main ways for loading transcriptomes. You can either load models from [GTFs](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time), or from a [TALON db](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
+Swan offers two main ways for loading transcriptomes. You can either load models from [a properly-formatted GTF](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time), or from a [TALON db](getting_started.md#adding-transcript-models-talon-db-and-abundance-information).
+Please see the [input file format documentation](../faqs/file_formats.md) for specifics on how these files should be formatted.
 
-Table of contents
+We've provided three examples on how to add data to your SwanGraph in the following tutorial. You only need to run one!
+1. [Using a GTF and abundance table together](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time)
+2. [Using a GTF and abundance table separately](getting_started.md#adding-transcript-models-gtf-and-abundance-information-separately)
+3. [Using a TALON database and abundance table together](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
 
+Other sections: 
 * [Example data download](getting_started.md#download-example-data)
 * [Starting and initializing your SwanGraph](getting_started.md#starting-up-swan-and-initializing-your-swangraph)
-* [Add transcript models \(GTF\) and abundance info](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time)
 * [Saving and loading your SwanGraph](getting_started.md#saving-and-loading-your-swangraph)
-* [Adding transcript models \(GTF\) and abundance info separately](getting_started.md#adding-transcript-models-gtf-and-abundance-information-separately)
-* [Adding transcript models \(TALON db\) and abundance info](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
+
+This page can also be read from top to bottom, just know that you may be running things more than once!
 
 ## Download example data
 
 ```bash
-mkdir data
-mkdir figures
-cd data/
+# # run this block in your bash terminal
+# mkdir data
+# mkdir figures
+# cd data/
 
-# gencode v29 human annotation
-wget https://hpc.oit.uci.edu/~freese/swan_files/gencode.v29.annotation.gtf
+# # download files
+# wget http://crick.bio.uci.edu/freese/swan_files.tgz
+    
+# # expand files 
+# tar xzf swan_files.tgz
+# mv swan_files/* .
+# rm -r swan_files/
 
-# hepg2 data
-wget https://hpc.oit.uci.edu/~freese/swan_files/hepg2_1_talon.gtf
-wget https://hpc.oit.uci.edu/~freese/swan_files/hepg2_2_talon.gtf
+# # download reference annotation
+# wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_29/gencode.v29.annotation.gtf.gz
+# gunzip gencode.v29.annotation.gtf.gz
 
-# hffc6 data
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_1_talon.gtf
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_2_talon.gtf
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_3_talon.gtf
-
-# abundance file
-wget https://hpc.oit.uci.edu/~freese/swan_files/all_talon_abundance_filtered.tsv
-
-# example saved SwanGraph
-wget https://hpc.oit.uci.edu/~freese/swan_files/swan.p
-
-# talon database
-wget https://hpc.oit.uci.edu/~freese/swan_files/talon.db
-
-# talon whitelists
-wget https://hpc.oit.uci.edu/~freese/swan_files/hepg2_whitelist.csv
-wget https://hpc.oit.uci.edu/~freese/swan_files/hffc6_whitelist.csv
-
-cd ../
+# cd ../
 ```
 
 ## Starting up Swan and initializing your SwanGraph
 
+The rest of the code should be done in the Python shell, or run from a `.py` file. 
+
+
 ```python
 import swan_vis as swan
+```
 
+
+```python
 annot_gtf = 'data/gencode.v29.annotation.gtf'
 hep_1_gtf = 'data/hepg2_1_talon.gtf'
 hep_2_gtf = 'data/hepg2_2_talon.gtf'
@@ -68,7 +67,10 @@ talon_db = 'data/talon.db'
 Initialize an empty SwanGraph and add the transcriptome annotation to the SwanGraph.
 
 ```python
-sg = swan.SwanGraph()
+# initialize a new SwanGraph
+sg = swan.SwanGraph() 
+
+# add an annotation transcriptome 
 sg.add_annotation(annot_gtf)
 ```
 
@@ -77,6 +79,8 @@ sg.add_annotation(annot_gtf)
 Add each dataset to the SwanGraph, along with the corresponding abundance information from the abundance matrix. The `count_cols` variable refers to the column name in the abundance file that corresponds to the counts for the input dataset.
 
 ```python
+# add a dataset's transcriptome and abundance information to
+# the SwanGraph
 sg.add_dataset('HepG2_1', hep_1_gtf,
     counts_file=ab_file,
     count_cols='hepg2_1')
@@ -99,12 +103,14 @@ sg.add_dataset('HFFc6_3', hff_3_gtf,
 Following this, you can save your SwanGraph so you can easily work with it again without re-adding all the data.
 
 ```python
+# save the SwanGraph as a Python pickle file
 sg.save_graph('swan')
 ```
 
 And you can reload the graph again.
 
 ```python
+# load up a saved SwanGraph from a pickle file
 sg = swan.SwanGraph('swan.p')
 ```
 
@@ -113,8 +119,15 @@ sg = swan.SwanGraph('swan.p')
 Swan can also run without abundance information, although many of Swan's analysis functions depend on abundance information. To load just the transcript models, simply just leave out the `counts_file` and `count_cols` arguments to the `add_dataset()` function as shown below.
 
 ```python
+# for this new example, create a new empty SwanGraph
 sg = swan.SwanGraph()
+# and add the annotation transcriptome to it
 sg.add_annotation(annot_gtf)
+```
+
+```python
+# add transcriptome datasets from GTF files without
+# corresponding abundance information
 sg.add_dataset('HepG2_1', hep_1_gtf)
 sg.add_dataset('HepG2_2', hep_2_gtf)
 sg.add_dataset('HFFc6_1', hff_1_gtf)
@@ -125,6 +138,9 @@ sg.add_dataset('HFFc6_3', hff_3_gtf)
 If you have just added transcript models to the graph via `add_dataset()` and wish to add abundance information, this can be done using the `add_abundance()` function as seen below. Here, the string passed to `count_cols` is the column in the abundance file that corresponds to the dataset, and the argument passed to `dataset_name` is the name of the dataset that has already been added to the SwanGraph in the previous code block.
 
 ```python
+# add abundance information corresponding to each of the datasets
+# we've already added to the SwanGraph
+# dataset_name must be a dataset that is already present in the SwanGraph
 sg.add_abundance(ab_file, count_cols='hepg2_1', dataset_name='HepG2_1')
 sg.add_abundance(ab_file, count_cols='hepg2_2', dataset_name='HepG2_2')
 sg.add_abundance(ab_file, count_cols='hffc6_1', dataset_name='HFFc6_1')
@@ -137,14 +153,23 @@ sg.add_abundance(ab_file, count_cols='hffc6_3', dataset_name='HFFc6_3')
 Swan is also directly compatible with TALON databases and can pull transcript models directly from them.
 
 ```python
+# for this new example, create a new empty SwanGraph
 sg = swan.SwanGraph()
+# and add the annotation transcriptome to it
 sg.add_annotation(annot_gtf)
+```
 
+```python
 hepg2_whitelist='data/hepg2_whitelist.csv'
 hffc6_whitelist='data/hffc6_whitelist.csv'
 ```
 
 ```python
+# add datasets directly from a TALON database and abundance
+# information from an abundance table
+# whitelist option is output from the talon_filter_transcripts
+# step, which filters novel isoforms based on their reproducibility
+# and for those that exhibit internal priming
 sg.add_dataset('HepG2_1', talon_db,
     dataset_name='hepg2_1',
     whitelist=hepg2_whitelist,

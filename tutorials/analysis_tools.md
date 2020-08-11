@@ -12,6 +12,7 @@ Table of contents
 ```python
 import swan_vis as swan
 
+# load a preexisting SwanGraph from a Python pickle file
 sg = swan.SwanGraph('data/swan.p')
 ```
 
@@ -24,7 +25,11 @@ Graph from data/swan.p loaded
 Differential gene expression testing in Swan is implemented via [diffxpy](https://github.com/theislab/diffxpy). To run the test, first partition the datasets that you have added to your SwanGraph into biological replicates. Then, use this grouping to run the differential expression test.
 
 ```python
-dataset_groups = [['HepG2_1','HepG2_2'],['HFFc6_1','HFFc6_2','HFFc6_3']]
+dataset_groups = [['HepG2_1','HepG2_2'],
+				  ['HFFc6_1','HFFc6_2','HFFc6_3']]
+
+# perform a differential gene expression 
+# Wald test on the provided two lists of datasets
 sg.de_gene_test(dataset_groups)
 ```
 
@@ -93,6 +98,8 @@ sg.deg_test.head()
 Swan can also automatically subset the test summary table to pull out genes that pass a certain significance threshold. These genes can be directly passed into Swan's gene plotting functions, `gen_report()` or `plot_graph()`
 
 ```python
+# return a list of gene ids and their corresponding entries in the 
+# differential expression test summary table for a given q value
 gene_ids, gene_summary = sg.get_de_genes(q=0.05)
 ```
 
@@ -118,7 +125,11 @@ gene_summary.head()
 Similarly, Swan can run tests to find differentially expressed transcript isoforms. The input and output to these functions are identical to that of the differential gene tests.
 
 ```python
-dataset_groups = [['HepG2_1','HepG2_2'],['HFFc6_1','HFFc6_2','HFFc6_3']]
+dataset_groups = [['HepG2_1','HepG2_2'],
+				  ['HFFc6_1','HFFc6_2','HFFc6_3']]
+
+# perform a differential transcript expression 
+# Wald test on the provided two lists of datasets
 sg.de_transcript_test(dataset_groups);
 sg.det_test.head()
 ```
@@ -134,6 +145,8 @@ sg.det_test.head()
 And Swan can subset the results for you based on a q-value significance threshold. The resultant transcript ids can then be passed into Swan's transcript plotting function, `plot_transcript_path()`.
 
 ```python
+# return a list of transcript ids and their corresponding entries in the 
+# differential expression test summary table for a given q value
 transcript_ids, transcript_summary = sg.get_de_transcripts(q=0.05)
 ```
 
@@ -159,6 +172,10 @@ transcript_summary.head()
 We wanted to include a module to conduct rudimentary isoform switching analysis as well. We define a gene that exhibits isoform switching for our purposes as a gene that is not differentially expressed that has transcript isoforms that are differentially expressed. We have provided code to detect such instances. To run it, `de_gene_test()` and `de_transcript_test()` must first be run.
 
 ```python
+# find genes that exhibit isoform switching with a given input
+# q value significance threshold
+# returned entries will be those with de gene q-value > 0.05
+# and de transcript q-value <= 0.05
 is_genes, is_table = sg.find_isoform_switching_genes(q=0.05)
 ```
 
@@ -186,6 +203,8 @@ Swan can detect novel \(unannotated\) exon skipping and intron retention events.
 To obtain a list of genes containing novel exon skipping events, run the following code:
 
 ```python
+# returns a list of genes, transcripts, and specific edges in 
+# the SwanGraph with novel exon skipping events
 es_genes, es_transcripts, es_edges = sg.find_es_genes()
 print(es_genes[:5])
 ```
@@ -201,6 +220,8 @@ As usual, we can feed `es_genes` into `gen_report()` or individual gene ids from
 To obtain a list of genes containing novel intron retention events, run the following code:
 
 ```python
+# returns a list of genes, transcripts, and specific edges in 
+# the SwanGraph with novel intron retention events
 ir_genes, ir_transcripts, ir_edges = sg.find_ir_genes()
 print(ir_genes[:5])
 ```

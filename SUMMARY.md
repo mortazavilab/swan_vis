@@ -4,6 +4,7 @@
 
 ## Tutorials
 
+* [Data preprocessing with TALON](tutorials/data_processing.md)
 * [Getting started](tutorials/getting_started.md)
 * [Analysis](tutorials/analysis_tools.md)
 * [Visualization](tutorials/visualization.md)
