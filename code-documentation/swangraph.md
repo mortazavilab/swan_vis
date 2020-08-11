@@ -60,13 +60,16 @@ Parameters:
         count_cols (str or list of str): Column names in counts_file to use
         dataset_name (str): Name of SwanGraph dataset to associate abundance with
         tid_col (str): Column name in counts_file containing transcript id
-                Default='annot_transcript_id'
+                Default: 'annot_transcript_id'
+                
+        verbose (bool): Display progress updates
+            Default: False
 ```
 
 ### add\_annotation
 
 ```python
-add_annotation(self, fname)
+add_annotation(self, fname, verbose=False)
 ```
 
 Adds an annotation from input fname to the SwanGraph.
@@ -74,12 +77,14 @@ Adds an annotation from input fname to the SwanGraph.
 ```text
 Parameters:
         fname (str): Path to annotation GTF
+        verbose (bool): Display progress
+            Default: False
 ```
 
 ### add\_dataset
 
 ```python
-add_dataset(self, col, fname, dataset_name=None, whitelist=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False)
+add_dataset(self, col, fname, dataset_name=None, whitelist=None, counts_file=None, count_cols=None, tid_col='annot_transcript_id', include_isms=False, verbose=False)
 ```
 
 Add transcripts from a dataset from either a GTF or a TALON database.
@@ -106,6 +111,9 @@ Parameters:
 
     include_isms (bool): Include ISMs from input dataset
             Default=False
+
+    verbose (bool): Display progress
+            Default: False
 ```
 
 ### de\_gene\_test

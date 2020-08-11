@@ -113,17 +113,21 @@ class Report(FPDF):
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname):
 
+		# set tid text
+		tid = entry['tid']
+
 		# entries should not be bolded
 		if self.include_qvals:
 			if entry.significant:
 				self.set_font('Arial', 'B', 10)
+				tid += '*'
 			else:
 				self.set_font('Arial', '', 10)
 		else:
 			self.set_font('Arial', '', 10)
 
 		# tid
-		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
+		self.cell(50, self.entry_height, tid, border=True, align='C')
 		tid_x = self.get_x()
 		tid_y = self.get_y()
 

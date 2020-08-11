@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import copy
+from tqdm import tqdm
 from swan_vis.utils import *
 
 # super class that both SwanGraph and PlottedGraph inherit from.
@@ -109,7 +110,7 @@ class Graph:
 	##########################################################################
 
 	# update ids according to coordinates in loc_df, edge_df, and t_df
-	def update_ids(self, id_map=None):
+	def update_ids(self, id_map=None, verbose=False):
 
 		# if the user didn't already input an id map, just order
 		# according to genomic position
@@ -120,9 +121,9 @@ class Graph:
 		self.dfs_to_dicts()
 
 		# update the ids according to id_map
-		self.update_loc_df_ids(id_map)
-		self.update_edge_df_ids(id_map)
-		self.update_t_df_paths(id_map)
+		self.update_loc_df_ids(id_map, verbose)
+		self.update_edge_df_ids(id_map, verbose)
+		self.update_t_df_paths(id_map, verbose)
 
 		# convert back to dfs
 		self.dicts_to_dfs()	
@@ -162,37 +163,83 @@ class Graph:
 		return id_map
 
 	# update vertex ids in loc_df
-	def update_loc_df_ids(self, id_map):
+	def update_loc_df_ids(self, id_map, verbose):
 
 		loc_df = {}
+
+		if verbose:
+			pbar = tqdm(total=len(id_map.items()))
+			counter = 0
+
 		for old_id, new_id in id_map.items():
+			if verbose: 
+				counter+=1
+				if counter % 1000 == 0:
+					pbar.update(1000)
+					pbar.set_description('Reindexing vertices')
+
 			loc_df[new_id] = self.loc_df[old_id]
 			loc_df[new_id]['vertex_id'] = new_id
+
+		if verbose:
+			pbar.close()
+
 		self.loc_df = loc_df
 
 	# update vertex ids in edge_df
-	def update_edge_df_ids(self, id_map):
+	def update_edge_df_ids(self, id_map, verbose):
 
 		edge_df = {}
+
+		if verbose:
+			pbar = tqdm(total=len(id_map.items()))
+			counter = 0
+
 		for edge_id, item in self.edge_df.items():
+
+			if verbose:
+				counter+=1
+				if counter % 1000 == 0:
+					pbar.update(1000)
+					pbar.set_description('Reindexing edges')
+
 			new_id = (id_map[edge_id[0]],id_map[edge_id[1]])
 			edge_df[new_id] = item
 			edge_df[new_id]['v1'] = new_id[0]
 			edge_df[new_id]['v2'] = new_id[1]
 			edge_df[new_id]['edge_id'] = new_id
+
+		if verbose:
+			pbar.close()
+
 		self.edge_df = edge_df
 
 	# update vertex ids in t_df
-	def update_t_df_paths(self, id_map):
+	def update_t_df_paths(self, id_map, verbose):
 
 		t_df = {}
+
+		if verbose:
+			pbar = tqdm(total=len(self.t_df.items()))
+			counter = 0
+
 		for tid, item in self.t_df.items():
+			if verbose: 
+				counter+=1
+				if counter % 100 == 0:
+					pbar.update(100)
+					pbar.set_description('Reindexing transcripts')
+
 			path = item['path']
 			new_path = []
 			for n in path:
 				new_path.append(id_map[n])
 			t_df[tid] = item
 			t_df[tid]['path'] = new_path
+
+		if verbose: 
+			pbar.close()
+
 		self.t_df = t_df
 
 	# create the graph object from the dataframes

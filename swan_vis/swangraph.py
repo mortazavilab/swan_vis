@@ -13,6 +13,7 @@ import anndata
 import diffxpy.api as de
 import multiprocessing
 from itertools import repeat
+from tqdm import tqdm 
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -80,19 +81,21 @@ class SwanGraph(Graph):
 	############## Related to adding datasets and merging #####################
 	###########################################################################
 
-	def add_annotation(self, fname):
+	def add_annotation(self, fname, verbose=False):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
 
 			Parameters:
 				fname (str): Path to annotation GTF
+				verbose (bool): Display progress
+					Default: False
 		"""
 
 		# column name for annotation 
 		col = 'annotation'
 
 		# use the add_dataset function to add stuff to graph
-		self.add_dataset(col, fname, include_isms=True)
+		self.add_dataset(col, fname, include_isms=True, verbose=verbose)
 
 		# call all transcripts from the annotation "Known"
 		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
@@ -103,7 +106,8 @@ class SwanGraph(Graph):
 					whitelist=None,
 					counts_file=None, count_cols=None, 
 					tid_col='annot_transcript_id',
-					include_isms=False):
+					include_isms=False,
+					verbose=False):
 		"""
 		Add transcripts from a dataset from either a GTF or a TALON database.
 
@@ -128,6 +132,9 @@ class SwanGraph(Graph):
 
 				include_isms (bool): Include ISMs from input dataset
 					Default=False
+
+				verbose (bool): Display progress
+					Default: False
 		"""
 
 		# make sure that input dataset name is not
@@ -148,14 +155,15 @@ class SwanGraph(Graph):
 		# are we dealing with a gtf or a db?
 		ftype = gtf_or_db(fname)
 
-		print('Adding dataset {} to the SwanGraph.'.format(col))
+		print()
+		print('Adding dataset {} to the SwanGraph'.format(col))
 
 		# first entry is easy 
 		if self.is_empty():
 
 			# get loc_df, edge_df, t_df
 			if ftype == 'gtf':
-				self.create_dfs_gtf(fname)
+				self.create_dfs_gtf(fname, verbose)
 			elif ftype == 'db':
 				self.create_dfs_db(fname, whitelist, dataset_name)
 
@@ -169,10 +177,10 @@ class SwanGraph(Graph):
 		else:
 			temp = SwanGraph()
 			if ftype == 'gtf':
-				temp.create_dfs_gtf(fname)
+				temp.create_dfs_gtf(fname, verbose)
 			elif ftype == 'db':
 				temp.create_dfs_db(fname, whitelist, dataset_name)
-			self.merge_dfs(temp, col)
+			self.merge_dfs(temp, col, verbose)
 
 		# remove isms if we have access to that information
 		if 'novelty' in self.t_df.columns and not include_isms:
@@ -180,7 +188,9 @@ class SwanGraph(Graph):
 
 		# order node ids by genomic position, add node types,
 		# and create graph
-		self.update_ids()
+		if verbose:
+			print('Reindexing and sorting entries on genomic location...')
+		self.update_ids(verbose=verbose)
 		self.order_edge_df()
 		self.order_transcripts()
 		self.get_loc_types()
@@ -191,10 +201,15 @@ class SwanGraph(Graph):
 
 		# if we're also adding abundances
 		if counts_file and count_cols:
-			self.add_abundance(counts_file, count_cols, col, tid_col)
+			self.add_abundance(counts_file, count_cols,
+				col, tid_col, verbose)
+
+		if verbose:
+			print('Dataset {} added to the SwanGraph'.format(col))
  
 	def add_abundance(self, counts_file, count_cols,
-					  dataset_name, tid_col='annot_transcript_id'):
+					  dataset_name, tid_col='annot_transcript_id',
+					  verbose=False):
 		"""
 		Adds abundance information to an existing dataset in the SwanGraph.
 
@@ -204,8 +219,14 @@ class SwanGraph(Graph):
 				count_cols (str or list of str): Column names in counts_file to use
 				dataset_name (str): Name of SwanGraph dataset to associate abundance with
 				tid_col (str): Column name in counts_file containing transcript id
-					Default='annot_transcript_id'
+					Default: 'annot_transcript_id'
+
+				verbose (bool): Display progress updates
+					Default: False
 		"""
+
+		if verbose:
+			print('Adding abundance information...')
 
 		# if the dataset we're trying to add counts too doesn't exist
 		if dataset_name not in self.datasets:
@@ -231,7 +252,10 @@ class SwanGraph(Graph):
 		self.tpm.append('{}_tpm'.format(dataset_name))
 
 	# merge dfs from two SwanGraph objects
-	def merge_dfs(self, b, b_col):
+	def merge_dfs(self, b, b_col, verbose):
+
+		if verbose:
+			print('Merging with preexisting SwanGraph...')
 
 		# merge loc dfs
 		# what locations correspond between the datasets?
@@ -438,14 +462,30 @@ class SwanGraph(Graph):
 
 	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
 	# adapted from Dana Wyman and TALON
-	def create_dfs_gtf(self, gtf_file):
+	def create_dfs_gtf(self, gtf_file, verbose):
 
 		# make sure file exists
 		check_file_loc(gtf_file, 'GTF')
 
+		# counts the number of transcripts in a given GTF
+		def count_transcripts(gtf_file):
+			df = pd.read_csv(gtf_file, sep='\t', usecols=[2],
+				names=['entry_type'], comment='#')
+			df = df.loc[df.entry_type == 'transcript']
+			n = len(df.index)
+			return n
+
+		# get the number of transcripts in the file
+		n_transcripts = count_transcripts(gtf_file)
+
 		# dictionaries to hold unique edges and transcripts
 		transcripts = {}
 		exons = {}
+
+		# display progess
+		if verbose:
+			pbar = tqdm(total=n_transcripts)
+			counter = 0 
 
 		with open(gtf_file) as gtf:
 			for line in gtf:
@@ -467,12 +507,20 @@ class SwanGraph(Graph):
 
 				# transcript entry 
 				if entry_type == "transcript":
+
+					# update progress bar
+					if verbose:
+						counter+=1
+						if counter % 100 == 0:
+							pbar.update(100)
+							pbar.set_description('Processing transcripts')
+
 					attributes = get_fields(fields)
 
 					# check if this gtf has transcript novelty vals
 					# for the first transcript entry
 					if not transcripts:
-						if 'talon_transcript' in attributes:
+						if 'talon_transcripts' in attributes:
 							from_talon = True
 						else:
 							from_talon = False
@@ -520,6 +568,11 @@ class SwanGraph(Graph):
 			   		# add this exon to the transcript's list of exons
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
+
+
+		# close progress bar
+		if verbose:
+			pbar.close()
 
 		# once we have all transcripts, make loc_df
 		locs = {}

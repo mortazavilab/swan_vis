@@ -20,7 +20,8 @@ setup(
           'diffxpy',
           'tensorflow',
           'tensorflow-probability',
-	        'pathlib'
+	        'pathlib',
+          'tqdm'
     ],
   classifiers=[
     'Development Status :: 3 - Alpha',
