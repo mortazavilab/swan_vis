@@ -165,7 +165,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				self.create_dfs_gtf(fname, verbose)
 			elif ftype == 'db':
-				self.create_dfs_db(fname, whitelist, dataset_name)
+				self.create_dfs_db(fname, whitelist, dataset_name, verbose)
 
 			# add column to each df to indicate where data came from
 			self.loc_df[col] = True
@@ -179,7 +179,7 @@ class SwanGraph(Graph):
 			if ftype == 'gtf':
 				temp.create_dfs_gtf(fname, verbose)
 			elif ftype == 'db':
-				temp.create_dfs_db(fname, whitelist, dataset_name)
+				temp.create_dfs_db(fname, whitelist, dataset_name, verbose)
 			self.merge_dfs(temp, col, verbose)
 
 		# remove isms if we have access to that information
@@ -679,7 +679,7 @@ class SwanGraph(Graph):
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from 
 	# TALON's create_GTF utility
-	def create_dfs_db(self, database, whitelist, dataset):
+	def create_dfs_db(self, database, whitelist, dataset, verbose):
 
 		# make sure file exists
 		check_file_loc(database, 'TALON DB')
@@ -714,6 +714,11 @@ class SwanGraph(Graph):
 
 		transcripts = {}
 		exons = {}
+
+		if verbose:
+			n_transcripts = len(transcript_whitelist)
+			pbar = tqdm(total=n_transcripts)
+			pbar.set_description('Processing transcripts')
 
 		# loop through genes, transcripts, and exons
 		for gene_ID, transcript_tuples in gene_2_transcripts.items():
@@ -754,6 +759,9 @@ class SwanGraph(Graph):
 						 'exons': []}
 				transcript = {tid: entry}
 				transcripts.update(transcript)
+
+				if verbose:
+					pbar.update(1)
 						 
 				if transcript_entry["n_exons"] != 1:
 					transcript_edges = [str(transcript_entry["start_exon"])] + \
