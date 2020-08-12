@@ -156,6 +156,7 @@ class PlottedGraph(Graph):
 		# calculated by fitting power series curve to handpicked sizes
 		node_size = 19248*(x**-1.14) 
 		label_size = 43.9*(x**-0.484)
+		line_width = 2
 
 		# linearly-related sizes
 		edge_width = -x/18 + (121/18)
@@ -168,6 +169,7 @@ class PlottedGraph(Graph):
 		self.label_size = label_size
 		self.rad_scale = 0.32
 		self.edge_width = edge_width
+		self.line_width = line_width
 
 	# calculate the color for each node
 	def calc_node_colors(self):
@@ -180,20 +182,20 @@ class PlottedGraph(Graph):
 		if self.indicate_novel and is_novel(x):
 			if self.graph_type == 'transcript_path' \
 			and x.vertex_id in self.path:
-				return 'k'
+				return 'k', self.line_width
 			elif self.graph_type == 'summary':
-				return 'k'
+				return 'k', self.line_width
 			else:
-				return "#999999"
+				return "#999999", self.line_width
 		elif self.indicate_dataset and in_dataset(self.indicate_dataset, x):
 			if self.graph_type == 'transcript_path' \
 			and x.vertex_id in self.path:
-				return 'k'
+				return 'k', self.line_width
 			elif self.graph_type == 'summary':
-				return 'k'
+				return 'k', self.line_width
 			else:
-				return "#999999"
-		return None
+				return "#999999", self.line_width
+		return None, None
 
 	# get the node color 
 	def get_node_color(self, x):
@@ -235,9 +237,12 @@ class PlottedGraph(Graph):
 		# if the node needs to be outlined due to indicate_dataset
 		# or indicate_novel
 		if self.indicate_novel or self.indicate_dataset:
-			x['edgecolor'] = self.is_novel_or_in_dataset(x)
+			ecolor, lwidth = self.is_novel_or_in_dataset(x)
+			x['edgecolor'] = ecolor
+			x['linewidth'] = lwidth
 		else:
 			x['edgecolor'] = None
+			x['linewidth'] = None
 
 		return x
 
@@ -371,7 +376,8 @@ class PlottedGraph(Graph):
 				nodelist=[node],
 				node_color=entry.color,
 				node_size=self.node_size,
-				edgecolors=entry.edgecolor)
+				edgecolors=entry.edgecolor,
+				linewidths=entry.linewidth)
 
 	###############################################################################
 	######################## Browser track style plotting #########################
