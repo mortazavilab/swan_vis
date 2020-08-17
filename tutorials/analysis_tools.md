@@ -2,12 +2,13 @@
 
 Swan has several analysis options to use.
 
-Table of contents
-
 * [Differential gene expression](analysis_tools.md#differential-gene-expression-tests)
 * [Differential transcript expression](analysis_tools.md#differential-transcript-expression-tests)
 * [Isoform switching](analysis_tools.md#isoform-switching)
 * [Exon skipping and intron retention](analysis_tools.md#exon-skipping-and-intron-retention)
+* [More differential expression](analysis_tools.md#more-differential-expression)
+
+Running this tutorial on my laptop took . The longest steps by far are running the differential gene and transcript expression tools.
 
 ```python
 import swan_vis as swan
@@ -23,6 +24,10 @@ Graph from data/swan.p loaded
 ## Differential gene expression tests
 
 Differential gene expression testing in Swan is implemented via [diffxpy](https://github.com/theislab/diffxpy). To run the test, first partition the datasets that you have added to your SwanGraph into biological replicates. Then, use this grouping to run the differential expression test.
+
+The differential expression test that is run is [diffxpy's Wald test](https://diffxpy.readthedocs.io/en/latest/api/diffxpy.api.test.wald.html#diffxpy.api.test.wald), which checks if a "a certain coefficient introduces a significant difference in the expression of a gene". This test is performed on the normalized TPM for each gene.
+
+For individuals wanting to run a different diffxpy differential test, see [this section](analysis_tools.md#more-differential-expression).
 
 ```python
 dataset_groups = [['HepG2_1','HepG2_2'],
@@ -124,13 +129,17 @@ gene_summary.head()
 
 Similarly, Swan can run tests to find differentially expressed transcript isoforms. The input and output to these functions are identical to that of the differential gene tests.
 
+The differential expression test that is run is [diffxpy's Wald test](https://diffxpy.readthedocs.io/en/latest/api/diffxpy.api.test.wald.html#diffxpy.api.test.wald), which checks if a "a certain coefficient introduces a significant difference in the expression of a transcript". This test is performed on the normalized TPM for each transcript.
+
+For individuals wanting to run a different diffxpy differential test, see [this section](analysis_tools.md#more-differential-expression)
+
 ```python
 dataset_groups = [['HepG2_1','HepG2_2'],
 				  ['HFFc6_1','HFFc6_2','HFFc6_3']]
 
 # perform a differential transcript expression 
 # Wald test on the provided two lists of datasets
-sg.de_transcript_test(dataset_groups);
+sg.de_transcript_test(dataset_groups)
 sg.det_test.head()
 ```
 
@@ -234,3 +243,26 @@ Found 47 novel ir events from 49 transcripts.
 
 As usual, we can feed `ir_genes` into `gen_report()` or individual gene ids from `ir_genes` into `plot_graph()` to generate gene reports or gene summary graphs respectively.
 
+## More differential expression
+
+For users that are interested in using different differential expression tests, or tweaking the input parameters, we encourage them to obtain an AnnData version of of their SwanGraph using `create_gene_anndata` or `create_transcript_anndata`, and exploring the numerous differential testing options that diffxpy supports. 
+
+[Diffxpy differential testing tutorials](https://diffxpy.readthedocs.io/en/latest/tutorials.html#differential-testing)
+
+[More information on diffxpy differential expression tests](https://nbviewer.jupyter.org/github/theislab/diffxpy_tutorials/blob/master/diffxpy_tutorials/test/introduction_differential_testing.ipynb) 
+
+
+```python
+dataset_groups = [['HepG2_1','HepG2_2'],
+                  ['HFFc6_1','HFFc6_2','HFFc6_3']]
+
+# create a gene-level AnnData object compatible with diffxpy 
+# that assigns different condition labels to the given dataset groups
+gene_adata = sg.create_gene_anndata(dataset_groups)
+```
+
+```python
+# create a transcript-level AnnData object compatible with diffxpy 
+# that assigns different condition labels to the given dataset groups
+transcript_adata = sg.create_transcript_anndata(dataset_groups)
+```

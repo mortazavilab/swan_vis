@@ -22,6 +22,7 @@ sg = swan.SwanGraph('data/swan.p')
 Gene summary graphs display a high-level summary of the complexity of splicing within a certain gene locus. All observed splice sites and splice junctions from input datasets, and the annotation \(if added\) are plotted in full color. Genes can be called to be plotted either using their gene ids or gene names, but we recommend using gene ids as we have encountered redundant gene names during testing.
 
 ```python
+# plot a gene summary graph
 sg.plot_graph('ADRM1')
 ```
 
@@ -199,8 +200,6 @@ sg.gen_report(['ADRM1','PSAP'], prefix='figures/multi_gene',
 
 ![](../.gitbook/assets/output_36_0.png)
 
-![](../.gitbook/assets/output_37_0.png)
-
 ```python
 # generate reports for the given gene
 # with the given prefix
@@ -213,4 +212,7 @@ sg.gen_report('ADRM1', prefix='figures/adrm1',
              include_qvals=True, q=0.1,
              browser=True)
 ```
+
+![](../.gitbook/assets/output_37_0.png)
+
 
