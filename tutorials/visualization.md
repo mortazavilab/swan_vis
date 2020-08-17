@@ -50,6 +50,16 @@ sg.plot_graph('ADRM1', indicate_dataset='HepG2_1')
 
 ![](../.gitbook/assets/output_10_0.png)
 
+If you're plotting with Swan from a `.py` file or from the terminal and want to see your plot as it is generated, use the display argument to `plot_graph`.
+
+```python
+# plot a gene summary graph and immediately display it during
+# code execution
+sg.plot_graph('ADRM1', indicate_novel=True, display=True)
+```
+
+![](../.gitbook/assets/output_8_0.png)
+
 ## Transcript path graphs
 
 Transcript path graphs display the same structure as gene summary graphs but gray out nodes and edges \(splice sites and intronic/exonic regions\) that are not present in the given transcript. In this case, the transcript id field is needed to plot the path.
@@ -93,6 +103,17 @@ sg.plot_transcript_path('TALONT000301953', browser=True)
 ```
 
 ![](../.gitbook/assets/output_18_0.png)
+
+`plot_transcript_path()` can also take the display argument for users that are interested in seeing their plots as they are being generated.
+
+```python
+# plot a transcript's path and immediately display it during
+# code execution
+sg.plot_transcript_path('TALONT000301953', browser=True, display=True)
+```
+
+![](../.gitbook/assets/output_18_0.png)
+
 
 ## Saving a figure
 

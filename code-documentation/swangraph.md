@@ -494,7 +494,7 @@ Parameters:
 ### plot\_graph
 
 ```python
-plot_graph(self, gid, indicate_dataset=False, indicate_novel=False, prefix=None)
+plot_graph(self, gid, indicate_dataset=False, indicate_novel=False, prefix=None, display=False)
 ```
 
 Plots a gene summary SwanGraph for an input gene. Does not automatically save the figure by default!
@@ -515,12 +515,14 @@ Parameters:
         prefix (str): Path and file prefix to automatically save
                 the plotted figure
                 Default: None, won't automatically save
+        display (bool): Display the plot during runtime
+                Default: False  
 ```
 
 ### plot\_transcript\_path
 
 ```python
-plot_transcript_path(self, tid, indicate_dataset=False, indicate_novel=False, browser=False, prefix=None)
+plot_transcript_path(self, tid, indicate_dataset=False, indicate_novel=False, browser=False, prefix=None, display=False)
 ```
 
 Plots a path of a single transcript isoform through a gene summary SwanGraph.
@@ -543,6 +545,8 @@ Parameters:
         prefix (str): Path and file prefix to automatically save
                 the plotted figure
                 Default: None, won't automatically save
+        display (bool): Display the plot during runtime
+                Default: False 
 ```
 
 ### save\_graph

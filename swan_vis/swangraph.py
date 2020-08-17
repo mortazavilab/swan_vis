@@ -1665,7 +1665,8 @@ class SwanGraph(Graph):
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
 				   indicate_novel=False,
-				   prefix=None):
+				   prefix=None,
+				   display=False):
 		"""
 		Plots a gene summary SwanGraph for an input gene.
 		Does not automatically save the figure by default!
@@ -1685,6 +1686,8 @@ class SwanGraph(Graph):
 				prefix (str): Path and file prefix to automatically save
 					the plotted figure
 					Default: None, won't automatically save 
+				display (bool): Display the plot during runtime
+					Default: False
 		"""
 
 		if gid not in self.t_df.gid.tolist():
@@ -1698,6 +1701,10 @@ class SwanGraph(Graph):
 			indicate_dataset=indicate_dataset, 
 			indicate_novel=indicate_novel)
 		self.pg.plot_graph()
+
+		# display the plot if option is given
+		if display:
+			plt.show()
 
 		# if the user has provided a place to save
 		if prefix:
@@ -1716,7 +1723,8 @@ class SwanGraph(Graph):
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False,
-							 prefix=None):
+							 prefix=None,
+							 display=False):
 		"""
 		Plots a path of a single transcript isoform through a gene summary 
 		SwanGraph.
@@ -1738,6 +1746,8 @@ class SwanGraph(Graph):
 				prefix (str): Path and file prefix to automatically save
 					the plotted figure
 					Default: None, won't automatically save
+				display (bool): Display the plot during runtime
+					Default: False
 		"""
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
@@ -1749,6 +1759,10 @@ class SwanGraph(Graph):
 			indicate_novel=indicate_novel,
 			browser=browser)
 		self.pg.plot_graph()
+
+		# display the plot if option is given
+		if display:
+			plt.show()
 
 		# if the user has provided a place to save
 		if prefix:
