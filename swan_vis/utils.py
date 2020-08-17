@@ -178,20 +178,33 @@ def validate_gtf(fname):
 		raise Exception('GTF is missing entry types {}'.format(missing_entry_types))
 
 	# next check if gene_id, transcript_id, and gene_name fields exist 
-	fields = df.loc[df.entry_type=='exon', 'fields'].tolist()[0]
-	missing_field = False
+	# in each line of the thing
+	df = df.loc[df.entry_type == 'transcript']
+	df['tid'] = df.fields.str.extract(r'transcript_id "([A-z]+[0-9.]+)"',
+		expand=False)
+	df['gid'] = df.fields.str.extract(r'gene_id "([A-z]+[0-9.]+)"',
+		expand=False)
+	df.drop('fields', axis=1, inplace=True)
+ 
 	missing_fields = []
-	if not get_field_value('gene_id', fields):
-		missing_field = True
-		missing_fields.append('gene_id')
-	if not get_field_value('gene_name', fields):
-		missing_field = True		
-		missing_fields.append('gene_name')
-	if not get_field_value('transcript_id', fields):
-		missing_field = True
+	if df.tid.isnull().any():
 		missing_fields.append('transcript_id')
-	if missing_field:
+	if df.gid.isnull().any():
+		missing_fields.append('gene_id')
+	if missing_fields:
 		raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
+
+	# fields = df.loc[df.entry_type=='exon', 'fields'].tolist()[0]
+	# missing_field = False
+	# missing_fields = []
+	# if not get_field_value('gene_id', fields):
+	# 	missing_field = True
+	# 	missing_fields.append('gene_id')
+	# if not get_field_value('transcript_id', fields):
+	# 	missing_field = True
+	# 	missing_fields.append('transcript_id')
+	# if missing_field:
+	# 	raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
 
 # depending on the strand, determine the start and stop
 # coords of an intron or exon
