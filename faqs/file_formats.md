@@ -14,7 +14,8 @@ File formats in bioinformatics are notoriously hard to standardize. We hope that
 In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must adhere to the following specifications:
 
 * transcript and exon entries in column 3 - this is a dependency we would like to remove in the future but for now this is the way it works
-* gene\_id and transcript\_id attributes \(for transcripts and exons\) in column 9. ** we also recommend using the gene\_name field to be able to plot genes from their human-readable names as well **
+* gene\_id and transcript\_id attributes \(for transcripts and exons\) in column 9. 
+* recommended: including the gene\_name field will enable you to plot genes from their human-readable names as well
 * any non-data header lines must begin with \#
 * gene\_ids, gene\_names, and transcript\_ids must be the same across datasets for proper dataset merging 
 * exons must be in order under the transcript entry to which they belong
