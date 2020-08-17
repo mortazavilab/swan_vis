@@ -22,6 +22,8 @@ Other sections:
 
 This page can also be read from top to bottom, just know that you may be running things more than once!
 
+Running this tutorial (with only one of the dataset addition options) on my laptop took around 7 minutes and 5 GB of RAM. 
+
 ## Download example data
 
 ```bash

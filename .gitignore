@@ -15,6 +15,7 @@ visual_tests/
 
 # tutorials data
 tutorials/data/
+tutorials/figures/
 tutorials/swan.p
 tutorials/.ipynb_checkpoints/
 

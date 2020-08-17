@@ -8,7 +8,7 @@ Swan has several analysis options to use.
 * [Exon skipping and intron retention](analysis_tools.md#exon-skipping-and-intron-retention)
 * [More differential expression](analysis_tools.md#more-differential-expression)
 
-Running this tutorial on my laptop took . The longest steps by far are running the differential gene and transcript expression tools.
+Running this tutorial on my laptop took around 30 minutes and 3 GB of RAM. The longest steps by far are running the differential gene and transcript expression tools. The diffxpy tools are multithreaded, and my laptop has 8 cores.
 
 ```python
 import swan_vis as swan
@@ -131,7 +131,7 @@ Similarly, Swan can run tests to find differentially expressed transcript isofor
 
 The differential expression test that is run is [diffxpy's Wald test](https://diffxpy.readthedocs.io/en/latest/api/diffxpy.api.test.wald.html#diffxpy.api.test.wald), which checks if a "a certain coefficient introduces a significant difference in the expression of a transcript". This test is performed on the normalized TPM for each transcript.
 
-For individuals wanting to run a different diffxpy differential test, see [this section](analysis_tools.md#more-differential-expression)
+For individuals wanting to run a different diffxpy differential test, see [this section](analysis_tools.md#more-differential-expression).
 
 ```python
 dataset_groups = [['HepG2_1','HepG2_2'],

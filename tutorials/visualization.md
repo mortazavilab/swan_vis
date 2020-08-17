@@ -2,12 +2,12 @@
 
 Swan offers many different visualization options to understand your transcriptomes. This tutorial includes instructions on the following:
 
-Table of contents
-
 * [Gene summary graphs](visualization.md#gene-summary-graphs)
 * [Transcript path graphs](visualization.md#transcript-path-graphs)
 * [Saving a figure](visualization.md#saving-a-figure)
 * [Swan reports](visualization.md#swan-reports)
+
+Running this tutorial on my laptop takes under a minute and 3 GB of RAM.
 
 ```python
 %matplotlib inline
