@@ -8,10 +8,12 @@ Then, download the data and the reference transcriptome annotation from [here](h
 Swan offers two main ways for loading transcriptomes. You can either load models from [a properly-formatted GTF](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time), or from a [TALON db](getting_started.md#adding-transcript-models-talon-db-and-abundance-information).
 Please see the [input file format documentation](../faqs/file_formats.md) for specifics on how these files should be formatted.
 
-We've provided three examples on how to add data to your SwanGraph in the following tutorial. You only need to run one!
+We've provided four examples on different ways you can add data to your SwanGraph in the following tutorial. You only need to run one!
 * [Using a GTF and abundance table together](getting_started.md#adding-transcript-models-gtf-and-abundance-information-at-the-same-time)
 * [Using a GTF and abundance table separately](getting_started.md#adding-transcript-models-gtf-and-abundance-information-separately)
 * [Using a TALON database and abundance table together](getting_started.md#adding-transcript-models-talon-db-and-abundance-information)
+* [Batch adding datasets](getting_started.md#batch-adding-datasets)
+
 
 Other sections: 
 * [Example data download](getting_started.md#download-example-data)
@@ -196,5 +198,122 @@ sg.add_dataset('Hffc6_3', talon_db,
     whitelist=hffc6_whitelist,
     counts_file=ab_file,
     count_cols='hffc6_3')
+```
+
+## Batch adding datasets
+
+If you wish to add multiple datasets to the SwanGraph with a single command, you can use the `add_datasets()` function with a config file. The format of the config file is detailed [here](../faqs/file_formats.md#batch-config-file). You can provide datasets from both a TALON db or a GTF in the config file, as well as the annotation dataset. Below is an example of a config file that contains an annotation to be added to the SwanGraph, as well datasets from GTF files and from a TALON db.
+
+```python
+import pandas as pd
+config_df = pd.read_csv('config.csv', sep='\t')
+config_df
+```
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fname</th>
+      <th>col</th>
+      <th>counts_file</th>
+      <th>count_cols</th>
+      <th>tid_col</th>
+      <th>dataset_name</th>
+      <th>whitelist</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>data/gencode.v29.annotation.gtf</td>
+      <td>annotation</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>data/talon.db</td>
+      <td>HepG2_1</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hepg2_1</td>
+      <td>annot_transcript_id</td>
+      <td>hepg2_1</td>
+      <td>data/hepg2_whitelist.csv</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>data/talon.db</td>
+      <td>HepG2_2</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hepg2_2</td>
+      <td>annot_transcript_id</td>
+      <td>hepg2_2</td>
+      <td>data/hepg2_whitelist.csv</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>data/hffc6_1_talon.gtf</td>
+      <td>HFFc6_1</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hffc6_1</td>
+      <td>annot_transcript_id</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>data/hffc6_2_talon.gtf</td>
+      <td>HFFc6_2</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hffc6_2</td>
+      <td>annot_transcript_id</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>data/hffc6_3_talon.gtf</td>
+      <td>HFFc6_3</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hffc6_3</td>
+      <td>annot_transcript_id</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+As you can see, the header columns in the config file are equivalent to arguments you would pass into the `add_dataset()` function, and unneccessary arguments based on the input file type (TALON db vs. GTF) can be left blank.
+
+
+```python
+# for this new example, create a new empty SwanGraph
+sg = swan.SwanGraph()
+```
+
+
+```python
+# add each dataset from the config file with the corresponding input
+# settings to the SwanGraph
+sg.add_datasets('config.csv')
 ```
 

@@ -81,6 +81,85 @@ class SwanGraph(Graph):
 	############## Related to adding datasets and merging #####################
 	###########################################################################
 
+	def add_datasets(self, config, include_isms=False, verbose=False):
+		"""
+		Add transcripts from multiple datasets from a config TSV file
+
+			Parameters:
+
+				config (str): Path to TSV config file with the following
+					columns (indicated by the header):
+					
+					Required:
+						col: Name of column to add data to in the SwanGraph
+						fname: Path to GTF or TALON db
+
+					Optional:				
+						dataset_name: Dataset name in TALON db to add transcripts from
+							Default=None
+						whitelist: TALON whitelist of transcripts to add.
+							Default: None
+						counts_file: Path to tsv counts matrix
+							Default=None
+						count_cols: Column names in counts_file to use
+							Default=None
+						tid_col: Column name in counts_file containing transcript id
+							Default='annot_transcript_id'
+				
+				include_isms (bool): Include ISMs from input datasets
+					Default=False
+
+				verbose (bool): Display progress
+					Default: False
+		"""
+
+		# make sure the config file exits
+		check_file_loc(config, 'config')
+
+		# read in the config file 
+		df = pd.read_csv(config, sep='\t')
+
+		# check for required columns
+		if 'fname' not in df.columns:
+			raise Exception('Please provide the "fname" column in '
+				'config file for batch SwanGraph initialization.')
+		if 'col' not in df.columns:
+			raise Exception('Please provide the "col" column in '
+				'config file for batch SwanGraph initialization.')
+
+		# are there any unexpected columns?
+		expected_cols = ['fname', 'col', 
+						 'whitelist', 'dataset_name',
+						 'counts_file', 'count_cols',
+						 'tid_col', 'include_isms',
+						 'verbose'] 
+		for c in df.columns.tolist():
+			if c not in expected_cols:
+				print('Encountered unexpected column name "{}"'.format(c))
+
+		# loop through each entry in config file 
+		for ind, entry in df.iterrows():
+
+			# get the values for the rest of the arguments
+			file = entry['fname']
+			col = entry['col']
+
+			kwargs = {}
+			for c in df.columns.tolist():
+				if c != 'fname' and c != 'col':
+					if not pd.isnull(entry[c]):
+						kwargs[c] = entry[c]
+
+			# call add_annotation if we got that as a column
+			if col == 'annotation':
+				self.add_annotation(file, verbose=verbose)
+
+			# otherwise add_dataset
+			else: 
+				self.add_dataset(col, file,
+					include_isms=include_isms,
+					verbose=verbose, **kwargs)
+
 	def add_annotation(self, fname, verbose=False):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
@@ -107,7 +186,8 @@ class SwanGraph(Graph):
 					counts_file=None, count_cols=None, 
 					tid_col='annot_transcript_id',
 					include_isms=False,
-					verbose=False):
+					verbose=False,
+					**kwargs):
 		"""
 		Add transcripts from a dataset from either a GTF or a TALON database.
 
@@ -520,7 +600,7 @@ class SwanGraph(Graph):
 					# check if this gtf has transcript novelty vals
 					# for the first transcript entry
 					if not transcripts:
-						if 'talon_transcripts' in attributes:
+						if 'talon_transcript' in attributes:
 							from_talon = True
 						else:
 							from_talon = False
@@ -1446,9 +1526,23 @@ class SwanGraph(Graph):
 
 		return df
 
-	# return an anndata object that can be used to perform different 
-	# differential gene expression tests using the diffxpy module
 	def create_gene_anndata(self, dataset_groups):
+		"""
+		Creates a gene-level AnnData object containing TPM that's 
+		compatible with diffxpy. Assigns different condition labels 
+		to the given dataset groups.
+
+			Parameters:
+
+				dataset_groups (list of list of str, len 2): Grouping of datasets 
+					from the SwanGraph to be used in the differential
+					expression test
+					Example: [['data1','data2'],['data3','data4']]
+
+			Returns: 
+				ann (AnnData): AnnData object containing gene-level TPM
+					with different conditions labelled for DE testing
+		"""
 
 		# group t_df into gene df and sum up abundances
 		# both across genes and across datasets
@@ -1478,9 +1572,23 @@ class SwanGraph(Graph):
 
 		return ann
 
-	# returns an anndata object that can be used to perform different 
-	# differential transcript expression tests using diffxpy
 	def create_transcript_anndata(self, dataset_groups):
+		"""
+		Creates a transcript-level AnnData object containing TPM that's 
+		compatible with diffxpy. Assigns different condition labels 
+		to the given dataset groups.
+
+			Parameters:
+
+				dataset_groups (list of list of str, len 2): Grouping of datasets 
+					from the SwanGraph to be used in the differential
+					expression test
+					Example: [['data1','data2'],['data3','data4']]
+
+			Returns: 
+				ann (AnnData): AnnData object containing transcript-level TPM
+					with different conditions labelled for DE testing
+		"""
 
 		# group t_df into gene df and sum up abundances
 		# both across genes and across datasets

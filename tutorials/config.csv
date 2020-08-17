@@ -1,0 +1,7 @@
+fname	col	counts_file	count_cols	tid_col	dataset_name	whitelist
+data/gencode.v29.annotation.gtf	annotation					
+data/talon.db	HepG2_1	data/all_talon_abundance_filtered.tsv	hepg2_1	annot_transcript_id	hepg2_1	data/hepg2_whitelist.csv
+data/talon.db	HepG2_2	data/all_talon_abundance_filtered.tsv	hepg2_2	annot_transcript_id	hepg2_2	data/hepg2_whitelist.csv
+data/hffc6_1_talon.gtf	HFFc6_1	data/all_talon_abundance_filtered.tsv	hffc6_1	annot_transcript_id		
+data/hffc6_2_talon.gtf	HFFc6_2	data/all_talon_abundance_filtered.tsv	hffc6_2	annot_transcript_id		
+data/hffc6_3_talon.gtf	HFFc6_3	data/all_talon_abundance_filtered.tsv	hffc6_3	annot_transcript_id		

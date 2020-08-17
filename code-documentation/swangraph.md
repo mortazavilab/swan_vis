@@ -116,6 +116,43 @@ Parameters:
             Default: False
 ```
 
+### add\_datasets
+
+```python
+add_datasets(self, config, include_isms=False, verbose=False)
+```
+
+Add transcripts from multiple datasets from a config TSV file
+
+```text
+Parameters:
+
+    config (str): Path to TSV config file with the following
+        columns (indicated by the header):
+        
+        Required:
+            col: Name of column to add data to in the SwanGraph
+            fname: Path to GTF or TALON db
+
+        Optional:               
+            dataset_name: Dataset name in TALON db to add transcripts from
+                Default=None
+            whitelist: TALON whitelist of transcripts to add.
+                Default: None
+            counts_file: Path to tsv counts matrix
+                Default=None
+            count_cols: Column names in counts_file to use
+                Default=None
+            tid_col: Column name in counts_file containing transcript id
+                Default='annot_transcript_id'
+    
+    include_isms (bool): Include ISMs from input datasets
+        Default=False
+
+    verbose (bool): Display progress
+        Default: False
+```
+
 ### de\_gene\_test
 
 ```python
@@ -356,6 +393,49 @@ Returns:
         test (pandas DataFrame): Summary table of transcripts that pass
                 the significance threshold
 ```
+
+### create\_gene\_anndata
+
+```python
+create_gene_anndata(self, dataset_groups)
+```
+
+Creates a gene-level AnnData object containing TPM that's compatible with diffxpy. Assigns different condition labels to the given dataset groups.
+
+```text
+Parameters:
+
+    dataset_groups (list of list of str, len 2): Grouping of datasets 
+        from the SwanGraph to be used in the differential
+        expression test
+        Example: [['data1','data2'],['data3','data4']]
+
+Returns: 
+    ann (AnnData): AnnData object containing gene-level TPM
+        with different conditions labelled for DE testing
+```
+
+### create\_transcript\_anndata
+
+```python
+create_transcript_anndata(self, dataset_groups)
+```
+
+Creates a transcript-level AnnData object containing TPM that's compatible with diffxpy. Assigns different condition labels to the given dataset groups.
+
+```text
+Parameters:
+
+    dataset_groups (list of list of str, len 2): Grouping of datasets 
+        from the SwanGraph to be used in the differential
+        expression test
+        Example: [['data1','data2'],['data3','data4']]
+
+Returns: 
+    ann (AnnData): AnnData object containing transcript-level TPM
+        with different conditions labelled for DE testing
+```
+
 
 ### plot\_each\_transcript
 

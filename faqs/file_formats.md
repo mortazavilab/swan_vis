@@ -7,13 +7,14 @@ File formats in bioinformatics are notoriously hard to standardize. We hope that
 * [GTF](file_formats.md#gtf)
 * [Abundance matrix](file_formats.md#abundance-matrix)
 * [TALON db](file_formats.md#talon-db)
+* [Batch add datasets config file](file_formats.md#batch-config-file)
 
 ## GTF
 
 In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must adhere to the following specifications:
 
 * transcript and exon entries in column 3 - this is a dependency we would like to remove in the future but for now this is the way it works
-* gene\_id, gene\_name, and transcript\_id attributes \(for transcripts and exons\) in column 9
+* gene\_id and transcript\_id attributes \(for transcripts and exons\) in column 9. ** we also recommend using the gene\_name field to be able to plot genes from their human-readable names as well **
 * any non-data header lines must begin with \#
 * gene\_ids, gene\_names, and transcript\_ids must be the same across datasets for proper dataset merging 
 * exons must be in order under the transcript entry to which they belong
@@ -74,4 +75,108 @@ ENST00000441765.5    0
 ## TALON db
 
 Swan currently works with TALON databases created with TALON v5.0+
+
+## Batch config file
+
+If you wish to add your datasets at the same time you can use tab-separated configuration file. 
+
+Each column should correspond to a different argument you can pass to the `add_dataset()` function, with the argument name detailed in the header. Columns can be in any order. 
+
+You can provide datasets from both a TALON db or a GTF in the config file, as well as the annotation dataset. 
+
+Arguments that you wish to use the default value for or arguments that are not necessary can be left blank. For instance, if adding from a GTF, there is no need for the `dataset_name` or `whitelist` arguments and these columns can be left blank. 
+
+Below is an example of a config file. As you can see, it adds the annotation transcriptome as well as data from a TALON database and different GTF files.
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fname</th>
+      <th>col</th>
+      <th>counts_file</th>
+      <th>count_cols</th>
+      <th>tid_col</th>
+      <th>dataset_name</th>
+      <th>whitelist</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>data/gencode.v29.annotation.gtf</td>
+      <td>annotation</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>data/talon.db</td>
+      <td>HepG2_1</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hepg2_1</td>
+      <td>annot_transcript_id</td>
+      <td>hepg2_1</td>
+      <td>data/hepg2_whitelist.csv</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>data/talon.db</td>
+      <td>HepG2_2</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hepg2_2</td>
+      <td>annot_transcript_id</td>
+      <td>hepg2_2</td>
+      <td>data/hepg2_whitelist.csv</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>data/hffc6_1_talon.gtf</td>
+      <td>HFFc6_1</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hffc6_1</td>
+      <td>annot_transcript_id</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>data/hffc6_2_talon.gtf</td>
+      <td>HFFc6_2</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hffc6_2</td>
+      <td>annot_transcript_id</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>data/hffc6_3_talon.gtf</td>
+      <td>HFFc6_3</td>
+      <td>data/all_talon_abundance_filtered.tsv</td>
+      <td>hffc6_3</td>
+      <td>annot_transcript_id</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div>
 
