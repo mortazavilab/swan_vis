@@ -207,7 +207,7 @@ is_table.head()
 
 ## Exon skipping and intron retention
 
-Swan can detect novel \(unannotated\) exon skipping and intron retention events.
+Swan can detect novel \(unannotated\) exon skipping and intron retention events. This works by looking for novel edges that completely span at least one edge of the opposite type (intron vs. exon) and calls each found novel edge an exon skipping or intron retention event. For visual examples of how this algorithm works, please see the [exon skipping and intron retention section](../../faqs/understanding_swan_vis/#exon-skipping-and-intron-retention) section of the "Understanding Swan Visualization" page.
 
 To obtain a list of genes containing novel exon skipping events, run the following code:
 
