@@ -47,6 +47,25 @@ Running this tutorial (with only one of the dataset addition options) on my lapt
 # cd ../
 ```
 
+Alternatively, if you wish to use a smaller example dataset (just chr20), run the following. The rest of the commands in the tutorial will work with the smaller data too!
+
+```bash
+# # run this block in your bash terminal
+# mkdir data
+# mkdir figures
+# cd data/
+
+# # download files
+# wget http://crick.bio.uci.edu/freese/swan_files_mini.tgz
+    
+# # expand files 
+# tar xzf swan_files_mini.tgz
+# mv swan_files_mini/* .
+# rm -r swan_files_mini/
+
+# cd ../
+```
+
 ## Starting up Swan and initializing your SwanGraph
 
 The rest of the code should be done in the Python shell, or run from a `.py` file. 
