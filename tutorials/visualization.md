@@ -9,6 +9,8 @@ Swan offers many different visualization options to understand your transcriptom
 
 Running this tutorial on my laptop takes under a minute and 3 GB of RAM.
 
+View and download the Jupyter Notebook for this tutorial [here](https://drive.google.com/file/d/1GpLE8Ee-nVale_1DNq7bBIyeUuCDUDdG/view?usp=sharing)
+
 ```python
 %matplotlib inline
 import swan_vis as swan

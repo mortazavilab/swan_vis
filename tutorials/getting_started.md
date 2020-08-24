@@ -24,6 +24,8 @@ This page can also be read from top to bottom, just know that you may be running
 
 Running this tutorial (with only one of the dataset addition options) on my laptop took around 7 minutes and 5 GB of RAM. 
 
+View and download the Jupyter Notebook for this tutorial [here](https://drive.google.com/file/d/1xLEQU_nWAPb5es4lOR4-99kftW6cu8SI/view?usp=sharing)
+
 ## Download example data
 
 ```bash

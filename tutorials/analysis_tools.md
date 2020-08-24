@@ -10,6 +10,8 @@ Swan has several analysis options to use.
 
 Running this tutorial on my laptop took around 30 minutes and 3 GB of RAM. The longest steps by far are running the differential gene and transcript expression tools. The diffxpy tools are multithreaded, and my laptop has 8 cores.
 
+View and download the Jupyter Notebook for this tutorial [here](https://drive.google.com/file/d/1L4YoNR8092Wsvl_fwvsgxbqrlwXjKwn5/view?usp=sharing)
+
 ```python
 import swan_vis as swan
 
