@@ -71,6 +71,8 @@ def get_fields(fields):
     # are absent
     if 'gene_id' not in attributes:
         attributes['gene_id'] = 'NULL'
+    if 'transcript_name' not in attributes:
+    	attributes['transcript_name'] = 'NULL'
 
     return attributes  
     

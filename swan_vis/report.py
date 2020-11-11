@@ -11,7 +11,6 @@ class Report(FPDF):
 				 report_type, 
 				 datasets,
 				 data_type, 
-				 var=None,
 				 novelty=False,
 				 heatmap=False,
 				 include_qvals=False):
@@ -36,8 +35,7 @@ class Report(FPDF):
 		self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.report_cols)
 
-		# colors for each of the categorical variables
-		vars = s
+		# colors for each of the datasets
 		colors = sns.color_palette('nipy_spectral',
 			len(self.datasets))
 		self.dataset_colors = []
@@ -160,21 +158,17 @@ class Report(FPDF):
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname):
 
-		# set tid text
-		tid = entry['tid']
-
 		# entries should not be bolded
 		if self.include_qvals:
 			if entry.significant:
 				self.set_font('Arial', 'B', 10)
-				tid += '*'
 			else:
 				self.set_font('Arial', '', 10)
 		else:
 			self.set_font('Arial', '', 10)
 
 		# tid
-		self.cell(50, self.entry_height, tid, border=True, align='C')
+		self.cell(50, self.entry_height, entry['tid'], border=True, align='C')
 		tid_x = self.get_x()
 		tid_y = self.get_y()
 

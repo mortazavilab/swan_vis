@@ -23,9 +23,7 @@ class SwanGraph(Graph):
 	""" 
 	A graph class to represent a transcriptome and perform
 	plotting and analysis from it
-
 		Attributes:
-
 			datasets (list of str):
 				Names of datasets in the Graph
 			var (pandas DataFrame): 
@@ -75,9 +73,6 @@ class SwanGraph(Graph):
 			self.det_test = pd.DataFrame()
 			self.det_test_groups = ''
 
-			# categorical variable assignments for each dataset
-			self.var = pd.DataFrame()
-
 		else:
 			check_file_loc(file, 'SwanGraph')
 			self.load_graph(file)
@@ -89,7 +84,6 @@ class SwanGraph(Graph):
 	def add_annotation(self, fname):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
-
 			Parameters:
 				fname (str): Path to annotation GTF
 		"""
@@ -105,7 +99,6 @@ class SwanGraph(Graph):
 		self.t_df.novelty.fillna('Undefined', inplace=True)
 
 	def add_dataset(self, col, fname,
-					var=None,
 					dataset_name=None,
 					whitelist=None,
 					counts_file=None, count_cols=None, 
@@ -113,20 +106,13 @@ class SwanGraph(Graph):
 					include_isms=False):
 		"""
 		Add transcripts from a dataset from either a GTF or a TALON database.
-
 			Parameters:
-
 				col (str): Name of column to add data to in the SwanGraph
 				fname (str): Path to GTF or TALON db
-
-				var (dictionary): Attribute mapping to the dataset to be added
-
-				# Only for loading from TALON
 				dataset_name (str): Dataset name in TALON db to add transcripts from
 					Default=None
 				whitelist (str): TALON whitelist of transcripts to add.
 					Default: None
-
 				# Only if also adding abundance
 				counts_file (str): Path to tsv counts matrix
 					Default=None
@@ -134,7 +120,6 @@ class SwanGraph(Graph):
 					Default=None
 				tid_col (str): Column name in counts_file containing transcript id
 					Default='annot_transcript_id'
-
 				include_isms (bool): Include ISMs from input dataset
 					Default=False
 		"""
@@ -202,19 +187,12 @@ class SwanGraph(Graph):
 		if counts_file and count_cols:
 			self.add_abundance(counts_file, count_cols, col, tid_col)
 
-		# update the var table
-		if var:
-			pass
-			# TODO
-
  
 	def add_abundance(self, counts_file, count_cols,
 					  dataset_name, tid_col='annot_transcript_id'):
 		"""
 		Adds abundance information to an existing dataset in the SwanGraph.
-
 			Parameters:
-
 				counts_file (str): Path to tsv counts matrix
 				count_cols (str or list of str): Column names in counts_file to use
 				dataset_name (str): Name of SwanGraph dataset to associate abundance with
@@ -296,7 +274,7 @@ class SwanGraph(Graph):
 		# merge on transcript information
 		t_df = self.t_df.merge(b.t_df,
 			   how='outer',
-			   on=['tid', 'gid', 'gname', 'path'],
+			   on=['tid', 'tname', 'gid', 'gname', 'path'],
 			   suffixes=['_a', '_b'])
 
 		# convert path back to list
@@ -493,6 +471,7 @@ class SwanGraph(Graph):
 							from_talon = False
 
 					tid = attributes['transcript_id']
+					tname = attributes['transcript_name']
 					gid = attributes['gene_id']
 
 					# check if there's a gene name field and add one if not
@@ -505,6 +484,7 @@ class SwanGraph(Graph):
 					entry = {'gid': gid,
 							 'gname': gname,
 							 'tid': tid,
+							 'tname': tname,
 							 'strand': strand,
 							 'exons': []}
 
@@ -615,12 +595,14 @@ class SwanGraph(Graph):
 
 		if from_talon:
 			transcripts = [{'tid': key,
+						'tname': item['tname'],
 						'gid': item['gid'],
 						'gname': item['gname'],
 						'path': item['path'],
 						'novelty': item['novelty']} for key, item in transcripts.items()]
 		else:
 			transcripts = [{'tid': key,
+						'tname': item['tname'],
 						'gid': item['gid'],
 						'gname': item['gname'],
 						'path': item['path']} for key, item in transcripts.items()]
@@ -693,6 +675,7 @@ class SwanGraph(Graph):
 			# get transcript entries
 			for transcript_entry in transcript_tuples:
 				transcript_ID = transcript_entry["transcript_ID"]
+				transcript_name = transcript_entry['transcript_name']
 				curr_transcript_annot = transcript_annotations[transcript_ID]
 
 				transcript_annotation_dict = {}
@@ -702,6 +685,7 @@ class SwanGraph(Graph):
 					transcript_annotation_dict[attribute] = value
 		  
 				tid = transcript_annotation_dict['transcript_id']
+				tname = transcript_annotation_dict['transcript_name']
 				gid = gene_annotation_dict['gene_id']  
 				gname = gene_annotation_dict['gene_name']
 				strand = transcript_entry['strand'] 
@@ -711,6 +695,7 @@ class SwanGraph(Graph):
 				entry = {'gid': gid,
 						 'gname': gname,
 						 'tid': tid,
+						 'tname': tname,
 						 'strand': strand,
 						 'novelty': novelty,
 						 'exons': []}
@@ -834,6 +819,7 @@ class SwanGraph(Graph):
 		edge_df = pd.DataFrame(edges)
 
 		transcripts = [{'tid': key,
+					'tname': item['tname'],
 					'gid': item['gid'],
 					'gname': item['gname'],
 					'path': item['path'],
@@ -883,6 +869,11 @@ class SwanGraph(Graph):
 		if order == 'tid':
 			ordered_tids = sorted(self.t_df.tid.tolist())
 			self.t_df = self.t_df.loc[ordered_tids]
+
+		# order by transcript name
+		elif order == 'tname':
+			ordered_tnames = sorted(self.t_df.tname.tolist())
+			self.t_df = self.t_df.loc[ordered_tnames]
 
 		# order by expression
 		elif order == 'expression':
@@ -1003,9 +994,7 @@ class SwanGraph(Graph):
 		"""
 		Finds all unique genes containing novel intron retention events. 
 		Requires that an annotation has been added to the SwanGraph.
-
 			Returns:
-
 				ir_genes (list of str): A list of gene ids from the SwanGraph with 
 					at least one novel intron retention event
 				ir_transcripts (list of str): A list of transcript ids from the 
@@ -1084,9 +1073,7 @@ class SwanGraph(Graph):
 		"""
 		Finds all unique genes containing novel exon skipping events. 
 		Requires that an annotation has been added to the SwanGraph.
-
 			Returns:
-
 				es_genes (list of str): A list of gene ids from the SwanGraph with 
 					at least one novel exon skipping event
 				es_transcripts (list of str): A list of transcript ids from the 
@@ -1168,16 +1155,12 @@ class SwanGraph(Graph):
 	def de_gene_test(self, dataset_groups):
 		""" 
 		Runs a differential expression test on the gene level.
-
 			Parameters:
-
 				dataset_groups (list of list of str, len 2): Grouping of datasets 
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
-
 			Returns: 
-
 				test (pandas DataFrame): A summary table of the differential
 					expression test, including p and q-values, as well 
 					as log fold change.
@@ -1215,16 +1198,12 @@ class SwanGraph(Graph):
 		Subsets the differential gene expression test summary table based
 		on a q-value cutoff. Requires that de_gene_test has already been
 		run.
-
 			Parameters:
-
 				q (float): q-value threshold to declare a gene as significant
 					Default: 0.05
 				n_genes (int): Number of results to return. 
 					Default: None (returns all found significant)
-
 			Returns:
-
 				genes (list of str): List of gene names that pass the 
 					significance threshold
 				test (pandas DataFrame): Summary table of genes that pass the
@@ -1252,16 +1231,12 @@ class SwanGraph(Graph):
 	def de_transcript_test(self, dataset_groups):
 		""" 
 		Runs a differential expression test on the transcript level.
-
 			Parameters:
-
 				dataset_groups (list of list of str, len 2): Grouping of datasets 
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
-
 			Returns: 
-
 				test (pandas DataFrame): A summary table of the differential
 					expression test, including p and q-values, as well 
 					as log fold change.
@@ -1297,16 +1272,12 @@ class SwanGraph(Graph):
 		Subsets the differential transcript expression test summary table based
 		on a q-value cutoff. Requires that de_transcript_test has already been
 		run.
-
 			Parameters:
-
 				q (float): q-value threshold to declare a transcript as significant
 					Default: 0.05
 				n_transcripts (int): Number of results to return. 
 					Default: None (returns all found significant)
-
 			Returns:
-
 				tids (list of str): List of transcript ids that pass the 
 					significance threshold
 				test (pandas DataFrame): Summary table of transcripts that pass
@@ -1335,9 +1306,7 @@ class SwanGraph(Graph):
 		""" Finds isoform switching genes; genes that are not differentially
 			expressed but contain at least one transcript that is. Requires
 			that de_gene_test and de_transcript_test have been run.
-
 			Parameters:
-
 				q (float): q-value threshold to declare a gene/transcript 
 					as significant
 					Default: 0.05
@@ -1345,7 +1314,6 @@ class SwanGraph(Graph):
 					Default: None (returns all found significant)
 			
 			Returns:
-
 				genes (list of str): List of gene names that are categorized as 
 					isoform switching
 				switches (pandas DataFrame): Summary table of genes that are 
@@ -1468,9 +1436,7 @@ class SwanGraph(Graph):
 	def save_graph(self, prefix):
 		"""
 		Saves the current SwanGraph in pickle format with the .p extension
-
 			Parameters: 
-
 				prefix (str): Path and filename prefix. Resulting file will 
 					be saved as prefix.p
 		"""
@@ -1489,6 +1455,7 @@ class SwanGraph(Graph):
 		self.loc_df = graph.loc_df
 		self.edge_df = graph.edge_df
 		self.t_df = graph.t_df
+		self.adata = graph.adata
 		self.datasets = graph.datasets
 		self.counts = graph.counts
 		self.tpm = graph.tpm
@@ -1515,9 +1482,7 @@ class SwanGraph(Graph):
 		"""
 		Plots a gene summary SwanGraph for an input gene.
 		Does not automatically save the figure by default!
-
 			Parameters:
-
 				gid (str): Gene ID to plot for (can also be gene name but 
 					we've seen non-unique gene names so use at your own risk!)
 				indicate_dataset (str): Dataset name from SwanGraph to
@@ -1566,9 +1531,7 @@ class SwanGraph(Graph):
 		"""
 		Plots a path of a single transcript isoform through a gene summary 
 		SwanGraph.
-
 			Parameters:
-
 				tid (str): Transcript id of transcript to plot
 				indicate_dataset (str): Dataset name from SwanGraph to
 					highlight with outlined nodes and dashed edges
@@ -1614,9 +1577,7 @@ class SwanGraph(Graph):
 						browser=False):
 		"""
 		Plot each input transcript and automatically save figures
-
 			Parameters:
-
 				tids (list of str): List of transcript ids to plot
 				prefix (str): Path and file prefix to automatically save
 					the plotted figures
@@ -1660,9 +1621,7 @@ class SwanGraph(Graph):
 							 browser=False):
 		"""
 		Plot each transcript in a given gene and automatically save figures
-
 			Parameters:
-
 				gid (str): Gene id or gene name to plot transcripts from
 				prefix (str): Path and file prefix to automatically save
 					the plotted figures
@@ -1728,14 +1687,11 @@ class SwanGraph(Graph):
 		"""
 		Generates a PDF report for a given gene or list of genes according
 		to the user's input.
-
 			Parameters: 
-
 				gids (str or list of str): Gene ids or names to generate
 					reports for
 				prefix (str): Path and/or filename prefix to save PDF and
 					images used to generate the PDF
-
 				datasets (list of str): Datasets to include in the report
 					Default: Include columns for all datasets
 				dataset_groups (list of list of str): Datasets to average
@@ -1746,12 +1702,10 @@ class SwanGraph(Graph):
 					dataset_groups
 					Example: ['group1', 'group2']
 					Default: Will assign numbers 1 through length(dataset_group)
-
 				novelty (bool): Include a column to dipslay novelty type of
 					each transcript. Requires that a TALON GTF or DB has 
 					been used to load data in
 					Default: False
-
 				heatmap (bool): Display expression values in a heatmap
 					format. Requires that abundance information has been 
 					added to the SwanGraph
@@ -1761,7 +1715,6 @@ class SwanGraph(Graph):
 					transcript. Requires that abundance information has
 					been added to the SwanGraph
 					Default:False
-
 				include_qvals (bool): Display q-val of differential expression 
 					for each transcript and bold entries found to be
 					differentially expressed. Requires that de_transcript_test
@@ -1771,11 +1724,9 @@ class SwanGraph(Graph):
 				q (float): Q-value significance threshold to use when 
 					bolding transcripts if include_qvals = True.
 					Default: 0.05
-
 				include_unexpressed (bool): Add transcript entries to report
 					that are not expressed in any input dataset.
 					Default: False
-
 				indicate_dataset (str): Dataset name from SwanGraph to
 					highlight with outlined nodes and dashed edges
 					Incompatible with indicate_novel
@@ -1787,10 +1738,10 @@ class SwanGraph(Graph):
 				browser (bool): Plot transcript models in genome browser-
 					style format. Incompatible with indicate_dataset and
 					indicate_novel
-
 				order (str): Order to display transcripts in the report.
 					Options are 
 						'tid': alphabetically by transcript ID
+						'tname': alphabetically by transcript name
 						'expression': cumulative expression from high to low
 							Requires that abundance information has been 
 							added to the SwanGraph
@@ -1798,7 +1749,6 @@ class SwanGraph(Graph):
 						'tes': genomic coordinate of transcription end site
 					Default: 'expression' if abundance information is present,
 							 'tid' if not
-
 				threads (int): Number of threads to use. Multithreading is 
 					recommended when making a large number of gene reports.
 					Default: 1. 
@@ -2049,7 +1999,6 @@ def _create_gene_report(gid, sg, t_df,
 					report_type,
 					datasets,
 					data_type,
-					self.var,
 					novelty=novelty,
 					heatmap=heatmap,
 					include_qvals=include_qvals)
@@ -2068,4 +2017,3 @@ def _create_gene_report(gid, sg, t_df,
 							 tid=entry.tid)
 		report.add_transcript(entry, fname)
 	report.write_pdf(pdf_name)
-

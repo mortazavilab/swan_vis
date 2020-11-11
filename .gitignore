@@ -17,6 +17,7 @@ visual_tests/
 tutorials/data/
 tutorials/swan.p
 tutorials/.ipynb_checkpoints/
+tutorials/figures/
 
 # other 
 .DS_Store

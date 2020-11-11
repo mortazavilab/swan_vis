@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import copy
 from swan_vis.utils import *
+import anndata
 
 # super class that both SwanGraph and PlottedGraph inherit from.
 # all functions that both subclasses will use are in here.
@@ -41,8 +42,10 @@ class Graph:
 									   'internal'])
 		self.edge_df = pd.DataFrame(columns=['edge_id', 'edge_type',
 									    'strand', 'v1', 'v2'])
-		self.t_df = pd.DataFrame(columns=['tid', 'gid',
+		self.t_df = pd.DataFrame(columns=['tid', 'tname', 'gid',
 									 'gname', 'path'])
+
+		self.adata = None
 
 	##########################################################################
 	################# Related to checking contents of Graph ##################
@@ -369,10 +372,12 @@ def subset_on_gene(sg, gid):
 	t_df = sg.t_df.loc[sg.t_df.gid == gid].copy(deep=True)
 	t_df['path'] = sg.t_df.loc[sg.t_df.gid == gid].apply(
 			lambda x: copy.deepcopy(x.path), axis=1)
+	print(t_df.path)
 
 	# subset loc_df based on all the locs that are in the paths from 
 	# the already-subset t_df
 	paths = t_df['path'].tolist()
+	print(paths)
 	locs = [node for path in paths for node in path]
 	locs = np.unique(locs)
 	loc_df = sg.loc_df.loc[locs].copy(deep=True)
