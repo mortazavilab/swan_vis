@@ -235,3 +235,4 @@ class Report(FPDF):
 	def write_pdf(self, file):
 		with open(file, 'wb') as outfile:
 			outfile.write(self.output(dest='S').encode('latin-1'))
+ 
