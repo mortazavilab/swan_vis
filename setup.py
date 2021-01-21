@@ -10,7 +10,7 @@ setup(
   author_email = 'fairlie.reese@gmail.com',
   url = 'https://github.com/mortazavilab/swan_vis/',
   keywords = ['swan', 'transcription', 'isoform', 'visualization'],
-  python_requires='>=3.6','<3.8'
+  python_requires='>=3.6',
   install_requires=[
           'networkx',
           'numpy',
