@@ -2,7 +2,7 @@
 
 ![](.gitbook/assets/swan_logo.png)
 
-Swan is a Python library designed for the analysis and visualization of transcriptomes, especially with long-read transcriptomes in mind. Users can merge transcriptomes from different datasets and explore transcript models distinct splicing and expression patterns across datasets. 
+Swan is a Python library designed for the analysis and visualization of transcriptomes, especially with long-read transcriptomes in mind. Users can merge transcriptomes from different datasets and explore distinct splicing and expression patterns across datasets. 
 
 Please visit the [Swan repository](https://github.com/mortazavilab/swan_vis) to download and view the source code
 
