@@ -154,8 +154,8 @@ Below is an example of a config file. As you can see, it adds the annotation tra
       <td>data/all_talon_abundance_filtered.tsv</td>
       <td>hffc6_1</td>
       <td>annot_transcript_id</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>hffc6_1</td>
+      <td>data/hffc6_whitelist.csv</td>
     </tr>
     <tr>
       <th>4</th>
@@ -164,8 +164,8 @@ Below is an example of a config file. As you can see, it adds the annotation tra
       <td>data/all_talon_abundance_filtered.tsv</td>
       <td>hffc6_2</td>
       <td>annot_transcript_id</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>hffc6_2</td>
+      <td>data/hffc6_whitelist.csv</td>
     </tr>
     <tr>
       <th>5</th>
@@ -174,8 +174,8 @@ Below is an example of a config file. As you can see, it adds the annotation tra
       <td>data/all_talon_abundance_filtered.tsv</td>
       <td>hffc6_3</td>
       <td>annot_transcript_id</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>hffc6_3</td>
+      <td>data/hffc6_whitelist.csv</td>
     </tr>
   </tbody>
 </table>
