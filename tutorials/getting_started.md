@@ -1,4 +1,4 @@
-#  Getting started: initializing, adding data, and saving your SwanGraph 
+i#  Getting started: initializing, adding data, and saving your SwanGraph 
 
 First, if you haven't already, make sure to [install Swan](../#installation).
 After installing, you'll be able to run Swan from Python.
@@ -229,12 +229,12 @@ If you wish to add multiple datasets to the SwanGraph with a single command, you
 
 ```python
 import pandas as pd
-config_df = pd.read_csv('config.csv', sep='\t')
+config_df = pd.read_csv('config.tsv', sep='\t')
 config_df
 ```
 
 <div>
-<style scoped>
+<!-- <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
     }
@@ -246,7 +246,7 @@ config_df
     .dataframe thead th {
         text-align: right;
     }
-</style>
+</style> -->
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">

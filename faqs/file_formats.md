@@ -90,7 +90,7 @@ Arguments that you wish to use the default value for or arguments that are not n
 Below is an example of a config file. As you can see, it adds the annotation transcriptome as well as data from a TALON database and different GTF files.
 
 <div>
-<style scoped>
+<!-- <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
     }
@@ -102,7 +102,7 @@ Below is an example of a config file. As you can see, it adds the annotation tra
     .dataframe thead th {
         text-align: right;
     }
-</style>
+</style> -->
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
