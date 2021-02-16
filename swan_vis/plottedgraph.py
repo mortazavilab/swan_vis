@@ -65,10 +65,6 @@ class PlottedGraph(Graph):
 		self.browser = browser
 		self.dataset_cols = sg.get_dataset_cols()
 
-		print('bop bop bop')
-		print(old_browser != self.browser)
-		print(not self.browser)
-
 		# more human-readable graph types
 		if self.tid:
 			self.graph_type = 'transcript_path'
