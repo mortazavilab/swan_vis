@@ -65,12 +65,15 @@ class PlottedGraph(Graph):
 		self.browser = browser
 		self.dataset_cols = sg.get_dataset_cols()
 
+		print('bop bop bop')
+		print(old_browser != self.browser)
+		print(not self.browser)
+
 		# more human-readable graph types
 		if self.tid:
 			self.graph_type = 'transcript_path'
 		else:
 			self.graph_type = 'summary'
-
 
 		# if we have new datasets
 		if len(list(set(old_dataset_cols)-set(self.dataset_cols))) != 0:
@@ -90,7 +93,11 @@ class PlottedGraph(Graph):
 		elif old_tid != self.tid and self.tid != None:
 
 			self.gid = sg.get_gid_from_tid(self.tid)
-			if old_gid != self.gid:
+
+			# new gene or same gene but different plotting
+			# strategy
+			if old_gid != self.gid \
+			or old_browser != self.browser:
 				self.new_gene(sg)
 			else:
 				self.path = self.get_path_from_tid(self.tid)
@@ -107,6 +114,21 @@ class PlottedGraph(Graph):
 		elif old_indicate_dataset != self.indicate_dataset \
 		or old_indicate_novel != self.indicate_novel:
 			self.calc_node_edge_styles()
+
+		# # if we are going from browser to swan graph 
+		# # with the same gene or transcript
+		# elif old_browser != self.browser \
+		# and not self.browser:
+		# 	print('bop11')
+		# 	print('hellow I should be here')
+		# 	self.new_gene(sg)
+		# 	self.calc_node_edge_styles()
+
+		# elif old_tid == self.tid \
+		# and old_browser != self.browser \
+		# and not self.browser:
+		# 	self.new_gene(sg)
+		# 	self.calc_node_edge_styles()
 
 	# update pg to contain information for plotting a new gene
 	def new_gene(self, sg):
