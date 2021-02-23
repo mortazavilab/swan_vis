@@ -1884,6 +1884,8 @@ class SwanGraph(Graph):
 				   dataset_group_names=False,
 				   novelty=False,
 				   heatmap=False,
+				   dpi=False,
+				   cmap='Spectral_r',
 				   tpm=False,
 				   include_qvals=False,
 				   q=0.05,
@@ -1924,6 +1926,11 @@ class SwanGraph(Graph):
 					format. Requires that abundance information has been 
 					added to the SwanGraph
 					Default: False
+				dpi (bool): Plot proportion isoform usage per condition
+					as opposed to log2(tpm)
+				cmap (str): Matplotlib color map to display heatmap values
+					in. 
+					Default: 'Spectral_r'
 				tpm (bool): Display TPM value of each transcript/dataset 
 					combination, instead of presence/absence of each 
 					transcript. Requires that abundance information has
@@ -2016,7 +2023,7 @@ class SwanGraph(Graph):
 
 		# check to make sure abundance data is there for the
 		# query columns, if user is asking
-		if tpm or heatmap:
+		if dpi or tpm or heatmap:
 			self.check_abundances(datasets)
 
 		# order transcripts by user's preferences 
@@ -2102,14 +2109,15 @@ class SwanGraph(Graph):
 			for gid in gids:
 				_create_gene_report(gid, self, t_df, datasets, data_type,
 					prefix, indicate_dataset, indicate_novel, browser,
-					report_type, novelty, heatmap, include_qvals) 
+					report_type, novelty, heatmap, dpi, cmap, include_qvals) 
 		else:
 			# launch report jobs on different threads
 			with multiprocessing.Pool(threads) as pool:
 				pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
 					repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
 					repeat(indicate_novel), repeat(browser), repeat(report_type),
-					repeat(novelty), repeat(heatmap), repeat(include_qvals)))
+					repeat(novelty), repeat(heatmap), repeat(dpi),
+					repeat(cmap), repeat(include_qvals)))
 
 	##########################################################################
 	############################# Error handling #############################
@@ -2152,7 +2160,8 @@ def _create_gene_report(gid, sg, t_df,
 	prefix,
 	indicate_dataset, indicate_novel,
 	browser, 
-	report_type, novelty, heatmap, 
+	report_type, novelty, heatmap,
+	dpi, cmap,
 	include_qvals):
 
 	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
@@ -2177,33 +2186,68 @@ def _create_gene_report(gid, sg, t_df,
 	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
 
 	if heatmap:
-		# take log2(tpm) and gene-normalize 
-		count_cols = ['{}_counts'.format(d) for d in datasets]
-		log_cols = ['{}_log_tpm'.format(d) for d in datasets]
-		norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-		gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
-		max_val = max(gid_t_df[log_cols].max().tolist())
-		min_val = min(gid_t_df[log_cols].min().tolist())
-		gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
 
-		# create a colorbar 
-		plt.rcParams.update({'font.size': 20})
-		fig, ax = plt.subplots(figsize=(14, 1.5))
-		fig.subplots_adjust(bottom=0.5)
-		fig.patch.set_visible(False)
-		ax.patch.set_visible(False)
+		if not dpi:
+			# take log2(tpm) and gene-normalize 
+			count_cols = ['{}_counts'.format(d) for d in datasets]
+			log_cols = ['{}_log_tpm'.format(d) for d in datasets]
+			norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
+			gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
+			max_val = max(gid_t_df[log_cols].max().tolist())
+			min_val = min(gid_t_df[log_cols].min().tolist())
+			gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
 
-		cmap = plt.get_cmap('Spectral_r')
-		norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+			# create a colorbar 
+			plt.rcParams.update({'font.size': 20})
+			fig, ax = plt.subplots(figsize=(14, 1.5))
+			fig.subplots_adjust(bottom=0.5)
+			fig.patch.set_visible(False)
+			ax.patch.set_visible(False)
 
-		cb = mpl.colorbar.ColorbarBase(ax,
-										cmap=cmap,
-										norm=norm,
-										orientation='horizontal')
-		cb.set_label('log2(TPM)')
-		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
-		plt.clf()
-		plt.close()
+			try:
+				cmap = plt.get_cmap(cmap)
+			except:
+				raise ValueError('Colormap {} not found'.format(cmap))
+
+			norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+
+			cb = mpl.colorbar.ColorbarBase(ax,
+											cmap=cmap,
+											norm=norm,
+											orientation='horizontal')
+			cb.set_label('log2(TPM)')
+			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
+			plt.clf()
+			plt.close()
+
+		# calculate % isoform for each dataset group
+		elif dpi:
+			count_cols = ['{}_counts'.format(d) for d in datasets]
+			dpi_cols = ['{}_dpi'.format(d) for d in datasets]
+			gid_t_df[dpi_cols] = gid_t_df[count_cols].div(gid_t_df[count_cols].sum(axis=0), axis=1)
+
+			# create a colorbar 
+			plt.rcParams.update({'font.size': 20})
+			fig, ax = plt.subplots(figsize=(14, 1.5))
+			fig.subplots_adjust(bottom=0.5)
+			fig.patch.set_visible(False)
+			ax.patch.set_visible(False)
+
+			try:
+				cmap = plt.get_cmap(cmap)
+			except:
+				raise ValueError('Colormap {} not found'.format(cmap))
+
+			norm = mpl.colors.Normalize(vmin=0, vmax=1)
+
+			cb = mpl.colorbar.ColorbarBase(ax,
+											cmap=cmap,
+											norm=norm,
+											orientation='horizontal')
+			cb.set_label('Proportion of isoform use')
+			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
+			plt.clf()
+			plt.close()
 
 	# create report
 	print('Generating report for {}'.format(gid))
@@ -2219,6 +2263,8 @@ def _create_gene_report(gid, sg, t_df,
 					data_type,
 					novelty=novelty,
 					heatmap=heatmap,
+					dpi=dpi,
+					cmap=cmap,
 					include_qvals=include_qvals)
 	report.add_page()
 

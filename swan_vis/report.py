@@ -12,6 +12,8 @@ class Report(FPDF):
 				 data_type, 
 				 novelty=False,
 				 heatmap=False,
+				 dpi=False,
+				 cmap='Spectral_r',
 				 include_qvals=False):
 		super().__init__(orientation='L')
 
@@ -26,6 +28,7 @@ class Report(FPDF):
 
 		# booleans of what's in the report
 		self.heatmap = heatmap
+		self.dpi = dpi
 		self.novelty = novelty 
 		self.include_qvals = include_qvals
 
@@ -38,7 +41,10 @@ class Report(FPDF):
 		self.prefix = prefix
 
 		# color map in case we're making a heatmap
-		self.cmap = plt.get_cmap('Spectral_r')
+		try:
+			self.cmap = plt.get_cmap(cmap)
+		except: 
+			raise ValueError('Colormap {} not found'.format(cmap))
 
 		# settings
 		self.entry_height = 20
@@ -64,7 +70,10 @@ class Report(FPDF):
 		elif data_type == 'tpm':
 			report_cols = [d+'_tpm' for d in self.datasets]
 		elif data_type == 'heatmap':
-			report_cols = [d+'_norm_log_tpm' for d in self.datasets]
+			if self.dpi:
+				report_cols = ['{}_dpi'.format(d) for d in self.datasets]
+			else:
+				report_cols = [d+'_norm_log_tpm' for d in self.datasets]
 		return report_cols
 
 	# header - should differ based on whether it's a browser report or
