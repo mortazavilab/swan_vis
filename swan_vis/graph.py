@@ -3,13 +3,14 @@ import numpy as np
 import pandas as pd
 import copy
 from tqdm import tqdm
+import anndata
 from swan_vis.utils import *
 
 # super class that both SwanGraph and PlottedGraph inherit from.
 # all functions that both subclasses will use are in here.
 class Graph:
 	def __init__(self):
-		""" 
+		"""
 		A general graph class to represent a transcriptome.
 
 		Attributes
@@ -20,21 +21,21 @@ class Graph:
 			Names of columns holding counts in the Graph
 		tpm (list of str):
 			Names of columns holding tpm values in the Graph
-		loc_df (pandas DataFrame): 
-			DataFrame of all unique observed genomic 
+		loc_df (pandas DataFrame):
+			DataFrame of all unique observed genomic
 			coordinates in the transcriptome
 		edge_df (pandas DataFrame):
 			DataFrame of all unique observed exonic or intronic
 			combinations of splice sites in the transcriptome
-		t_df (pandas DataFrame): 
-			DataFrame of all unique transcripts found 
+		t_df (pandas DataFrame):
+			DataFrame of all unique transcripts found
 			in the transcriptome
 		"""
 
 		self.datasets = []
 		self.counts = []
 		self.tpm = []
-		
+
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'strand','vertex_id',
 									   'TSS',
@@ -42,8 +43,9 @@ class Graph:
 									   'internal'])
 		self.edge_df = pd.DataFrame(columns=['edge_id', 'edge_type',
 									    'strand', 'v1', 'v2'])
-		self.t_df = pd.DataFrame(columns=['tid', 'gid',
-									 'gname', 'path'])
+		self.adata = anndata.AnnData()
+		self.t_df = pd.DataFrame(columns=['tid', 'tname',
+			'gid', 'gname', 'path'])
 
 	##########################################################################
 	################# Related to checking contents of Graph ##################
@@ -77,7 +79,7 @@ class Graph:
 								'Datasets with abundance information '
 								'in graph are {}'.format(d, ab_cols))
 
-	# check that de tests have been run 
+	# check that de tests have been run
 	def check_de(self, de_type):
 		if de_type == 'transcript':
 			if not self.det_test.empty:
@@ -126,7 +128,7 @@ class Graph:
 		self.update_t_df_paths(id_map, verbose)
 
 		# convert back to dfs
-		self.dicts_to_dfs()	
+		self.dicts_to_dfs()
 
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
@@ -172,7 +174,7 @@ class Graph:
 			counter = 0
 
 		for old_id, new_id in id_map.items():
-			if verbose: 
+			if verbose:
 				counter+=1
 				if counter % 1000 == 0:
 					pbar.update(1000)
@@ -224,7 +226,7 @@ class Graph:
 			counter = 0
 
 		for tid, item in self.t_df.items():
-			if verbose: 
+			if verbose:
 				counter+=1
 				if counter % 100 == 0:
 					pbar.update(100)
@@ -237,7 +239,7 @@ class Graph:
 			t_df[tid] = item
 			t_df[tid]['path'] = new_path
 
-		if verbose: 
+		if verbose:
 			pbar.close()
 
 		self.t_df = t_df
@@ -267,7 +269,7 @@ class Graph:
 	def dfs_to_dicts(self):
 
 
-		# weird bug workaround - when an edge's coordinates and 
+		# weird bug workaround - when an edge's coordinates and
 		# strandedness are both used as an exon AND an intron...
 		dupe_eids = self.edge_df.loc[self.edge_df.edge_id.duplicated(), 'edge_id'].tolist()
 		for eid in dupe_eids:
@@ -300,9 +302,9 @@ class Graph:
 
 	# check if anything has been added to the graph yet
 	def is_empty(self):
-		if len(self.datasets) == 0: 
+		if len(self.adata.obs.index) == 0:
 			return True
-		else: 
+		else:
 			return False
 
 	# check if novelty information is in the graph
@@ -318,14 +320,14 @@ class Graph:
 		elif not include_annotation:
 			if 'annotation' not in self.datasets:
 				return self.datasets
-			else: 
+			else:
 				datasets = copy.deepcopy(self.datasets)
 				datasets.remove('annotation')
 				return datasets
 
 	# gets the names of the counts columns in the graph
 	# returns None if no counts have been added
-	# if datasets option given, returns the counts 
+	# if datasets option given, returns the counts
 	# columns associated with the input datasets
 	def get_count_cols(self, datasets=None):
 
@@ -342,7 +344,7 @@ class Graph:
 
 	# gets the names of tpm columns in the graph
 	# returns None if no counts have been added
-	# if datasets option given, returns the counts 
+	# if datasets option given, returns the counts
 	# columns associated with the input datasets
 	def get_tpm_cols(self, datasets=None):
 
@@ -417,14 +419,14 @@ def subset_on_gene(sg, gid):
 	t_df['path'] = sg.t_df.loc[sg.t_df.gid == gid].apply(
 			lambda x: copy.deepcopy(x.path), axis=1)
 
-	# subset loc_df based on all the locs that are in the paths from 
+	# subset loc_df based on all the locs that are in the paths from
 	# the already-subset t_df
 	paths = t_df['path'].tolist()
 	locs = [node for path in paths for node in path]
 	locs = np.unique(locs)
 	loc_df = sg.loc_df.loc[locs].copy(deep=True)
 
-	# subset edge_df based on all the edges that are in the paths from 
+	# subset edge_df based on all the edges that are in the paths from
 	# the alread-subset t_df
 	edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
 	edges = list(set(edges))
@@ -450,4 +452,3 @@ def subset_on_gene(sg, gid):
 # convert a list of vertex ids to a list of edge ids
 def vertex_to_edge_path(path):
 	return [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])]
-

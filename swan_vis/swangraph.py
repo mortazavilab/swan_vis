@@ -45,18 +45,9 @@ class SwanGraph(Graph):
 			pg (swan PlottedGraph):
 				The PlottedGraph holds the information from the most
 				recently made plot
-			deg_test (pandas DataFrame):
-				A summary table of the results of a differential gene
-				expression test
-			deg_test_groups (list of str, len 2):
-				The configuration of groupings used to run the differential
-				gene expression test
-				det_test (pandas DataFrame):
-				A summary table of the results of a differential transcript
-				expression test
-			det_test_groups (list of str, len 2):
-				The configuration of groupings used to run the differential
-				transcript expression test
+			adata (anndata AnnData):
+				Annotated data holding transcript structure and
+				expression information
 	"""
 
 	def __init__(self, file=None):
@@ -66,12 +57,6 @@ class SwanGraph(Graph):
 
 			# only a SwanGraph should have a plotted graph
 			self.pg = PlottedGraph()
-
-			# only a SwanGraph should have DEG and DET data
-			self.deg_test = pd.DataFrame()
-			self.deg_test_groups = ''
-			self.det_test = pd.DataFrame()
-			self.det_test_groups = ''
 
 		else:
 			check_file_loc(file, 'SwanGraph')
@@ -174,18 +159,32 @@ class SwanGraph(Graph):
 		col = 'annotation'
 
 		# use the add_dataset function to add stuff to graph
-		self.add_dataset(col, fname, include_isms=True, verbose=verbose)
+		self.add_dataset(fname, include_isms=True, \
+			annotation=True, verbose=verbose)
 
 		# call all transcripts from the annotation "Known"
 		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
 		self.t_df.novelty.fillna('Undefined', inplace=True)
 
-	def add_dataset(self, col, fname,
-					dataset_name=None,
-					whitelist=None,
-					counts_file=None, count_cols=None,
-					tid_col='annot_transcript_id',
+	def add_transcriptome(self, fname, include_isms=False, verbose=False):
+		"""
+		Adds a whole transcriptome from a set of samples. No abundance is
+		included here!
+
+			Parameters:
+				fname (str): Path to GTF or TALON db
+		"""
+
+		# use the add_dataset function to add stuff to graph
+		self.add_dataset(fname, include_isms=include_isms, verbose=verbose)
+
+		# fill NaN annotation transcripts with false
+		if 'annotation' in self.t_df.columns:
+			self.t_df.annotation.fillna(False, inplace=True)
+
+	def add_dataset(self, fname,
 					include_isms=False,
+					annotation=False,
 					verbose=False,
 					**kwargs):
 		"""
@@ -193,74 +192,46 @@ class SwanGraph(Graph):
 
 			Parameters:
 
-				col (str): Name of column to add data to in the SwanGraph
 				fname (str): Path to GTF or TALON db
-
-				# Only for loading from TALON
-				dataset_name (str): Dataset name in TALON db to add transcripts from
-					Default=None
-				whitelist (str): TALON whitelist of transcripts to add.
-					Default: None
-
-				# Only if also adding abundance
-				counts_file (str): Path to tsv counts matrix
-					Default=None
-				count_cols (str or list of str): Column names in counts_file to use
-					Default=None
-				tid_col (str): Column name in counts_file containing transcript id
-					Default='annot_transcript_id'
-
 				include_isms (bool): Include ISMs from input dataset
 					Default=False
-
 				verbose (bool): Display progress
 					Default: False
 		"""
 
-		# make sure that input dataset name is not
-		# already in any of the df col spaces
-		if col in self.datasets:
-			raise Exception('Dataset {} is already in the graph. '
-				'Provide a different name.'.format(col))
-		if col in self.loc_df.columns:
-			raise Exception('Dataset name {} conflicts with preexisting '
-				'column in loc_df. Choose a different name.'.format(col))
-		if col in self.edge_df.columns:
-			raise Exception('Dataset name {} conflicts with preexisting '
-				'column in edge_df. Choose a different name.'.format(col))
-		if col in self.t_df.columns:
-			raise Exception('Dataset name {} conflicts with preexisting '
-				'column in t_df. Choose a different name.'.format(col))
-
 		# are we dealing with a gtf or a db?
 		ftype = gtf_or_db(fname)
 
-		print()
-		print('Adding dataset {} to the SwanGraph'.format(col))
-
-		# first entry is easy
-		if self.is_empty():
-
-			# get loc_df, edge_df, t_df
-			if ftype == 'gtf':
-				self.create_dfs_gtf(fname, verbose)
-			elif ftype == 'db':
-				self.create_dfs_db(fname, whitelist, dataset_name, verbose)
-
-			# add column to each df to indicate where data came from
-			self.loc_df[col] = True
-			self.edge_df[col] = True
-			self.t_df[col] = True
-
-		# adding a new dataset to the graph requires us to merge
-		# SwanGraph objects
+		if annotation:
+			data = 'annotation'
 		else:
-			temp = SwanGraph()
-			if ftype == 'gtf':
-				temp.create_dfs_gtf(fname, verbose)
-			elif ftype == 'db':
-				temp.create_dfs_db(fname, whitelist, dataset_name, verbose)
-			self.merge_dfs(temp, col, verbose)
+			data = 'transcriptome'
+		print()
+		print('Adding {} to the SwanGraph'.format(data))
+
+		# get loc_df, edge_df, t_df
+		if ftype == 'gtf':
+			self.create_dfs_gtf(fname, verbose)
+		elif ftype == 'db':
+			self.create_dfs_db(fname, whitelist, dataset_name, verbose)
+
+		# 	# # add column to each df to indicate where data came from
+		# 	# self.loc_df[col] = True
+		# 	# self.edge_df[col] = True
+		# 	# self.t_df[col] = True
+		#
+		# # adding a new dataset to the graph requires us to merge
+		# # SwanGraph objects
+		# else:
+		# 	temp = SwanGraph()
+		# 	if ftype == 'gtf':
+		# 		temp.create_dfs_gtf(fname, verbose)
+		# 	elif ftype == 'db':
+		# 		temp.create_dfs_db(fname, whitelist, dataset_name, verbose)
+		# 	self.merge_dfs(temp, col, verbose)
+
+		if annotation:
+			self.t_df[data] = True
 
 		# remove isms if we have access to that information
 		if 'novelty' in self.t_df.columns and not include_isms:
@@ -276,13 +247,13 @@ class SwanGraph(Graph):
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 
-		# update graph metadata
-		self.datasets.append(col)
-
-		# if we're also adding abundances
-		if counts_file and count_cols:
-			self.add_abundance(counts_file, count_cols,
-				col, tid_col, verbose)
+		# # update graph metadata
+		# self.datasets.append(col)
+		#
+		# # if we're also adding abundances
+		# if counts_file and count_cols:
+		# 	self.add_abundance(counts_file, count_cols,
+		# 		col, tid_col, verbose)
 
 		if verbose:
 			print('Dataset {} added to the SwanGraph'.format(col))
@@ -330,211 +301,6 @@ class SwanGraph(Graph):
 		# finally update object's metadata
 		self.counts.append('{}_counts'.format(dataset_name))
 		self.tpm.append('{}_tpm'.format(dataset_name))
-
-	# merge dfs from two SwanGraph objects
-	def merge_dfs(self, b, b_col, verbose):
-
-		if verbose:
-			print('Merging with preexisting SwanGraph...')
-
-		# merge loc dfs
-		# what locations correspond between the datasets?
-		self.merge_loc_dfs(b, b_col)
-		id_map = self.get_merged_id_map()
-
-		self.loc_df.drop(['vertex_id_a','vertex_id_b'], axis=1, inplace=True)
-		self.loc_df['vertex_id'] = self.loc_df.index
-		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
-		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
-		b.loc_df = create_dupe_index(b.loc_df, 'vertex_id')
-		b.loc_df = set_dupe_index(b.loc_df, 'vertex_id')
-
-		# update the ids in b to make edge_df, t_df merging easier
-		b.update_ids(id_map=id_map)
-
-		# merge edge_df and t_df
-		self.merge_edge_dfs(b, b_col)
-		self.merge_t_dfs(b, b_col)
-
-	# merge t_dfs on tid, gid, gname, path
-	def merge_t_dfs(self, b, b_col):
-
-		# print note to user about merging with novelty
-		existing_cols = self.t_df.columns
-		add_cols = b.t_df.columns
-		if 'novelty' not in existing_cols and 'novelty' in add_cols:
-			print('Novelty info not found for '
-				  'existing data. Transcripts '
-				  'without novelty information will be '
-				  'labelled "Undefined".')
-		elif 'novelty' not in add_cols and 'novelty' in existing_cols:
-			print('Novelty info not found for '
-				 '{} data. Transcripts '
-				 'without novelty information will be '
-				 'labelled "Undefined".'.format(b_col))
-
-		# some df reformatting
-		self.t_df.reset_index(drop=True, inplace=True)
-		b.t_df.reset_index(drop=True, inplace=True)
-		b.t_df[b_col] = True
-
-		# convert paths to tuples so we can merge on them
-		self.t_df.path = self.t_df.path.map(tuple)
-		b.t_df.path = b.t_df.path.map(tuple)
-
-		# merge on transcript information
-		t_df = self.t_df.merge(b.t_df,
-			   how='outer',
-			   on=['tid', 'gid', 'gname', 'path'],
-			   suffixes=['_a', '_b'])
-
-		# convert path back to list
-		t_df.path = list(t_df.path)
-
-		# assign False to entries that are not in the new dataset,
-		# and to new entries that were not in the prior datasets
-		d_cols = self.datasets+[b_col]
-		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
-
-		# deal with novelties
-		t_df_cols = t_df.columns.tolist()
-		if 'novelty' in t_df_cols or 'novelty_a' in t_df_cols:
-			t_df = self.merge_t_df_novelties(t_df)
-
-		# set up index again
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
-
-		self.t_df = t_df
-
-	def merge_t_df_novelties(self, t_df):
-
-		# merged dfs with and without novelty
-		if 'novelty' in t_df.columns.tolist():
-			t_df.fillna(value={'novelty': 'Undefined'},
-				inplace=True)
-
-		# merged dfs where both have novelty types
-		elif 'novelty_a' in t_df.columns.tolist():
-
-			# if we already have any undefined entries, fill with nan
-			t_df.replace({'novelty_a': {'Undefined': np.nan},
-						  'novelty_b': {'Undefined': np.nan}},
-						  inplace=True)
-
-			# first take values that are only present in one dataset
-			t_df['novelty_a'].fillna(t_df['novelty_b'], inplace=True)
-			t_df['novelty_b'].fillna(t_df['novelty_a'], inplace=True)
-			a = t_df[['tid', 'novelty_a']].copy(deep=True)
-			a.rename({'novelty_a': 'novelty'}, axis=1, inplace=True)
-			a.reset_index(drop=True, inplace=True)
-			b = t_df[['tid', 'novelty_b']].copy(deep=True)
-			b.rename({'novelty_b': 'novelty'}, axis=1, inplace=True)
-			b.reset_index(drop=True, inplace=True)
-
-			# merge novelties on tid and novelty, then extract
-			# transcript ids that are duplicated, which represent
-			# those that have conflicting novelty assignments
-			nov = a.merge(b, on=['tid', 'novelty'], how='outer')
-			amb_tids = nov[nov.tid.duplicated()].tid.tolist()
-
-			# label conflicting transcripts as Ambiguous
-			if amb_tids:
-				print('Novelty types between datasets conflict. Strongly '
-					  'consider using input from the same data source to '
-					  'reconcile these. Conflicting isoforms will be '
-					  'labelled "Ambiguous".')
-				nov.set_index('tid', inplace=True)
-				nov.loc[amb_tids, 'novelty'] = 'Ambiguous'
-				nov.reset_index(inplace=True)
-				nov.drop_duplicates(inplace=True)
-
-			# finally, merge new novelty types into t_df
-			t_df.drop(['novelty_a', 'novelty_b'], axis=1, inplace=True)
-			t_df = t_df.merge(nov, on='tid')
-
-		return t_df
-
-
-	# merge edge_dfs on edge_id, v1, v2, strand, edge_type
-	def merge_edge_dfs(self, b, b_col):
-
-		# some df reformatting
-		self.edge_df.reset_index(drop=True, inplace=True)
-		b.edge_df.reset_index(drop=True, inplace=True)
-		b.edge_df[b_col] = True
-
-		# merge on edge info
-		edge_df = self.edge_df.merge(b.edge_df,
-				  how='outer',
-				  on=['edge_id', 'v1', 'v2', 'edge_type', 'strand'],
-				  suffixes=['_a', '_b'])
-
-		# assign False to entries that are not in the new dataset,
-		# and to new entries that were not in the prior datasets
-		d_cols = self.datasets+[b_col]
-		edge_df[d_cols] = edge_df[d_cols].fillna(value=False, axis=1)
-
-		# remake index
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
-
-		self.edge_df = edge_df
-
-	# merge loc_dfs on coord, chrom, strand
-	def merge_loc_dfs(self, b, b_col):
-
-		# some df reformatting
-		node_types = ['TSS', 'TES', 'internal']
-
-		self.loc_df.drop(node_types, axis=1, inplace=True)
-		self.loc_df.reset_index(drop=True, inplace=True)
-
-		# b.loc_df.drop(node_types, axis=1, inplace=True)
-		b.loc_df.reset_index(drop=True, inplace=True)
-		b.loc_df[b_col] = True
-
-		# merge on location info
-		loc_df = self.loc_df.merge(b.loc_df,
-				 how='outer',
-				 on=['chrom', 'coord', 'strand'],
-				 suffixes=['_a','_b'])
-
-		# assign False to entries that are not in the new dataset,
-		# and to new entries that were not in prior datasets
-		d_cols = self.datasets+[b_col]
-		loc_df[d_cols] = loc_df[d_cols].fillna(value=False, axis=1)
-
-		self.loc_df = loc_df
-
-	# returns a dictionary mapping vertex b: vertex a for each
-	# vertex in dataset b
-	def get_merged_id_map(self):
-
-		id_map = list(zip(self.loc_df.vertex_id_b,
-						  self.loc_df.vertex_id_a))
-		id_map = [list(i) for i in id_map]
-
-		# loop through id_map and assign new ids for
-		# those present in b but not a
-		b_ind = int(self.loc_df.vertex_id_a.max() + 1)
-		i = 0
-		while i < len(id_map):
-			if math.isnan(id_map[i][1]):
-				id_map[i][1] = b_ind
-				b_ind += 1
-			# set up entries where there isn't a b id (entries only found in a)
-			# to be removed
-			elif math.isnan(id_map[i][0]):
-				id_map[i] = []
-			i += 1
-
-		# remove entries that are only in a but not in b
-		# make sure everything is ints
-		id_map = [i for i in id_map if len(i) == 2]
-		id_map = dict([(int(a), int(b)) for a,b in id_map])
-
-		return id_map
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
@@ -606,18 +372,29 @@ class SwanGraph(Graph):
 							from_talon = False
 
 					tid = attributes['transcript_id']
+
+					# if this transcript is already in the SwanGraph, skip
+					# to the next one
+					if tid in self.t_df.tid.tolist():
+						continue
+
 					gid = attributes['gene_id']
 
-					# check if there's a gene name field and add one if not
+					# check if there's a gene/transcript name field and
+					# add one if not
 					if 'gene_name' not in attributes:
 						attributes['gene_name'] = attributes['gene_id']
+					if 'transcript_name' not in attributes:
+						attributes['transcript_name'] = attributes['transcript_id']
 
 					gname = attributes['gene_name']
+					tname = attributes['transcript_name']
 
 					# add transcript to dictionary
 					entry = {'gid': gid,
 							 'gname': gname,
 							 'tid': tid,
+							 'tname': tname,
 							 'strand': strand,
 							 'exons': []}
 
@@ -636,6 +413,11 @@ class SwanGraph(Graph):
 					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
 					tid = attributes['transcript_id']
 
+					# if this transcript is already in the SwanGraph, skip
+					# to the next one
+					if tid in self.t_df.tid.tolist():
+						continue
+
 					# add novel exon to dictionary
 					if eid not in exons:
 						edge = {eid: {'eid': eid,
@@ -649,14 +431,18 @@ class SwanGraph(Graph):
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
 
-
 		# close progress bar
 		if verbose:
 			pbar.close()
 
 		# once we have all transcripts, make loc_df
+		# start numbering locations at the max of the previously-existing
+		# locations in the SwanGraph
 		locs = {}
-		vertex_id = 0
+		if len(self.loc_df.index) != 0:
+			vertex_id = self.loc_df.vertex_id.max()+1
+		else:
+			vertex_id = 0
 		for edge_id, edge in exons.items():
 			chrom = edge['chrom']
 			strand = edge['strand']
@@ -733,12 +519,14 @@ class SwanGraph(Graph):
 
 		if from_talon:
 			transcripts = [{'tid': key,
+						'tname': item['tname'],
 						'gid': item['gid'],
 						'gname': item['gname'],
 						'path': item['path'],
 						'novelty': item['novelty']} for key, item in transcripts.items()]
 		else:
 			transcripts = [{'tid': key,
+						'tname': item['tname'],
 						'gid': item['gid'],
 						'gname': item['gname'],
 						'path': item['path']} for key, item in transcripts.items()]
@@ -753,9 +541,12 @@ class SwanGraph(Graph):
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
 
-		self.loc_df = loc_df
-		self.edge_df = edge_df
-		self.t_df = t_df
+		# concatenate dfs
+		self.loc_df = pd.concat([self.loc_df, loc_df])
+		self.edge_df = pd.concat([self.edge_df, edge_df])
+		self.t_df = pd.concat([self.t_df, t_df])
+
+		print(self.loc_df.loc[self.loc_df.vertex_id.duplicated(keep=False)].head())
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility
@@ -1944,7 +1735,7 @@ class SwanGraph(Graph):
 				   dataset_group_names=False,
 				   novelty=False,
 				   heatmap=False,
-				   dpi=False,
+				   dpi=False, # TODO this option is named stupidly. change it
 				   cmap='Spectral_r',
 				   tpm=False,
 				   include_qvals=False,
