@@ -1,6 +1,8 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
+from statsmodels.stats.multitest import multipletests
+import scipy.stats as st
 import matplotlib.pyplot as plt
 import os
 import copy
@@ -72,8 +74,8 @@ def get_fields(fields):
     if 'gene_id' not in attributes:
         attributes['gene_id'] = 'NULL'
 
-    return attributes  
-    
+    return attributes
+
 # check to see if a file save location is valid
 def check_dir_loc(loc):
 	if '/' in loc:
@@ -88,7 +90,7 @@ def check_file_loc(loc, ftype):
 		raise Exception('{} file not found at {}. '
 			'Check path.'.format(ftype, loc))
 
-# return a table indexed by transcript id with the appropriate 
+# return a table indexed by transcript id with the appropriate
 # abundance
 def process_abundance_file(file, cols, tid_col):
 
@@ -106,20 +108,20 @@ def process_abundance_file(file, cols, tid_col):
 			raise Exception('Dataset column {} not found in abundance file.'.format(col))
 
 	keep_cols = [tid_col]+cols
-	df = df[keep_cols]	
+	df = df[keep_cols]
 
 	# get the counts
 	df['counts'] = df[cols].sum(axis=1)
 
 	# get tpms
-	for col in cols: 
+	for col in cols:
 		total_counts = df[col].sum()
 		df['{}_tpm'.format(col)] = (df[col]*1000000)/total_counts
 	tpm_cols = ['{}_tpm'.format(col) for col in cols]
 	df['tpm'] = df[tpm_cols].mean(axis=1)
 
 	# set up for merging
-	cols += tpm_cols 
+	cols += tpm_cols
 	df.drop(cols, axis=1, inplace=True)
 	df.rename({tid_col: 'tid'}, inplace=True, axis=1)
 
@@ -134,11 +136,11 @@ def create_fname(prefix, indicate_dataset,
 		fname += '_{}'.format(indicate_dataset)
 	if indicate_novel:
 		fname += '_novel'
-	if browser: 
+	if browser:
 		fname += '_browser'
-	if tid: 
+	if tid:
 		fname += '_{}'.format(tid)
-	if gid: 
+	if gid:
 		fname += '_{}'.format(gid)
 	if ftype == 'summary':
 		fname += '_summary.png'
@@ -173,11 +175,11 @@ def validate_gtf(fname):
 		missing_entry_types.append('transcript')
 	if 'exon' not in entry_types:
 		missing_entry_type = True
-		missing_entry_types.append('exon')	
+		missing_entry_types.append('exon')
 	if missing_entry_type:
 		raise Exception('GTF is missing entry types {}'.format(missing_entry_types))
 
-	# next check if gene_id, transcript_id, and gene_name fields exist 
+	# next check if gene_id, transcript_id, and gene_name fields exist
 	# in each line of the thing
 	df = df.loc[df.entry_type == 'transcript']
 	df['tid'] = df.fields.str.extract(r'transcript_id "([A-z]+[0-9.]+)"',
@@ -185,7 +187,7 @@ def validate_gtf(fname):
 	df['gid'] = df.fields.str.extract(r'gene_id "([A-z]+[0-9.]+)"',
 		expand=False)
 	df.drop('fields', axis=1, inplace=True)
- 
+
 	missing_fields = []
 	if df.tid.isnull().any():
 		missing_fields.append('transcript_id')
@@ -236,8 +238,151 @@ def reorder_exons(exon_ids):
 # 	coords = [i[1][1] for i in path_coords]
 # 	if strand == '-':
 # 		path.reverse()
-# 	return path 
-	
+# 	return path
+
+################################################################################
+########################### Analysis-related ###################################
+################################################################################
+
+# adata: adata with TSS or iso expression
+# conditions: len 2 list of strings of conditions to compare
+# col: string, which column the condition labels are in
+# how: 'tss' or 'iso'
+def get_die(adata, conditions, how='tss', rc=15):
+
+    if how == 'tss':
+        id_col = 'tss_id'
+    elif how == 'iso':
+        id_col = 'tid'
+
+    # make df that we can groupby
+    col = 'condition'
+    colnames = adata.var[id_col].tolist()
+    rownames = adata.obs.dataset.tolist()
+    raw = adata.X
+    df = pd.DataFrame(data=raw, index=rownames, columns=colnames)
+    df.reset_index(inplace=True)
+    df.rename({'index':'dataset'}, axis=1, inplace=True)
+    samp = adata.obs[['dataset', col]]
+    df = df.merge(samp, how='left', on='dataset')
+
+    # limit to only the samples that we want in this condition
+#     df[col] = df[col].astype('str')
+    df = df.loc[df[col].isin(conditions)]
+
+    # groupby sample type and sum over gen
+    df.drop('dataset', axis=1, inplace=True)
+    df = df.groupby(col).sum().reset_index()
+
+    # melty df
+    var_cols = df.columns.tolist()[1:]
+    df = df.melt(id_vars=col, value_vars=var_cols)
+
+    # rename some cols
+    df.rename({'variable':id_col,'value':'counts'}, axis=1, inplace=True)
+
+    # merge with gene names
+    df = df.merge(adata.var, how='left', on=id_col)
+
+#     # get total number of tss or iso / gene
+#     bop = df[['gid', id_col]].groupby('gid').count().reset_index()
+
+    # construct tables for each gene and test!
+    gids = df.gid.unique().tolist()
+    gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
+    for gene in gids:
+        gene_df = df.loc[df.gid==gene]
+        p, dpi = test_gene(gene_df, conditions, col, id_col, rc=rc)
+        gene_de_df.loc[gene, 'p_val'] = p
+        gene_de_df.loc[gene, 'dpi'] = dpi
+
+    # correct p values
+    gene_de_df.dropna(axis=0, inplace=True)
+    p_vals = gene_de_df.p_val.tolist()
+    _, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
+    gene_de_df['adj_p_val'] = adj_p_vals
+
+    gene_de_df.reset_index(inplace=True)
+
+    return gene_de_df
+
+# gene_df: pandas dataframe with expression values in each condition for
+# each TSS or isoform in a gene
+# conditions: list of str of condition names
+# rc: threshold of read count per gene in each condition necessary to test
+def test_gene(gene_df, conditions, col, id_col, rc=10):
+
+	gene_df = gene_df.pivot(index=col, columns=id_col, values='counts')
+	gene_df = gene_df.transpose()
+
+	groups = gene_df.columns.tolist()
+	gene_df['total_counts'] = gene_df[groups].sum(axis=1)
+	gene_df.sort_values(by='total_counts', ascending=False, inplace=True)
+
+	# limit to just isoforms with > 0 expression in at least one condition
+	cond1 = conditions[0]
+	cond2 = conditions[1]
+	gene_df = gene_df.loc[(gene_df[cond1]>0)|(gene_df[cond2]>0)]
+
+	# limit to genes with more than 1 isoform expressed
+	if len(gene_df.index) <= 1:
+		return np.nan, np.nan
+
+	if len(gene_df.index) > 11:
+		gene_df.reset_index(inplace=True)
+
+		temp = gene_df.iloc[10:].sum()
+		temp[id_col] = 'all_other'
+		temp.index.name = None
+		temp = pd.DataFrame(temp).transpose()
+
+		gene_df = gene_df.iloc[:10]
+		gene_df = pd.concat([gene_df, temp])
+
+	# does this gene reach the desired read count threshold?
+	for cond in conditions:
+		if gene_df[cond].sum() < rc:
+			return np.nan, np.nan
+
+	# only do the rest if there's nothing left
+	if gene_df.empty:
+		return np.nan, np.nan
+
+	# calculate the percent of each sample each TSS accounts for
+	cond_pis = []
+	for cond in conditions:
+		total_col = '{}_total'.format(cond)
+		pi_col = '{}_pi'.format(cond)
+		total_count = gene_df[cond].sum()
+
+		cond_pis.append(pi_col)
+
+		gene_df[total_col] = total_count
+		gene_df[pi_col] = (gene_df[cond]/gene_df[total_col])*100
+
+	# compute isoform-level and gene-level delta pis
+	gene_df['dpi'] = gene_df[cond_pis[0]] - gene_df[cond_pis[1]]
+	gene_df['abs_dpi'] = gene_df.dpi.abs()
+	gene_dpi = gene_df.iloc[:2].abs_dpi.sum()
+
+	# chi squared test
+	chi_table = gene_df[conditions].to_numpy()
+	chi2, p, dof, exp = st.chi2_contingency(chi_table)
+
+	return p, gene_dpi
+
+# turn a list of dataset groups and names for those groups into a
+# dictionary
+def make_cond_map(groups, group_names):
+    cond_map = dict()
+    for group, group_name in zip(groups, group_names):
+        if type(group) == list:
+            for group_item in group:
+                cond_map[group_item] = group_name
+        else:
+            cond_map[group] = group_name
+    return cond_map
+
 # get novelty types associated with each transcript
 def get_transcript_novelties(fields):
 	if fields['transcript_status'] == 'KNOWN':
@@ -253,8 +398,8 @@ def get_transcript_novelties(fields):
 	elif 'intergenic_transcript' in fields:
 		return 'Intergenic'
 	elif 'genomic_transcript' in fields:
-		return 'Genomic' 
-		
+		return 'Genomic'
+
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
 def save_fig(oname):

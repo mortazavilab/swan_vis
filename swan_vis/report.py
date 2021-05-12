@@ -7,9 +7,9 @@ class Report(FPDF):
 
 	def __init__(self,
 				 prefix,
-				 report_type, 
+				 report_type,
 				 datasets,
-				 data_type, 
+				 data_type,
 				 novelty=False,
 				 heatmap=False,
 				 dpi=False,
@@ -23,33 +23,33 @@ class Report(FPDF):
 		# set report type, 'browser' or 'swan'
 		if report_type != 'browser' and report_type != 'swan':
 			raise Exception("Report type must be 'browser' or 'swan'.")
-		else: 
+		else:
 			self.report_type = report_type
 
 		# booleans of what's in the report
 		self.heatmap = heatmap
 		self.dpi = dpi
-		self.novelty = novelty 
+		self.novelty = novelty
 		self.include_qvals = include_qvals
 
 		# the columns that we'll include
 		self.datasets = datasets
 		self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.report_cols)
-		
-		# prefix for files that we'll pull from 
+
+		# prefix for files that we'll pull from
 		self.prefix = prefix
 
 		# color map in case we're making a heatmap
 		try:
 			self.cmap = plt.get_cmap(cmap)
-		except: 
+		except:
 			raise ValueError('Colormap {} not found'.format(cmap))
 
 		# settings
 		self.entry_height = 20
 
-		# add extra room for the scale/colorbar if we're doing 
+		# add extra room for the scale/colorbar if we're doing
 		# the browser/heatmap version
 		if self.report_type == 'swan':
 			self.header_height = 10
@@ -80,7 +80,7 @@ class Report(FPDF):
 	# a swan report
 	def header(self):
 		self.set_font('Arial', 'B', 10)
-		
+
 		# transcript ID header
 		self.cell(50, self.header_height, 'Transcript ID', border=True, align='C')
 
@@ -103,7 +103,7 @@ class Report(FPDF):
 		# add scale if we're doing browser models
 		if self.report_type == 'browser':
 			self.image(self.prefix+'_browser_scale.png',
-					   x=browser_scale_x, 
+					   x=browser_scale_x,
 					   y=browser_scale_y+12,
 					   w=100, h=50/7)
 		self.ln()
@@ -114,7 +114,7 @@ class Report(FPDF):
 		if self.heatmap:
 			if not self.novelty:
 				self.set_x(77.5)
-			else: 
+			else:
 				self.set_x(90.5)
 			self.image(self.prefix+'_colorbar_scale.png',
 				w=90, h=135/14)
@@ -155,7 +155,7 @@ class Report(FPDF):
 			self.set_xy(curr_x, curr_y)
 
 		# novelty, if necessary
-		if self.novelty: 
+		if self.novelty:
 			self.cell(25, self.entry_height, entry['novelty'],
 				border=True, align='C')
 
@@ -172,7 +172,7 @@ class Report(FPDF):
 				border = False
 				fill = True
 				text = ''
-			# TPM	
+			# TPM
 			elif '_tpm' in col:
 				text = str(round(entry[col],2))
 				border = True
@@ -185,9 +185,9 @@ class Report(FPDF):
 				elif text == False:
 					text = 'No'
 				border = True
-				fill = False 
+				fill = False
 			self.cell(self.w_dataset, self.entry_height, text,
-				border=border, align='C', fill=fill)	
+				border=border, align='C', fill=fill)
 		x = self.get_x()
 		y = self.get_y()
 

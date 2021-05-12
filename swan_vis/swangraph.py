@@ -13,7 +13,7 @@ import anndata
 import diffxpy.api as de
 import multiprocessing
 from itertools import repeat
-from tqdm import tqdm 
+from tqdm import tqdm
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -21,7 +21,7 @@ from swan_vis.plottedgraph import PlottedGraph
 from swan_vis.report import Report
 
 class SwanGraph(Graph):
-	""" 
+	"""
 	A graph class to represent a transcriptome and perform
 	plotting and analysis from it
 
@@ -33,25 +33,25 @@ class SwanGraph(Graph):
 				Names of columns holding counts in the Graph
 			tpm (list of str):
 				Names of columns holding tpm values in the Graph
-			loc_df (pandas DataFrame): 
-				DataFrame of all unique observed genomic 
+			loc_df (pandas DataFrame):
+				DataFrame of all unique observed genomic
 				coordinates in the transcriptome
 			edge_df (pandas DataFrame):
 				DataFrame of all unique observed exonic or intronic
 				combinations of splice sites in the transcriptome
-			t_df (pandas DataFrame): 
-				DataFrame of all unique transcripts found 
+			t_df (pandas DataFrame):
+				DataFrame of all unique transcripts found
 				in the transcriptome
 			pg (swan PlottedGraph):
-				The PlottedGraph holds the information from the most 
+				The PlottedGraph holds the information from the most
 				recently made plot
-			deg_test (pandas DataFrame): 
+			deg_test (pandas DataFrame):
 				A summary table of the results of a differential gene
 				expression test
 			deg_test_groups (list of str, len 2):
 				The configuration of groupings used to run the differential
 				gene expression test
-				det_test (pandas DataFrame): 
+				det_test (pandas DataFrame):
 				A summary table of the results of a differential transcript
 				expression test
 			det_test_groups (list of str, len 2):
@@ -89,12 +89,12 @@ class SwanGraph(Graph):
 
 				config (str): Path to TSV config file with the following
 					columns (indicated by the header):
-					
+
 					Required:
 						col: Name of column to add data to in the SwanGraph
 						fname: Path to GTF or TALON db
 
-					Optional:				
+					Optional:
 						dataset_name: Dataset name in TALON db to add transcripts from
 							Default=None
 						whitelist: TALON whitelist of transcripts to add.
@@ -105,7 +105,7 @@ class SwanGraph(Graph):
 							Default=None
 						tid_col: Column name in counts_file containing transcript id
 							Default='annot_transcript_id'
-				
+
 				include_isms (bool): Include ISMs from input datasets
 					Default=False
 
@@ -116,7 +116,7 @@ class SwanGraph(Graph):
 		# make sure the config file exits
 		check_file_loc(config, 'config')
 
-		# read in the config file 
+		# read in the config file
 		df = pd.read_csv(config, sep='\t')
 
 		# check for required columns
@@ -128,16 +128,16 @@ class SwanGraph(Graph):
 				'config file for batch SwanGraph initialization.')
 
 		# are there any unexpected columns?
-		expected_cols = ['fname', 'col', 
+		expected_cols = ['fname', 'col',
 						 'whitelist', 'dataset_name',
 						 'counts_file', 'count_cols',
 						 'tid_col', 'include_isms',
-						 'verbose'] 
+						 'verbose']
 		for c in df.columns.tolist():
 			if c not in expected_cols:
 				print('Encountered unexpected column name "{}"'.format(c))
 
-		# loop through each entry in config file 
+		# loop through each entry in config file
 		for ind, entry in df.iterrows():
 
 			# get the values for the rest of the arguments
@@ -155,7 +155,7 @@ class SwanGraph(Graph):
 				self.add_annotation(file, verbose=verbose)
 
 			# otherwise add_dataset
-			else: 
+			else:
 				self.add_dataset(col, file,
 					include_isms=include_isms,
 					verbose=verbose, **kwargs)
@@ -170,7 +170,7 @@ class SwanGraph(Graph):
 					Default: False
 		"""
 
-		# column name for annotation 
+		# column name for annotation
 		col = 'annotation'
 
 		# use the add_dataset function to add stuff to graph
@@ -183,7 +183,7 @@ class SwanGraph(Graph):
 	def add_dataset(self, col, fname,
 					dataset_name=None,
 					whitelist=None,
-					counts_file=None, count_cols=None, 
+					counts_file=None, count_cols=None,
 					tid_col='annot_transcript_id',
 					include_isms=False,
 					verbose=False,
@@ -238,7 +238,7 @@ class SwanGraph(Graph):
 		print()
 		print('Adding dataset {} to the SwanGraph'.format(col))
 
-		# first entry is easy 
+		# first entry is easy
 		if self.is_empty():
 
 			# get loc_df, edge_df, t_df
@@ -286,7 +286,7 @@ class SwanGraph(Graph):
 
 		if verbose:
 			print('Dataset {} added to the SwanGraph'.format(col))
- 
+
 	def add_abundance(self, counts_file, count_cols,
 					  dataset_name, tid_col='annot_transcript_id',
 					  verbose=False):
@@ -313,13 +313,13 @@ class SwanGraph(Graph):
 			raise Exception('Trying to add expression data to a dataset '
 							'that is not in the graph. Add dataset to graph first.')
 
-		# get counts from input abundance file 
+		# get counts from input abundance file
 		abundance_df = process_abundance_file(counts_file, count_cols, tid_col)
 		abundance_df.rename({'tpm': '{}_tpm'.format(dataset_name),
 							 'counts': '{}_counts'.format(dataset_name)},
 							 axis=1, inplace=True)
 
-		# merge on transcript id (tid) with t_df and make sure it's 
+		# merge on transcript id (tid) with t_df and make sure it's
 		# formatted correctly
 		self.t_df.reset_index(drop=True, inplace=True)
 		self.t_df = self.t_df.merge(abundance_df, on='tid', how='left')
@@ -391,7 +391,7 @@ class SwanGraph(Graph):
 		# convert path back to list
 		t_df.path = list(t_df.path)
 
-		# assign False to entries that are not in the new dataset, 
+		# assign False to entries that are not in the new dataset,
 		# and to new entries that were not in the prior datasets
 		d_cols = self.datasets+[b_col]
 		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
@@ -419,7 +419,7 @@ class SwanGraph(Graph):
 
 			# if we already have any undefined entries, fill with nan
 			t_df.replace({'novelty_a': {'Undefined': np.nan},
-						  'novelty_b': {'Undefined': np.nan}}, 
+						  'novelty_b': {'Undefined': np.nan}},
 						  inplace=True)
 
 			# first take values that are only present in one dataset
@@ -470,7 +470,7 @@ class SwanGraph(Graph):
 				  on=['edge_id', 'v1', 'v2', 'edge_type', 'strand'],
 				  suffixes=['_a', '_b'])
 
-		# assign False to entries that are not in the new dataset, 
+		# assign False to entries that are not in the new dataset,
 		# and to new entries that were not in the prior datasets
 		d_cols = self.datasets+[b_col]
 		edge_df[d_cols] = edge_df[d_cols].fillna(value=False, axis=1)
@@ -478,7 +478,7 @@ class SwanGraph(Graph):
 		# remake index
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
-		
+
 		self.edge_df = edge_df
 
 	# merge loc_dfs on coord, chrom, strand
@@ -500,7 +500,7 @@ class SwanGraph(Graph):
 				 on=['chrom', 'coord', 'strand'],
 				 suffixes=['_a','_b'])
 
-		# assign False to entries that are not in the new dataset, 
+		# assign False to entries that are not in the new dataset,
 		# and to new entries that were not in prior datasets
 		d_cols = self.datasets+[b_col]
 		loc_df[d_cols] = loc_df[d_cols].fillna(value=False, axis=1)
@@ -515,7 +515,7 @@ class SwanGraph(Graph):
 						  self.loc_df.vertex_id_a))
 		id_map = [list(i) for i in id_map]
 
-		# loop through id_map and assign new ids for 
+		# loop through id_map and assign new ids for
 		# those present in b but not a
 		b_ind = int(self.loc_df.vertex_id_a.max() + 1)
 		i = 0
@@ -565,7 +565,7 @@ class SwanGraph(Graph):
 		# display progess
 		if verbose:
 			pbar = tqdm(total=n_transcripts)
-			counter = 0 
+			counter = 0
 
 		with open(gtf_file) as gtf:
 			for line in gtf:
@@ -585,7 +585,7 @@ class SwanGraph(Graph):
 				strand = line[6]
 				fields = line[-1]
 
-				# transcript entry 
+				# transcript entry
 				if entry_type == "transcript":
 
 					# update progress bar
@@ -614,7 +614,7 @@ class SwanGraph(Graph):
 
 					gname = attributes['gene_name']
 
-					# add transcript to dictionary 
+					# add transcript to dictionary
 					entry = {'gid': gid,
 							 'gname': gname,
 							 'tid': tid,
@@ -628,15 +628,15 @@ class SwanGraph(Graph):
 
 					transcript = {tid: entry}
 					transcripts.update(transcript)
-					
+
 				# exon entry
 				elif entry_type == "exon":
 					attributes = get_fields(fields)
 					start, stop = find_edge_start_stop(start, stop, strand)
 					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
-					tid = attributes['transcript_id']	
+					tid = attributes['transcript_id']
 
-					# add novel exon to dictionary 
+					# add novel exon to dictionary
 					if eid not in exons:
 						edge = {eid: {'eid': eid,
 									  'chrom': chrom,
@@ -644,7 +644,7 @@ class SwanGraph(Graph):
 									  'v2': stop,
 									  'strand': strand}}
 						exons.update(edge)
-			   
+
 			   		# add this exon to the transcript's list of exons
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
@@ -694,7 +694,7 @@ class SwanGraph(Graph):
 				v2 = exon['v2']
 				strand = exon['strand']
 
-				# add current exon and subsequent intron 
+				# add current exon and subsequent intron
 				# (if not the last exon) for each exon to edges
 				key = (chrom, v1, v2, strand)
 				v1_key = (chrom, v1, strand)
@@ -725,7 +725,7 @@ class SwanGraph(Graph):
 		loc_df = pd.DataFrame(locs)
 
 		edges = [{'v1': item['edge_id'][0],
-				  'v2': item['edge_id'][1], 
+				  'v2': item['edge_id'][1],
 				  'strand': key[3],
 				  'edge_id': item['edge_id'],
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
@@ -757,7 +757,7 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-	# create SwanGraph dataframes from a TALON db. Code very ripped from 
+	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility
 	def create_dfs_db(self, database, whitelist, dataset, verbose):
 
@@ -766,9 +766,9 @@ class SwanGraph(Graph):
 
 		# annot = check_annot_validity(annot, database)
 
-		whitelist = handle_filtering(database, 
-											True, 
-											whitelist, 
+		whitelist = handle_filtering(database,
+											True,
+											whitelist,
 											dataset)
 		# create separate gene and transcript whitelists
 		gene_whitelist = []
@@ -779,14 +779,14 @@ class SwanGraph(Graph):
 				transcript_whitelist.append(id_tuple[1])
 
 		# get gene, transcript, and exon annotations
-		gene_annotations = get_annotations(database, "gene", 
-										   whitelist = gene_whitelist)  
+		gene_annotations = get_annotations(database, "gene",
+										   whitelist = gene_whitelist)
 		transcript_annotations = get_annotations(database, "transcript",
-												 whitelist = transcript_whitelist) 
+												 whitelist = transcript_whitelist)
 		exon_annotations = get_annotations(database, "exon")
 
 		# get transcript data from the database
-		gene_2_transcripts = get_gene_2_transcripts(database, 
+		gene_2_transcripts = get_gene_2_transcripts(database,
 							 transcript_whitelist)
 
 		# get exon location info from database
@@ -812,7 +812,7 @@ class SwanGraph(Graph):
 			# check if there's a gene name field and add one if not
 			if 'gene_name' not in gene_annotation_dict:
 				gene_annotation_dict['gene_name'] = gene_annotation_dict['gene_id']
-		
+
 			# get transcript entries
 			for transcript_entry in transcript_tuples:
 				transcript_ID = transcript_entry["transcript_ID"]
@@ -823,14 +823,14 @@ class SwanGraph(Graph):
 					attribute = annot[3]
 					value = annot[4]
 					transcript_annotation_dict[attribute] = value
-		  
-				tid = transcript_annotation_dict['transcript_id']
-				gid = gene_annotation_dict['gene_id']  
-				gname = gene_annotation_dict['gene_name']
-				strand = transcript_entry['strand'] 
-				novelty = get_transcript_novelties(transcript_annotation_dict)  
 
-				# add transcript to dictionary 
+				tid = transcript_annotation_dict['transcript_id']
+				gid = gene_annotation_dict['gene_id']
+				gname = gene_annotation_dict['gene_name']
+				strand = transcript_entry['strand']
+				novelty = get_transcript_novelties(transcript_annotation_dict)
+
+				# add transcript to dictionary
 				entry = {'gid': gid,
 						 'gname': gname,
 						 'tid': tid,
@@ -842,7 +842,7 @@ class SwanGraph(Graph):
 
 				if verbose:
 					pbar.update(1)
-						 
+
 				if transcript_entry["n_exons"] != 1:
 					transcript_edges = [str(transcript_entry["start_exon"])] + \
 									   str(transcript_entry["jn_path"]).split(",")+ \
@@ -869,14 +869,14 @@ class SwanGraph(Graph):
 					start, stop = find_edge_start_stop(start, stop, strand)
 					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
 
-					# add novel exon to dictionary 
+					# add novel exon to dictionary
 					if eid not in exons:
 						edge = {eid: {'eid': eid,
 									  'chrom': chrom,
 									  'v1': start,
 									  'v2': stop,
 									  'strand': strand}}
-						exons.update(edge) 
+						exons.update(edge)
 
 					# add this exon to the transcript's list of exons
 					if tid in transcripts:
@@ -922,7 +922,7 @@ class SwanGraph(Graph):
 				v2 = exon['v2']
 				strand = exon['strand']
 
-				# add current exon and subsequent intron 
+				# add current exon and subsequent intron
 				# (if not the last exon) for each exon to edges
 				key = (chrom, v1, v2, strand)
 				v1_key = (chrom, v1, strand)
@@ -953,7 +953,7 @@ class SwanGraph(Graph):
 		loc_df = pd.DataFrame(locs)
 
 		edges = [{'v1': item['edge_id'][0],
-				  'v2': item['edge_id'][1], 
+				  'v2': item['edge_id'][1],
 				  'strand': key[3],
 				  'edge_id': item['edge_id'],
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
@@ -965,7 +965,7 @@ class SwanGraph(Graph):
 					'path': item['path'],
 					'novelty': item['novelty']} for key, item in transcripts.items()]
 
-		t_df = pd.DataFrame(transcripts)	
+		t_df = pd.DataFrame(transcripts)
 
 		# final df formatting
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
@@ -1001,7 +1001,7 @@ class SwanGraph(Graph):
 	######################## Other SwanGraph utilities #####################
 	##########################################################################
 
-	# order the transcripts by expression of transcript, transcript id, 
+	# order the transcripts by expression of transcript, transcript id,
 	# or start/end nodes
 	def order_transcripts(self, order='tid'):
 
@@ -1017,38 +1017,38 @@ class SwanGraph(Graph):
 			# make sure there are counts in the graph at all
 			if tpm_cols:
 				self.t_df['tpm_sum'] = self.t_df[tpm_cols].sum(axis=1)
-				self.t_df.sort_values(by='tpm_sum', 
-									  ascending=False, 
+				self.t_df.sort_values(by='tpm_sum',
+									  ascending=False,
 									  inplace=True)
 				self.t_df.drop('tpm_sum', axis=1, inplace=True)
-			else: 
+			else:
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')
 
 		# order by coordinate of tss in PlottedGraph
 		elif order == 'tss':
-			self.t_df['start_coord'] = self.t_df.apply(lambda x: 
+			self.t_df['start_coord'] = self.t_df.apply(lambda x:
 				self.loc_df.loc[x.path[0], 'coord'], axis=1)
 
 			# watch out for strandedness
 			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
 				ascending = False
-			else: 
+			else:
 				ascending = True
 			self.t_df.sort_values(by='start_coord',
 								  ascending=ascending,
 								  inplace=True)
 			self.t_df.drop('start_coord', axis=1, inplace=True)
-			
+
 		# order by coordinate of tes
 		elif order == 'tes':
-			self.t_df['end_coord'] = self.t_df.apply(lambda x: 
+			self.t_df['end_coord'] = self.t_df.apply(lambda x:
 				self.loc_df.loc[x.path[-1], 'coord'], axis=1)
 
 			# watch out for strandedness
 			if self.loc_df.loc[self.loc_df.index[0], 'strand'] == '-':
 				ascending = False
-			else: 
+			else:
 				ascending = True
 			self.t_df.sort_values(by='end_coord',
 								  ascending=ascending,
@@ -1062,7 +1062,7 @@ class SwanGraph(Graph):
 	# returns a list of genes that are "interesting"
 	def find_genes_with_novel_isoforms(self):
 
-		# get all the datasets, make sure we're not counting transcripts 
+		# get all the datasets, make sure we're not counting transcripts
 		# that are only in the annotation
 		if 'annotation' not in self.datasets:
 			raise Exception('No annotation data in graph. Cannot ',
@@ -1077,8 +1077,8 @@ class SwanGraph(Graph):
 		keep_cols = ['annotation', 'known', 'novel', 'gid']
 		g_df = t_df[keep_cols].groupby(['gid']).sum()
 
-		# create 'interestingness' column ranking how many novel 
-		# compared to known isoforms there are, also ranked by 
+		# create 'interestingness' column ranking how many novel
+		# compared to known isoforms there are, also ranked by
 		# number of total isoforms
 		g_df.known = g_df.known.astype('int32')
 		g_df.novel = g_df.novel.astype('int32')
@@ -1092,8 +1092,8 @@ class SwanGraph(Graph):
 
 	# find genes with higher expression in novel than known isoforms
 	def find_genes_with_high_novel_expression(self):
-		
-		# get all the datasets, make sure we're not counting transcripts 
+
+		# get all the datasets, make sure we're not counting transcripts
 		# that are only in the annotation
 		if 'annotation' not in self.datasets:
 			raise Exception('No annotation data in graph. Cannot ',
@@ -1110,8 +1110,8 @@ class SwanGraph(Graph):
 		g_df.reset_index(inplace=True)
 		g_df['total_known_exp'] = 0
 		g_df['total_novel_exp'] = 0
-		g_df.loc[g_df.known == True, 'total_known_exp'] = g_df.loc[g_df.known == True, tpm_cols].sum(axis=1) 
-		g_df.loc[g_df.known == False, 'total_novel_exp'] = g_df.loc[g_df.known == False, tpm_cols].sum(axis=1) 
+		g_df.loc[g_df.known == True, 'total_known_exp'] = g_df.loc[g_df.known == True, tpm_cols].sum(axis=1)
+		g_df.loc[g_df.known == False, 'total_novel_exp'] = g_df.loc[g_df.known == False, tpm_cols].sum(axis=1)
 		keep_cols = tpm_cols+['total_known_exp', 'total_novel_exp', 'gid']
 		g_df = g_df[keep_cols].groupby('gid').sum()
 
@@ -1127,14 +1127,14 @@ class SwanGraph(Graph):
 
 	def find_ir_genes(self):
 		"""
-		Finds all unique genes containing novel intron retention events. 
+		Finds all unique genes containing novel intron retention events.
 		Requires that an annotation has been added to the SwanGraph.
 
 			Returns:
 
-				ir_genes (list of str): A list of gene ids from the SwanGraph with 
+				ir_genes (list of str): A list of gene ids from the SwanGraph with
 					at least one novel intron retention event
-				ir_transcripts (list of str): A list of transcript ids from the 
+				ir_transcripts (list of str): A list of transcript ids from the
 					SwanGraph with at least one novel intron retention event
 				ir_edges (list of tuples): A list of exonic edges in the
 					SwanGraph that retain at least one intronic edge
@@ -1152,9 +1152,9 @@ class SwanGraph(Graph):
 
 		# get subset of transcripts that are novel to look for ir edges in
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
-		
-		# for each edge, see if the subgraph between the edge vertices 
-		# contains an exonic edge  
+
+		# for each edge, see if the subgraph between the edge vertices
+		# contains an exonic edge
 		ir_edges = []
 		ir_genes = []
 		ir_transcripts = []
@@ -1184,7 +1184,7 @@ class SwanGraph(Graph):
 					cand_genes = cand_t_df.gid.values.tolist()
 					cand_g_df = self.t_df.loc[self.t_df.gid.isin(cand_genes)]
 
-					# check if the retained edges are in one of the 
+					# check if the retained edges are in one of the
 					# intron-retaining genes (wow this is confusing)
 					for gid in cand_genes:
 						if gid in ir_genes: continue
@@ -1201,23 +1201,23 @@ class SwanGraph(Graph):
 		ir_transcripts = list(set(ir_transcripts))
 		ir_edges = list(set(ir_edges))
 
-		print('Found {} novel ir events from {} transcripts.'.format(len(ir_genes), 
+		print('Found {} novel ir events from {} transcripts.'.format(len(ir_genes),
 			len(ir_transcripts)))
 
 		return ir_genes, ir_transcripts, ir_edges
 
 	def find_es_genes(self):
 		"""
-		Finds all unique genes containing novel exon skipping events. 
+		Finds all unique genes containing novel exon skipping events.
 		Requires that an annotation has been added to the SwanGraph.
 
 			Returns:
 
-				es_genes (list of str): A list of gene ids from the SwanGraph with 
+				es_genes (list of str): A list of gene ids from the SwanGraph with
 					at least one novel exon skipping event
-				es_transcripts (list of str): A list of transcript ids from the 
+				es_transcripts (list of str): A list of transcript ids from the
 					SwanGraph with at least one novel exon skipping event
-				es_edges (list of tuples): A list of intronic edges in the 
+				es_edges (list of tuples): A list of intronic edges in the
 					SwanGraph that skip at least one exonic edge
 		"""
 
@@ -1234,7 +1234,7 @@ class SwanGraph(Graph):
 		# get subset of transcripts that are novel to look for ir edges in
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
 
-		# for each edge, see if the subgraph between the edge vertices 
+		# for each edge, see if the subgraph between the edge vertices
 		# contains an exonic edge
 		es_edges = []
 		es_genes = []
@@ -1246,7 +1246,7 @@ class SwanGraph(Graph):
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
 			sub_edges = self.edge_df.loc[sub_edges]
-			# find edges that are exonic; if there are none, this is not 
+			# find edges that are exonic; if there are none, this is not
 			# an exon-skipping edge
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'exon']
 
@@ -1267,7 +1267,7 @@ class SwanGraph(Graph):
 					skip_genes = skip_t_df.gid.values.tolist()
 					skip_g_df = self.t_df.loc[self.t_df.gid.isin(skip_genes)]
 
-					# check if the skipped edges are in one of the 
+					# check if the skipped edges are in one of the
 					# exon-skipping genes (wow this is confusing)
 					for gid in skip_genes:
 						if gid in es_genes: continue
@@ -1292,20 +1292,20 @@ class SwanGraph(Graph):
 		return es_genes, es_transcripts, es_edges
 
 	def de_gene_test(self, dataset_groups):
-		""" 
+		"""
 		Runs a differential expression test on the gene level.
 
 			Parameters:
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets 
+				dataset_groups (list of list of str, len 2): Grouping of datasets
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
 
-			Returns: 
+			Returns:
 
 				test (pandas DataFrame): A summary table of the differential
-					expression test, including p and q-values, as well 
+					expression test, including p and q-values, as well
 					as log fold change.
 		"""
 
@@ -1319,7 +1319,6 @@ class SwanGraph(Graph):
 			factor_loc_totest="condition")
 		test = test.summary()
 		test.rename({'gene': 'gid'}, axis=1, inplace=True)
-
 
 		# add gene name column
 		gnames = self.t_df[['gid', 'gname']].copy(deep=True)
@@ -1346,12 +1345,12 @@ class SwanGraph(Graph):
 
 				q (float): q-value threshold to declare a gene as significant
 					Default: 0.05
-				n_genes (int): Number of results to return. 
+				n_genes (int): Number of results to return.
 					Default: None (returns all found significant)
 
 			Returns:
 
-				genes (list of str): List of gene names that pass the 
+				genes (list of str): List of gene names that pass the
 					significance threshold
 				test (pandas DataFrame): Summary table of genes that pass the
 					significance threshold
@@ -1362,7 +1361,7 @@ class SwanGraph(Graph):
 			raise Exception('Cannot find DE genes without test results. '
 				'Run de_gene_test first.')
 
-		# subset on q value 
+		# subset on q value
 		test = self.deg_test.loc[self.deg_test.qval <= q].copy(deep=True)
 
 		# list and the df of the top de genes according qval threshold
@@ -1376,20 +1375,20 @@ class SwanGraph(Graph):
 		return genes, test
 
 	def de_transcript_test(self, dataset_groups):
-		""" 
+		"""
 		Runs a differential expression test on the transcript level.
 
 			Parameters:
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets 
+				dataset_groups (list of list of str, len 2): Grouping of datasets
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
 
-			Returns: 
+			Returns:
 
 				test (pandas DataFrame): A summary table of the differential
-					expression test, including p and q-values, as well 
+					expression test, including p and q-values, as well
 					as log fold change.
 		"""
 
@@ -1428,12 +1427,12 @@ class SwanGraph(Graph):
 
 				q (float): q-value threshold to declare a transcript as significant
 					Default: 0.05
-				n_transcripts (int): Number of results to return. 
+				n_transcripts (int): Number of results to return.
 					Default: None (returns all found significant)
 
 			Returns:
 
-				tids (list of str): List of transcript ids that pass the 
+				tids (list of str): List of transcript ids that pass the
 					significance threshold
 				test (pandas DataFrame): Summary table of transcripts that pass
 					the significance threshold
@@ -1444,7 +1443,7 @@ class SwanGraph(Graph):
 			raise Exception('Cannot find DE transcripts without test results. '
 				'Run de_transcript_test first.')
 
-		# subset on q value 
+		# subset on q value
 		test = self.det_test.loc[self.det_test.qval <= q].copy(deep=True)
 
 		# list and the df of the top de genes according qval threshold
@@ -1457,89 +1456,143 @@ class SwanGraph(Graph):
 			tids = test.transcript.tolist()
 		return tids, test
 
-	def find_isoform_switching_genes(self, q=0.05, n_genes=None):
-		""" Finds isoform switching genes; genes that are not differentially
-			expressed but contain at least one transcript that is. Requires
-			that de_gene_test and de_transcript_test have been run.
+	# filter differential isoform expression test results based on
+	# both an adjusted p value and dpi cutoff
+	# TODO make this more object-oriented when migration to adata happens
+	def filter_die_results(self, df, p=0.05, dpi=10):
+		"""
+			Filters differential isoform expression test results based on adj.
+			p-value and change in percent isoform usage (dpi).
+
+			Parameters:
+				df (pandas DataFrame): DIE test results, output from
+					get_die_genes
+				p (float): Adj. p-value threshold to declare a gene as isoform
+					switching / having DIE.
+					Default: 0.05
+				dpi (float): DPI (in percent) value to threshold genes with DIE
+					Default: 10
+
+			Returns:
+				gids (list of str): List of gene ids that pass the
+					significance thresholds
+				test (pandas DataFrame): Summary table of genes that pass
+					the significance threshold
+		"""
+		df = df.loc[(df.adj_p_val<=p)&(df.dpi>=dpi)]
+		gids = df['index'].tolist()
+		return gids, df
+
+	def get_die_genes(self, dataset_groups, rc_thresh=10):
+		"""
+			Finds genes with differential isoform expression.
 
 			Parameters:
 
-				q (float): q-value threshold to declare a gene/transcript 
-					as significant
-					Default: 0.05
-				n_genes (int): Number of results to return. 
-					Default: None (returns all found significant)
-			
+				dataset_groups (list of list of str, len 2): Grouping of datasets
+					from the SwanGraph to be used in the differential
+					expression test
+					Example: [['data1','data2'],['data3','data4']]
+				rc_thresh (int): Number of reads required for each conditions
+					in order to test the gene.
+					Default: 10
+
 			Returns:
 
-				genes (list of str): List of gene names that are categorized as 
-					isoform switching
-				switches (pandas DataFrame): Summary table of genes that are 
-					categorized as isoform switching
+				test (pandas DataFrame): A summary table of the differential
+					isoform expression test, including p-values and adjusted
+					p-values, as well as change in percent isoform usage (dpi).
 		"""
 
-		# make sure both deg and det tests have been run
-		if self.det_test.empty or self.deg_test.empty:
-			raise Exception('Cannot find isoform switches without test results. '
-				'Run de_gene_test and de_transcript_test first.')
+		adata = self.create_transcript_anndata(dataset_groups)
+		adata.var.reset_index(inplace=True)
+		test = get_die(adata, [1, 0], how='iso', rc=rc_thresh)
 
-		# subset for genes that aren't DE
-		not_degs = self.deg_test.loc[self.deg_test.qval > q]
-		not_degs = not_degs.gid
+		return test
 
-		# subset for dets
-		dets = self.det_test.loc[self.det_test.qval <= q]
+	# def find_isoform_switching_genes(self, q=0.05, n_genes=None):
+	# 	""" Finds isoform switching genes; genes that are not differentially
+	# 		expressed but contain at least one transcript that is. Requires
+	# 		that de_gene_test and de_transcript_test have been run.
+	#
+	# 		Parameters:
+	#
+	# 			q (float): q-value threshold to declare a gene/transcript
+	# 				as significant
+	# 				Default: 0.05
+	# 			n_genes (int): Number of results to return.
+	# 				Default: None (returns all found significant)
+	#
+	# 		Returns:
+	#
+	# 			genes (list of str): List of gene names that are categorized as
+	# 				isoform switching
+	# 			switches (pandas DataFrame): Summary table of genes that are
+	# 				categorized as isoform switching
+	# 	"""
+	#
+	# 	# make sure both deg and det tests have been run
+	# 	if self.det_test.empty or self.deg_test.empty:
+	# 		raise Exception('Cannot find isoform switches without test results. '
+	# 			'Run de_gene_test and de_transcript_test first.')
+	#
+	# 	# subset for genes that aren't DE
+	# 	not_degs = self.deg_test.loc[self.deg_test.qval > q]
+	# 	not_degs = not_degs.gid
+	#
+	# 	# subset for dets
+	# 	dets = self.det_test.loc[self.det_test.qval <= q]
+	#
+	# 	# merge on gene id
+	# 	switches = dets.merge(not_degs, how='inner', on='gid')
+	#
+	# 	# list and the df of the top de genes according qval threshold
+	# 	unique_genes = switches.gid.unique().tolist()
+	# 	if not n_genes:
+	# 		genes = unique_genes
+	# 	else:
+	# 		if n_genes < len(unique_genes):
+	# 			n_genes = len(unique_genes)
+	# 		switches = switches.loc[switches.gid.isin(unique_genes[:n_genes])]
+	# 		genes = unique_genes[:n_genes]
+	# 	return genes, switches
 
-		# merge on gene id 
-		switches = dets.merge(not_degs, how='inner', on='gid')
-
-		# list and the df of the top de genes according qval threshold
-		unique_genes = switches.gid.unique().tolist()
-		if not n_genes:
-			genes = unique_genes
-		else:
-			if n_genes < len(unique_genes):
-				n_genes = len(unique_genes)
-			switches = switches.loc[switches.gid.isin(unique_genes[:n_genes])]
-			genes = unique_genes[:n_genes]
-		return genes, switches
-
-	def get_de_and_not_de_transcripts(self, dataset_groups):
-		ann = self.create_transcript_anndata(dataset_groups)
-		results = de.test.wald(data=ann,
-			formula_loc="~ 1 + condition",
-			factor_loc_totest="condition")
-		test = results.summary()
-		test.rename({'gene': 'transcript'}, axis=1, inplace=True)
-
-		gnames = self.t_df[['tid', 'gname']].copy(deep=True)
-		gnames.reset_index(drop=True, inplace=True)
-		test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
-		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-
-		det = test.loc[test.qval < 0.05]
-		not_det = test.loc[test.qval >= 0.05]
-		genes_w_det = det.gname.tolist()
-		not_det = not_det.loc[not_det.gname.isin(genes_w_det)]
-		df = pd.concat([det, not_det])
-		df = df.loc[df.gname.duplicated(keep=False)]
-
-		return df
+	# def get_de_and_not_de_transcripts(self, dataset_groups):
+	# 	ann = self.create_transcript_anndata(dataset_groups)
+	# 	results = de.test.wald(data=ann,
+	# 		formula_loc="~ 1 + condition",
+	# 		factor_loc_totest="condition")
+	# 	test = results.summary()
+	# 	test.rename({'gene': 'transcript'}, axis=1, inplace=True)
+	#
+	# 	gnames = self.t_df[['tid', 'gname']].copy(deep=True)
+	# 	gnames.reset_index(drop=True, inplace=True)
+	# 	test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
+	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+	#
+	# 	det = test.loc[test.qval < 0.05]
+	# 	not_det = test.loc[test.qval >= 0.05]
+	# 	genes_w_det = det.gname.tolist()
+	# 	not_det = not_det.loc[not_det.gname.isin(genes_w_det)]
+	# 	df = pd.concat([det, not_det])
+	# 	df = df.loc[df.gname.duplicated(keep=False)]
+	#
+	# 	return df
 
 	def create_gene_anndata(self, dataset_groups):
 		"""
-		Creates a gene-level AnnData object containing TPM that's 
-		compatible with diffxpy. Assigns different condition labels 
+		Creates a gene-level AnnData object containing TPM that's
+		compatible with diffxpy. Assigns different condition labels
 		to the given dataset groups.
 
 			Parameters:
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets 
+				dataset_groups (list of list of str, len 2): Grouping of datasets
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
 
-			Returns: 
+			Returns:
 				ann (AnnData): AnnData object containing gene-level TPM
 					with different conditions labelled for DE testing
 		"""
@@ -1561,56 +1614,63 @@ class SwanGraph(Graph):
 		g_df[all_dataset_cols] = g_df[all_dataset_cols] + 1
 
 		# create obs, var, and x entries for the anndata object
-		ann_x = g_df.to_numpy().T 
+		ann_x = g_df.to_numpy().T
 		ann_var = pd.DataFrame(index=g_df.index)
-		ann_obs = pd.DataFrame(columns=['batch'],
+		ann_obs = pd.DataFrame(columns=['dataset'],
 							   data=all_dataset_cols)
 		ann_obs['condition'] = np.nan
 		for i, group in enumerate(dataset_cols):
-			ann_obs.loc[ann_obs.batch.isin(group),  'condition'] = i
+			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
 		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
 
 		return ann
 
-	def create_transcript_anndata(self, dataset_groups):
+	def create_transcript_anndata(self, dataset_groups, how='counts'):
 		"""
-		Creates a transcript-level AnnData object containing TPM that's 
-		compatible with diffxpy. Assigns different condition labels 
+		Creates a transcript-level AnnData object containing TPM that's
+		compatible with diffxpy. Assigns different condition labels
 		to the given dataset groups.
 
 			Parameters:
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets 
+				dataset_groups (list of list of str, len 2): Grouping of datasets
 					from the SwanGraph to be used in the differential
 					expression test
 					Example: [['data1','data2'],['data3','data4']]
+				how (str): How to calculate expression from each group. Choose
+					from 'tpm' or 'counts'
 
-			Returns: 
+			Returns:
 				ann (AnnData): AnnData object containing transcript-level TPM
 					with different conditions labelled for DE testing
 		"""
 
-		# group t_df into gene df and sum up abundances
-		# both across genes and across datasets
+		# group t_df
 		t_df = self.t_df.copy(deep=True)
 		dataset_cols = []
 		all_dataset_cols = []
 		for group in dataset_groups:
-			tpm_cols = self.get_tpm_cols(group)
-			dataset_cols.append(tpm_cols)
-			all_dataset_cols.extend(tpm_cols)
+			if how == 'tpm':
+				cols = self.get_tpm_cols(group)
+			elif how == 'counts':
+				cols = self.get_count_cols(group)
+			dataset_cols.append(cols)
+			all_dataset_cols.extend(cols)
 
-		# add pseudocounts for each transcript
-		t_df[all_dataset_cols] = t_df[all_dataset_cols] + 1
+		if how == 'tpm':
+			# add pseudocounts for each transcript
+			t_df[all_dataset_cols] = t_df[all_dataset_cols] + 1
 
 		# create obs, var, and x entries for the anndata object
-		ann_x = t_df[all_dataset_cols].to_numpy().T 
-		ann_var = pd.DataFrame(index=t_df.index)
-		ann_obs = pd.DataFrame(columns=['batch'],
+		ann_x = t_df[all_dataset_cols].to_numpy().T
+		ann_var = t_df[['gid', 'gname']]
+		# ann_var['tid'] = ann_var.index
+		# ann_var = pd.DataFrame(index=t_df.index)
+		ann_obs = pd.DataFrame(columns=['dataset'],
 							   data=all_dataset_cols)
 		ann_obs['condition'] = np.nan
 		for i, group in enumerate(dataset_cols):
-			ann_obs.loc[ann_obs.batch.isin(group),  'condition'] = i
+			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
 		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
 
 		return ann
@@ -1623,9 +1683,9 @@ class SwanGraph(Graph):
 		"""
 		Saves the current SwanGraph in pickle format with the .p extension
 
-			Parameters: 
+			Parameters:
 
-				prefix (str): Path and filename prefix. Resulting file will 
+				prefix (str): Path and filename prefix. Resulting file will
 					be saved as prefix.p
 		"""
 		print('Saving graph as '+prefix+'.p')
@@ -1673,19 +1733,19 @@ class SwanGraph(Graph):
 
 			Parameters:
 
-				gid (str): Gene ID to plot for (can also be gene name but 
+				gid (str): Gene ID to plot for (can also be gene name but
 					we've seen non-unique gene names so use at your own risk!)
 				indicate_dataset (str): Dataset name from SwanGraph to
 					highlight with outlined nodes and dashed edges
 					Incompatible with indicate_novel
 					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by 
+				indicate_novel (bool): Highlight novel nodes and edges by
 					outlining them and dashing them respectively
 					Incompatible with indicate_dataset
 					Default: False
 				prefix (str): Path and file prefix to automatically save
 					the plotted figure
-					Default: None, won't automatically save 
+					Default: None, won't automatically save
 				display (bool): Display the plot during runtime
 					Default: False
 		"""
@@ -1698,7 +1758,7 @@ class SwanGraph(Graph):
 
 		# reinit PlottedGraph object and plot
 		self.pg.init_plot_settings(self, gid=gid,
-			indicate_dataset=indicate_dataset, 
+			indicate_dataset=indicate_dataset,
 			indicate_novel=indicate_novel)
 		self.pg.plot_graph()
 
@@ -1726,7 +1786,7 @@ class SwanGraph(Graph):
 							 prefix=None,
 							 display=False):
 		"""
-		Plots a path of a single transcript isoform through a gene summary 
+		Plots a path of a single transcript isoform through a gene summary
 		SwanGraph.
 
 			Parameters:
@@ -1736,7 +1796,7 @@ class SwanGraph(Graph):
 					highlight with outlined nodes and dashed edges
 					Incompatible with indicate_novel
 					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by 
+				indicate_novel (bool): Highlight novel nodes and edges by
 					outlining them and dashing them respectively
 					Incompatible with indicate_dataset
 					Default: False
@@ -1754,7 +1814,7 @@ class SwanGraph(Graph):
 		self.check_transcript(tid)
 
 		# reinit PlottedGraph object and plot
-		self.pg.init_plot_settings(self, tid=tid, 
+		self.pg.init_plot_settings(self, tid=tid,
 			indicate_dataset=indicate_dataset,
 			indicate_novel=indicate_novel,
 			browser=browser)
@@ -1792,7 +1852,7 @@ class SwanGraph(Graph):
 					highlight with outlined nodes and dashed edges
 					Incompatible with indicate_novel
 					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by 
+				indicate_novel (bool): Highlight novel nodes and edges by
 					outlining them and dashing them respectively
 					Incompatible with indicate_dataset
 					Default: False
@@ -1838,7 +1898,7 @@ class SwanGraph(Graph):
 					highlight with outlined nodes and dashed edges
 					Incompatible with indicate_novel
 					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by 
+				indicate_novel (bool): Highlight novel nodes and edges by
 					outlining them and dashing them respectively
 					Incompatible with indicate_dataset
 					Default: False
@@ -1890,7 +1950,7 @@ class SwanGraph(Graph):
 				   include_qvals=False,
 				   q=0.05,
 				   include_unexpressed=False,
-				   indicate_dataset=False, 
+				   indicate_dataset=False,
 				   indicate_novel=False,
 				   browser=False,
 				   order='expression',
@@ -1899,7 +1959,7 @@ class SwanGraph(Graph):
 		Generates a PDF report for a given gene or list of genes according
 		to the user's input.
 
-			Parameters: 
+			Parameters:
 
 				gids (str or list of str): Gene ids or names to generate
 					reports for
@@ -1911,39 +1971,39 @@ class SwanGraph(Graph):
 				dataset_groups (list of list of str): Datasets to average
 					together in the report and display as one column
 					Example: [['group1_1','group1_2'],['group2_1','group2_2']]
-				dataset_group_names (list of str): Names to give each group 
-					given by dataset_groups. Must be the same length as 
+				dataset_group_names (list of str): Names to give each group
+					given by dataset_groups. Must be the same length as
 					dataset_groups
 					Example: ['group1', 'group2']
 					Default: Will assign numbers 1 through length(dataset_group)
 
 				novelty (bool): Include a column to dipslay novelty type of
-					each transcript. Requires that a TALON GTF or DB has 
+					each transcript. Requires that a TALON GTF or DB has
 					been used to load data in
 					Default: False
 
 				heatmap (bool): Display expression values in a heatmap
-					format. Requires that abundance information has been 
+					format. Requires that abundance information has been
 					added to the SwanGraph
 					Default: False
 				dpi (bool): Plot proportion isoform usage per condition
 					as opposed to log2(tpm)
 				cmap (str): Matplotlib color map to display heatmap values
-					in. 
+					in.
 					Default: 'Spectral_r'
-				tpm (bool): Display TPM value of each transcript/dataset 
-					combination, instead of presence/absence of each 
+				tpm (bool): Display TPM value of each transcript/dataset
+					combination, instead of presence/absence of each
 					transcript. Requires that abundance information has
 					been added to the SwanGraph
 					Default:False
 
-				include_qvals (bool): Display q-val of differential expression 
+				include_qvals (bool): Display q-val of differential expression
 					for each transcript and bold entries found to be
 					differentially expressed. Requires that de_transcript_test
 					has been run, and that abundance information has been
 					added to the SwanGraph
 					Default: False
-				q (float): Q-value significance threshold to use when 
+				q (float): Q-value significance threshold to use when
 					bolding transcripts if include_qvals = True.
 					Default: 0.05
 
@@ -1955,7 +2015,7 @@ class SwanGraph(Graph):
 					highlight with outlined nodes and dashed edges
 					Incompatible with indicate_novel
 					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by 
+				indicate_novel (bool): Highlight novel nodes and edges by
 					outlining them and dashing them respectively
 					Incompatible with indicate_dataset
 					Default: False
@@ -1964,19 +2024,19 @@ class SwanGraph(Graph):
 					indicate_novel
 
 				order (str): Order to display transcripts in the report.
-					Options are 
+					Options are
 						'tid': alphabetically by transcript ID
 						'expression': cumulative expression from high to low
-							Requires that abundance information has been 
+							Requires that abundance information has been
 							added to the SwanGraph
 						'tss': genomic coordinate of transcription start site
 						'tes': genomic coordinate of transcription end site
 					Default: 'expression' if abundance information is present,
 							 'tid' if not
 
-				threads (int): Number of threads to use. Multithreading is 
+				threads (int): Number of threads to use. Multithreading is
 					recommended when making a large number of gene reports.
-					Default: 1. 
+					Default: 1.
 		"""
 
 		# check to see if input genes are in the graph
@@ -2003,7 +2063,7 @@ class SwanGraph(Graph):
 		# if we have dataset groupings make sure that they are a subset
 		# of the datasets already requested
 		if dataset_groups:
-			if not datasets: 
+			if not datasets:
 				raise Exception('Cannot group datasets as none were requested.')
 			else:
 				all_dgs = [j for i in dataset_groups for j in i]
@@ -2012,7 +2072,7 @@ class SwanGraph(Graph):
 				subsumed_datasets = [True if i in datasets else False for i in all_dgs]
 				if False in subsumed_datasets:
 					bad_dataset = all_dgs[subsumed_datasets.index(False)]
-					raise Exception("Grouping dataset {} not present in " 
+					raise Exception("Grouping dataset {} not present in "
 						"datasets {}.".format(bad_dataset, datasets))
 
 		# if we've asked for novelty first check to make sure it's there
@@ -2026,7 +2086,7 @@ class SwanGraph(Graph):
 		if dpi or tpm or heatmap:
 			self.check_abundances(datasets)
 
-		# order transcripts by user's preferences 
+		# order transcripts by user's preferences
 		if order == 'expression' and not self.get_count_cols():
 			order = 'tid'
 		self.order_transcripts(order)
@@ -2055,7 +2115,7 @@ class SwanGraph(Graph):
 			counts_cols = self.get_count_cols(datasets)
 			t_df = t_df[t_df[counts_cols].sum(axis=1)>0]
 
-		# if we're grouping things switch up the datasets 
+		# if we're grouping things switch up the datasets
 		# and how t_df is formatted
 		if dataset_groups:
 
@@ -2103,13 +2163,13 @@ class SwanGraph(Graph):
 		if threads > max_cores:
 			threads = max_cores
 
-		# if there are fewer than 10 genes, the overhead for multiprocessing 
-		# takes longer 
+		# if there are fewer than 10 genes, the overhead for multiprocessing
+		# takes longer
 		if len(gids) < 10:
 			for gid in gids:
 				_create_gene_report(gid, self, t_df, datasets, data_type,
 					prefix, indicate_dataset, indicate_novel, browser,
-					report_type, novelty, heatmap, dpi, cmap, include_qvals) 
+					report_type, novelty, heatmap, dpi, cmap, include_qvals)
 		else:
 			# launch report jobs on different threads
 			with multiprocessing.Pool(threads) as pool:
@@ -2123,7 +2183,7 @@ class SwanGraph(Graph):
 	############################# Error handling #############################
 	##########################################################################
 
-	# make sure that the set of arguments work with each other 
+	# make sure that the set of arguments work with each other
 	# before we start plotting
 	def check_plotting_args(self,
 							indicate_dataset,
@@ -2155,11 +2215,11 @@ class SwanGraph(Graph):
 ##########################################################################
 
 # generate a report for one gene; used for parallelization
-def _create_gene_report(gid, sg, t_df, 
+def _create_gene_report(gid, sg, t_df,
 	datasets, data_type,
 	prefix,
 	indicate_dataset, indicate_novel,
-	browser, 
+	browser,
 	report_type, novelty, heatmap,
 	dpi, cmap,
 	include_qvals):
@@ -2188,7 +2248,7 @@ def _create_gene_report(gid, sg, t_df,
 	if heatmap:
 
 		if not dpi:
-			# take log2(tpm) and gene-normalize 
+			# take log2(tpm) and gene-normalize
 			count_cols = ['{}_counts'.format(d) for d in datasets]
 			log_cols = ['{}_log_tpm'.format(d) for d in datasets]
 			norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
@@ -2197,7 +2257,7 @@ def _create_gene_report(gid, sg, t_df,
 			min_val = min(gid_t_df[log_cols].min().tolist())
 			gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
 
-			# create a colorbar 
+			# create a colorbar
 			plt.rcParams.update({'font.size': 20})
 			fig, ax = plt.subplots(figsize=(14, 1.5))
 			fig.subplots_adjust(bottom=0.5)
@@ -2226,7 +2286,7 @@ def _create_gene_report(gid, sg, t_df,
 			dpi_cols = ['{}_dpi'.format(d) for d in datasets]
 			gid_t_df[dpi_cols] = gid_t_df[count_cols].div(gid_t_df[count_cols].sum(axis=0), axis=1)
 
-			# create a colorbar 
+			# create a colorbar
 			plt.rcParams.update({'font.size': 20})
 			fig, ax = plt.subplots(figsize=(14, 1.5))
 			fig.subplots_adjust(bottom=0.5)
@@ -2251,7 +2311,7 @@ def _create_gene_report(gid, sg, t_df,
 
 	# create report
 	print('Generating report for {}'.format(gid))
-	pdf_name = create_fname(prefix, 
+	pdf_name = create_fname(prefix,
 				 indicate_dataset,
 				 indicate_novel,
 				 browser,
@@ -2275,10 +2335,9 @@ def _create_gene_report(gid, sg, t_df,
 		## ie once in plot_each_transcript and once here
 		fname = create_fname(prefix,
 							 indicate_dataset,
-							 indicate_novel, 
+							 indicate_novel,
 							 browser,
 							 ftype='path',
 							 tid=entry.tid)
 		report.add_transcript(entry, fname)
 	report.write_pdf(pdf_name)
-
