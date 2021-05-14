@@ -258,49 +258,116 @@ class SwanGraph(Graph):
 		if verbose:
 			print('Dataset {} added to the SwanGraph'.format(col))
 
-	def add_abundance(self, counts_file, count_cols,
-					  dataset_name, tid_col='annot_transcript_id',
-					  verbose=False):
+	def add_abundance(self, counts_file):
 		"""
-		Adds abundance information to an existing dataset in the SwanGraph.
+		Adds abundance from a counts matrix to the SwanGraph.
 
-			Parameters:
-
-				counts_file (str): Path to tsv counts matrix
-				count_cols (str or list of str): Column names in counts_file to use
-				dataset_name (str): Name of SwanGraph dataset to associate abundance with
-				tid_col (str): Column name in counts_file containing transcript id
-					Default: 'annot_transcript_id'
-
-				verbose (bool): Display progress updates
-					Default: False
+		Parameters:
+			counts_file (str): Path to TSV expression file where first column is
+				the transcript ID and following columns name the added datasets and
+				their counts in each dataset.
 		"""
 
-		if verbose:
-			print('Adding abundance information...')
+		# read in abundance file
+		check_file_loc(counts_file, 'tsv')
+		try:
+			df = pd.read_csv(counts_file, sep='\t')
+		except:
+			raise Error('Problem reading expression matrix {}'.format(counts_file))
 
-		# if the dataset we're trying to add counts too doesn't exist
-		if dataset_name not in self.datasets:
-			raise Exception('Trying to add expression data to a dataset '
-							'that is not in the graph. Add dataset to graph first.')
+		# rename transcript ID column
+		col = df.columns[0]
+		df.rename({col: 'tid'}, axis=1, inplace=True)
 
-		# get counts from input abundance file
-		abundance_df = process_abundance_file(counts_file, count_cols, tid_col)
-		abundance_df.rename({'tpm': '{}_tpm'.format(dataset_name),
-							 'counts': '{}_counts'.format(dataset_name)},
-							 axis=1, inplace=True)
+		# limit to just the transcripts already in the graph
+		sg_tids = self.t_df.tid.tolist()
+		ab_tids = df.tid.tolist()
 
-		# merge on transcript id (tid) with t_df and make sure it's
-		# formatted correctly
-		self.t_df.reset_index(drop=True, inplace=True)
-		self.t_df = self.t_df.merge(abundance_df, on='tid', how='left')
-		self.t_df.fillna(value=0, inplace=True)
-		self.t_df = create_dupe_index(self.t_df, 'tid')
-		self.t_df = set_dupe_index(self.t_df, 'tid')
+		if len(set(sg_tids)-set(ab_tids)) != 0:
+		    print('Transcripts absent from abundance file will be assigned 0 counts.')
+		if len(set(ab_tids)-set(sg_tids)) != 0:
+		    print('Transcripts found in abundance matrix that are not in the SwanGraph will not have expression added.')
 
-		# finally update object's metadata
-		self.counts.append('{}_counts'.format(dataset_name))
-		self.tpm.append('{}_tpm'.format(dataset_name))
+		# right merge to keep everything in the t_df already
+		df = df.merge(self.t_df['tid'].to_frame(), how='right', left_on='tid', right_index=True)
+		df.drop(['tid_x', 'tid_y'], axis=1, inplace=True)
+
+		# fill NaNs with 0 counts
+		df.fillna(0, inplace=True)
+		df.set_index('tid', inplace=True)
+
+		# calculate TPMs before transposing
+		tpm_df = df.index.to_frame()
+		tpm_df.head()
+		for c in df.columns.tolist():
+		    total_counts = df[c].sum()
+		    tpm_df[c] = (df[c]*1000000)/total_counts
+		tpm_df.drop('tid', axis=1, inplace=True)
+		tpm_df = tpm_df.T
+		tpm_X = tpm_df.to_numpy()
+
+		# transpose to get adata format
+		df = df.T
+
+		# get adata components - obs, var, and X
+		var = df.columns.to_frame()
+		var.columns = ['tid']
+		obs = df.index.to_frame()
+		obs.columns = ['dataset']
+		X = df.to_numpy()
+
+		# add each dataset to list of "datasets", check if any are already there!
+		datasets = obs.dataset.tolist()
+		for d in datasets:
+			if d in self.datasets:
+				raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
+		self.datasets.extend(datasets)
+
+		# create transcript-level adata object
+		self.adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+		# add counts as layers
+		self.adata.layers['counts'] = self.adata.X
+		self.adata.layers['tpm'] = self.adata.tpm_X
+
+	# def add_abundance(self, counts_file, count_cols,
+	# 				  dataset_name, tid_col='annot_transcript_id',
+	# 				  verbose=False):
+	# 	"""
+	# 	Adds abundance information to an existing dataset in the SwanGraph.
+	#
+	# 		Parameters:
+	#
+	# 			counts_file (str): Path to tsv counts matrix
+	# 			count_cols (str or list of str): Column names in counts_file to use
+	# 			dataset_names (str): Name of SwanGraph dataset to associate abundance with
+	# 			tid_col (str): Column name in counts_file containing transcript id
+	# 				Default: 'annot_transcript_id'
+	#
+	# 			verbose (bool): Display progress updates
+	# 				Default: False
+	# 	"""
+	#
+	# 	if verbose:
+	# 		print('Adding abundance information...')
+	#
+	# 	# get counts from input abundance file
+	# 	abundance_df = process_abundance_file(counts_file, count_cols, tid_col)
+	# 	abundance_df.rename({'tpm': '{}_tpm'.format(dataset_name),
+	# 						 'counts': '{}_counts'.format(dataset_name)},
+	# 						 axis=1, inplace=True)
+	#
+	# 	# merge on transcript id (tid) with t_df and make sure it's
+	# 	# formatted correctly
+	# 	self.t_df.reset_index(drop=True, inplace=True)
+	# 	self.t_df = self.t_df.merge(abundance_df, on='tid', how='left')
+	# 	self.t_df.fillna(value=0, inplace=True)
+	# 	self.t_df = create_dupe_index(self.t_df, 'tid')
+	# 	self.t_df = set_dupe_index(self.t_df, 'tid')
+	#
+	# 	# finally update object's metadata
+	# 	self.counts.append('{}_counts'.format(dataset_name))
+	# 	self.tpm.append('{}_tpm'.format(dataset_name))
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
@@ -545,8 +612,6 @@ class SwanGraph(Graph):
 		self.loc_df = pd.concat([self.loc_df, loc_df])
 		self.edge_df = pd.concat([self.edge_df, edge_df])
 		self.t_df = pd.concat([self.t_df, t_df])
-
-		print(self.loc_df.loc[self.loc_df.vertex_id.duplicated(keep=False)].head())
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility

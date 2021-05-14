@@ -33,8 +33,6 @@ class Graph:
 		"""
 
 		self.datasets = []
-		self.counts = []
-		self.tpm = []
 
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'strand','vertex_id',
