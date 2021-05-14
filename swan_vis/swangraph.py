@@ -283,10 +283,10 @@ class SwanGraph(Graph):
 		sg_tids = self.t_df.tid.tolist()
 		ab_tids = df.tid.tolist()
 
-		if len(set(sg_tids)-set(ab_tids)) != 0:
-		    print('Transcripts absent from abundance file will be assigned 0 counts.')
-		if len(set(ab_tids)-set(sg_tids)) != 0:
-		    print('Transcripts found in abundance matrix that are not in the SwanGraph will not have expression added.')
+		# if len(set(sg_tids)-set(ab_tids)) != 0:
+		#     print('Transcripts absent from abundance file will be assigned 0 counts.')
+		# if len(set(ab_tids)-set(sg_tids)) != 0:
+		#     print('Transcripts found in abundance matrix that are not in the SwanGraph will not have expression added.')
 
 		# right merge to keep everything in the t_df already
 		df = df.merge(self.t_df['tid'].to_frame(), how='right', left_on='tid', right_index=True)
@@ -323,12 +323,68 @@ class SwanGraph(Graph):
 				raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
 		self.datasets.extend(datasets)
 
-		# create transcript-level adata object
-		self.adata = anndata.AnnData(var=var, obs=obs, X=X)
+		print()
+		if len(datasets) <= 5:
+			print('Adding abundance for datasets {} to SwanGraph.'.format(', '.join(datasets)))
+		else:
+			mini_datasets = datasets[:5]
+			n = len(datasets) - len(mini_datasets)
+			print('Adding abundance for datasets {}... (and {} more) to SwanGraph'.format(', '.join(mini_datasets), n))
 
-		# add counts as layers
-		self.adata.layers['counts'] = self.adata.X
-		self.adata.layers['tpm'] = self.adata.tpm_X
+		# # create transcript-level adata object
+		# adata = anndata.AnnData(var=var, obs=obs, X=X)
+		#
+		# # add counts as layers
+		# adata.layers['counts'] = adata.X
+		# adata.layers['tpm'] = tpm_X
+
+		# if there is preexisting abundance data in the SwanGraph, concatenate
+		# otherwise, adata is the new transcript level adata
+		if self.is_empty():
+
+			# create transcript-level adata object
+			self.adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+			# add counts as layers
+			self.adata.layers['counts'] = self.adata.X
+			self.adata.layers['tpm'] = tpm_X
+			# self.adata = adata
+		else:
+
+			# concatenate the raw data and tpm data
+			print(np.shape(X))
+			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
+			print(np.shape(X))
+
+			print(np.shape(tpm_X))
+			tpm_X = np.concatenate((self.adata.layers['tpm'], tpm_X), axis=0)
+			print(np.shape(tpm_X))
+
+			# concatenate obs
+			print(len(obs.index))
+			obs = pd.concat([self.adata.obs, obs], axis=0)
+			print(len(obs.index))
+
+			# construct a new adata from the concatenated objects
+			adata = anndata.AnnData(var=var, obs=obs, X=X)
+			adata.layers['counts'] = X
+			adata.layers['tpm'] = tpm_X
+
+			# some cleanup for unstructured data
+			adata.uns = self.adata.uns
+
+			self.adata = adata
+
+
+			# # concatenate whole adata
+			# print(np.shape(self.adata.X))
+			# self.adata = self.adata.concatenate(adata, join='outer')
+			# print(np.shape(self.adata.X))
+
+
+
+
+
 
 	# def add_abundance(self, counts_file, count_cols,
 	# 				  dataset_name, tid_col='annot_transcript_id',
