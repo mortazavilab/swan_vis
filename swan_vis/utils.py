@@ -400,6 +400,22 @@ def get_transcript_novelties(fields):
 	elif 'genomic_transcript' in fields:
 		return 'Genomic'
 
+# reformat talon abundance file for the generic format expected by swan
+def reformat_talon_abundance(fname, ofile=None):
+	check_file_loc(fname, 'TALON abundance')
+
+	df = pd.read_csv(fname, sep='\t')
+	drop_cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_gene_name',
+		'annot_transcript_name', 'n_exons', 'length', 'gene_novelty',
+		'transcript_novelty', 'ISM_subtype']
+	df.drop(drop_cols, axis=1, inplace=True)
+
+	# if not writing output file just return df
+	if not ofile:
+		return df
+	# otherwise dump to output file
+	df.to_csv(ofile, sep='\t', index=False)
+
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
 def save_fig(oname):

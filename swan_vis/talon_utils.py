@@ -3,47 +3,47 @@ import itertools
 import operator
 import sqlite3
 
-# All functions in this file written by Dana Wyman for TALON, and 
+# All functions in this file written by Dana Wyman for TALON, and
 # adapted to interface with TALON dbs
 
 # Converts input to string that can be used for IN database query
-def format_for_in(l):	
+def format_for_in(l):
 	if type(l) is tuple:
 		l = list(l)
 	if type(l) is str:
 		l = [l]
-	return "(" + ','.join(['"' + str(x) + '"' for x in l]) + ")" 
+	return "(" + ','.join(['"' + str(x) + '"' for x in l]) + ")"
 
 def fetch_all_transcript_gene_pairs(cursor):
 	""" Return gene_ID - transcript_ID tuples from database """
 
 	query = """ SELECT gene_ID, transcript_ID FROM transcripts """
 	cursor.execute(query)
-	
+
 	pairs = cursor.fetchall()
 	return pairs
-	
+
 def fetch_all_datasets(cursor):
 	""" Return a list of all datasets in database """
 	cursor.execute("SELECT dataset_name FROM dataset")
 	datasets = [str(x[0]) for x in cursor.fetchall()]
 	return datasets
 
-def parse_whitelist(whitelist_file):
-	""" From the whitelist file, obtain a list of acccepted gene and 
+def parse_pass_list(pass_list_file):
+	""" From the pass_list file, obtain a list of acccepted gene and
 		transcript IDs tuples"""
-	whitelist = set()
-	with open(whitelist_file, 'r') as f:
+	pass_list = set()
+	with open(pass_list_file, 'r') as f:
 		for line in f:
 			line = line.strip()
 			fields = line.split(",")
 			gene_ID = fields[0]
 			transcript_ID = fields[1]
 			try:
-				whitelist.add((int(gene_ID), int(transcript_ID)))
+				pass_list.add((int(gene_ID), int(transcript_ID)))
 			except:
-				raise ValueError("Gene/Transcript IDs in whitelist must be integer TALON IDs")
-	return whitelist
+				raise ValueError("Gene/Transcript IDs in pass_list must be integer TALON IDs")
+	return pass_list
 
 def parse_datasets(dataset, cursor):
 	""" From the dataset file, obtain a list of acccepted dataset names"""
@@ -52,11 +52,11 @@ def parse_datasets(dataset, cursor):
 		raise ValueError("Dataset name '%s' not found in database" % dataset)
 	return dataset
 
-def handle_filtering(database, observed, whitelist_file, dataset):
+def handle_filtering(database, observed, pass_list_file):
 	""" Determines which transcripts to allow in the analysis. This can be done
-		in two different ways. If no whitelist is included, then all of the
+		in two different ways. If no pass_list is included, then all of the
 		transcripts in the database are included (modified by 'observed'
-		option). If a whitelist is provided, then transcripts on that list
+		option). If a pass_list is provided, then transcripts on that list
 		will be included (modified by 'observed' option). This can be
 		tuned further by providing a dataset file, but this is optional. """
 
@@ -64,23 +64,24 @@ def handle_filtering(database, observed, whitelist_file, dataset):
 	conn.row_factory = sqlite3.Row
 	cursor = conn.cursor()
 
-	# Get list of datasets to use in run
-	if dataset != None:
-		datasets = parse_datasets(dataset, cursor)
-	elif observed == True:
-		datasets = fetch_all_datasets(cursor)
-	else:
-		datasets = None
+	# # Get list of datasets to use in run
+	# if dataset != None:
+	# 	datasets = parse_datasets(dataset, cursor)
+	# elif observed == True:
+	# 	datasets = fetch_all_datasets(cursor)
+	# else:
+	# 	datasets = None
+	datasets = fetch_all_datasets(cursor)
 
-	# Get initial transcript whitelist
-	if whitelist_file != None:
-		whitelist = parse_whitelist(whitelist_file)
+	# Get initial transcript pass_list
+	if pass_list_file != None:
+		pass_list = parse_pass_list(pass_list_file)
 	else:
-		whitelist = fetch_all_transcript_gene_pairs(cursor)
+		pass_list = fetch_all_transcript_gene_pairs(cursor)
 
 	if datasets != None:
-		# Limit the whitelist to transcripts detected in the datasets
-		transcripts = [ x[1] for x in whitelist ]
+		# Limit the pass_list to transcripts detected in the datasets
+		transcripts = [ x[1] for x in pass_list ]
 		transcript_str = format_for_in(transcripts)
 		dataset_str = format_for_in(datasets)
 
@@ -89,12 +90,12 @@ def handle_filtering(database, observed, whitelist_file, dataset):
 					WHERE transcript_ID IN %s
 					AND dataset in %s """
 		cursor.execute(query % (transcript_str, dataset_str))
-		whitelist = cursor.fetchall()
+		pass_list = cursor.fetchall()
 
 	conn.close()
-	return whitelist
+	return pass_list
 
-def get_gene_transcript_map(db, whitelist):
+def get_gene_transcript_map(db, pass_list):
 	""" Creates a dictionary mapping gene IDs to the transcripts that belong to
 		them. The columns in each tuple are:
 			0: gene ID
@@ -110,9 +111,9 @@ def get_gene_transcript_map(db, whitelist):
 	conn = sqlite3.connect(db)
 	conn.row_factory = sqlite3.Row
 	cursor = conn.cursor()
-	whitelist_string = "(" + ','.join([str(x) for x in whitelist]) + ")"
+	pass_list_string = "(" + ','.join([str(x) for x in pass_list]) + ")"
 	query = """
-			SELECT 
+			SELECT
 				t.gene_ID,
 				t.transcript_ID,
 				loc1.chromosome,
@@ -127,12 +128,12 @@ def get_gene_transcript_map(db, whitelist):
 			LEFT JOIN location loc1 ON t.start_vertex = loc1.location_ID
 			LEFT JOIN location loc2 ON t.end_vertex = loc2.location_ID
 			LEFT JOIN genes ON t.gene_ID = genes.gene_ID
-			WHERE t.transcript_ID IN """ + whitelist_string 
+			WHERE t.transcript_ID IN """ + pass_list_string
 	cursor.execute(query)
 	transcript_tuples = cursor.fetchall()
 
 	# Sort based on gene ID
-	sorted_transcript_tuples = sorted(transcript_tuples, key=lambda x: x["gene_ID"])	
+	sorted_transcript_tuples = sorted(transcript_tuples, key=lambda x: x["gene_ID"])
 
 	gene_groups = {}
 	for key,group in itertools.groupby(sorted_transcript_tuples,operator.itemgetter(0)):
@@ -140,17 +141,17 @@ def get_gene_transcript_map(db, whitelist):
 		gene_groups[key] = sorted(list(group), key=lambda x: x["min_pos"])
 	conn.close()
 
-	return gene_groups 
+	return gene_groups
 
-def get_annotations(database, feat_type, whitelist=None):
-	""" 
+def get_annotations(database, feat_type, pass_list=None):
+	"""
 		Extracts annotations from the gene/transcript/exon annotation table of
 		the database (depending on choice of feat_type).
 
 		Returns:
 			annotation_dict: dictionary data structure in which the keys are
-							 gene/transcript/exon TALON IDs (depending on 
-							 choice of feat_type) and the value is a list of 
+							 gene/transcript/exon TALON IDs (depending on
+							 choice of feat_type) and the value is a list of
 							 annotation tuples.
 	"""
 	# fetch the annotations
@@ -159,17 +160,17 @@ def get_annotations(database, feat_type, whitelist=None):
 
 	table_name = feat_type + "_annotations"
 
-	if whitelist == None:
+	if pass_list == None:
 		query = "SELECT * FROM " + table_name
 	else:
-		whitelist_string = "(" + ','.join([str(x) for x in whitelist]) + ")"
-		query = "SELECT * FROM " + table_name + " WHERE ID IN " + whitelist_string
+		pass_list_string = "(" + ','.join([str(x) for x in pass_list]) + ")"
+		query = "SELECT * FROM " + table_name + " WHERE ID IN " + pass_list_string
 
 	cursor.execute(query)
 	annotation_tuples = cursor.fetchall()
 
 	# sort based on ID
-	sorted_annotations = sorted(annotation_tuples, key=lambda x: x[0]) 
+	sorted_annotations = sorted(annotation_tuples, key=lambda x: x[0])
 
 	# group by ID and store in a dictionary
 	ID_groups = {}
@@ -178,7 +179,7 @@ def get_annotations(database, feat_type, whitelist=None):
 
 	return ID_groups
 
-def get_gene_2_transcripts(database, whitelist):
+def get_gene_2_transcripts(database, pass_list):
 	""" Creates a dictionary mapping gene IDs to the transcripts that belong to
 		them. The columns in each tuple are:
 			0: gene ID
@@ -194,9 +195,9 @@ def get_gene_2_transcripts(database, whitelist):
 	conn = sqlite3.connect(database)
 	conn.row_factory = sqlite3.Row
 	cursor = conn.cursor()
-	whitelist_string = "(" + ','.join([str(x) for x in whitelist]) + ")"
+	pass_list_string = "(" + ','.join([str(x) for x in pass_list]) + ")"
 	query = """
-			SELECT 
+			SELECT
 				t.gene_ID,
 				t.transcript_ID,
 				loc1.chromosome,
@@ -211,12 +212,12 @@ def get_gene_2_transcripts(database, whitelist):
 			LEFT JOIN location loc1 ON t.start_vertex = loc1.location_ID
 			LEFT JOIN location loc2 ON t.end_vertex = loc2.location_ID
 			LEFT JOIN genes ON t.gene_ID = genes.gene_ID
-			WHERE t.transcript_ID IN """ + whitelist_string 
+			WHERE t.transcript_ID IN """ + pass_list_string
 	cursor.execute(query)
 	transcript_tuples = cursor.fetchall()
 
 	# Sort based on gene ID
-	sorted_transcript_tuples = sorted(transcript_tuples, key=lambda x: x["gene_ID"])	
+	sorted_transcript_tuples = sorted(transcript_tuples, key=lambda x: x["gene_ID"])
 
 	gene_groups = {}
 	for key,group in itertools.groupby(sorted_transcript_tuples,operator.itemgetter(0)):
@@ -224,17 +225,17 @@ def get_gene_2_transcripts(database, whitelist):
 		gene_groups[key] = sorted(list(group), key=lambda x: x["min_pos"])
 	conn.close()
 
-	return gene_groups 
+	return gene_groups
 
 def fetch_exon_locations(database):
-	""" Queries the database to create a dictionary mapping exon IDs to 
+	""" Queries the database to create a dictionary mapping exon IDs to
 		the chromosome, start, end, and strand of the exon """
 
 	conn = sqlite3.connect(database)
 	cursor = conn.cursor()
 
 	query = """
-			SELECT 
+			SELECT
 				e.edge_ID,
 				loc1.chromosome,
 				MIN(loc1.position,loc2.position),
@@ -254,7 +255,7 @@ def fetch_exon_locations(database):
 		exon_ID = loc_tuple[0]
 		exon_locations[exon_ID] = loc_tuple[1:]
 
-	conn.close() 
+	conn.close()
 	return exon_locations
 
 # def check_annot_validity(annot, database):

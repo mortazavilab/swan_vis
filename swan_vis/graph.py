@@ -33,6 +33,7 @@ class Graph:
 		"""
 
 		self.datasets = []
+		self.annotation = False
 
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'strand','vertex_id',

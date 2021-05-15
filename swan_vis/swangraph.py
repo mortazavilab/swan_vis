@@ -82,7 +82,7 @@ class SwanGraph(Graph):
 					Optional:
 						dataset_name: Dataset name in TALON db to add transcripts from
 							Default=None
-						whitelist: TALON whitelist of transcripts to add.
+						pass_list: TALON pass_list of transcripts to add.
 							Default: None
 						counts_file: Path to tsv counts matrix
 							Default=None
@@ -114,7 +114,7 @@ class SwanGraph(Graph):
 
 		# are there any unexpected columns?
 		expected_cols = ['fname', 'col',
-						 'whitelist', 'dataset_name',
+						 'pass_list', 'dataset_name',
 						 'counts_file', 'count_cols',
 						 'tid_col', 'include_isms',
 						 'verbose']
@@ -166,7 +166,10 @@ class SwanGraph(Graph):
 		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
 		self.t_df.novelty.fillna('Undefined', inplace=True)
 
-	def add_transcriptome(self, fname, include_isms=False, verbose=False):
+		# set flag
+		self.annotation = True
+
+	def add_transcriptome(self, fname, pass_list=None, include_isms=False, verbose=False):
 		"""
 		Adds a whole transcriptome from a set of samples. No abundance is
 		included here!
@@ -175,14 +178,15 @@ class SwanGraph(Graph):
 				fname (str): Path to GTF or TALON db
 		"""
 
-		# use the add_dataset function to add stuff to graph
-		self.add_dataset(fname, include_isms=include_isms, verbose=verbose)
+		# use the add_dataset function to add transcripts to graph
+		self.add_dataset(fname, pass_list=pass_list, include_isms=include_isms, verbose=verbose)
 
 		# fill NaN annotation transcripts with false
 		if 'annotation' in self.t_df.columns:
 			self.t_df.annotation.fillna(False, inplace=True)
 
 	def add_dataset(self, fname,
+					pass_list=None,
 					include_isms=False,
 					annotation=False,
 					verbose=False,
@@ -213,7 +217,7 @@ class SwanGraph(Graph):
 		if ftype == 'gtf':
 			self.create_dfs_gtf(fname, verbose)
 		elif ftype == 'db':
-			self.create_dfs_db(fname, whitelist, dataset_name, verbose)
+			self.create_dfs_db(fname, pass_list, verbose)
 
 		# 	# # add column to each df to indicate where data came from
 		# 	# self.loc_df[col] = True
@@ -227,7 +231,7 @@ class SwanGraph(Graph):
 		# 	if ftype == 'gtf':
 		# 		temp.create_dfs_gtf(fname, verbose)
 		# 	elif ftype == 'db':
-		# 		temp.create_dfs_db(fname, whitelist, dataset_name, verbose)
+		# 		temp.create_dfs_db(fname, pass_list, dataset_name, verbose)
 		# 	self.merge_dfs(temp, col, verbose)
 
 		if annotation:
@@ -256,7 +260,13 @@ class SwanGraph(Graph):
 		# 		col, tid_col, verbose)
 
 		if verbose:
-			print('Dataset {} added to the SwanGraph'.format(col))
+			if annotation:
+				data = 'annotation'
+			else:
+				data = 'transcriptome'
+			print()
+			print('{} to the SwanGraph'.format(data.capitalize()))
+
 
 	def add_abundance(self, counts_file):
 		"""
@@ -265,7 +275,7 @@ class SwanGraph(Graph):
 		Parameters:
 			counts_file (str): Path to TSV expression file where first column is
 				the transcript ID and following columns name the added datasets and
-				their counts in each dataset.
+				their counts in each dataset, OR to a TALON abundance matrix
 		"""
 
 		# read in abundance file
@@ -274,6 +284,13 @@ class SwanGraph(Graph):
 			df = pd.read_csv(counts_file, sep='\t')
 		except:
 			raise Error('Problem reading expression matrix {}'.format(counts_file))
+
+		# check if abundance matrix is a talon abundance matrix
+		cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
+		 	'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
+			'gene_novelty', 'transcript_novelty', 'ISM_subtype']
+		if df.columns.tolist()[:11] == cols:
+			df = reformat_talon_abundance(counts_file)
 
 		# rename transcript ID column
 		col = df.columns[0]
@@ -306,6 +323,8 @@ class SwanGraph(Graph):
 		tpm_df = tpm_df.T
 		tpm_X = tpm_df.to_numpy()
 
+		# TODO also calculate percent iso expression
+
 		# transpose to get adata format
 		df = df.T
 
@@ -331,12 +350,6 @@ class SwanGraph(Graph):
 			n = len(datasets) - len(mini_datasets)
 			print('Adding abundance for datasets {}... (and {} more) to SwanGraph'.format(', '.join(mini_datasets), n))
 
-		# # create transcript-level adata object
-		# adata = anndata.AnnData(var=var, obs=obs, X=X)
-		#
-		# # add counts as layers
-		# adata.layers['counts'] = adata.X
-		# adata.layers['tpm'] = tpm_X
 
 		# if there is preexisting abundance data in the SwanGraph, concatenate
 		# otherwise, adata is the new transcript level adata
@@ -348,7 +361,6 @@ class SwanGraph(Graph):
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
 			self.adata.layers['tpm'] = tpm_X
-			# self.adata = adata
 		else:
 
 			# concatenate the raw data and tpm data
@@ -365,6 +377,8 @@ class SwanGraph(Graph):
 			obs = pd.concat([self.adata.obs, obs], axis=0)
 			print(len(obs.index))
 
+			# TODO concatenate percent isoform
+
 			# construct a new adata from the concatenated objects
 			adata = anndata.AnnData(var=var, obs=obs, X=X)
 			adata.layers['counts'] = X
@@ -374,17 +388,6 @@ class SwanGraph(Graph):
 			adata.uns = self.adata.uns
 
 			self.adata = adata
-
-
-			# # concatenate whole adata
-			# print(np.shape(self.adata.X))
-			# self.adata = self.adata.concatenate(adata, join='outer')
-			# print(np.shape(self.adata.X))
-
-
-
-
-
 
 	# def add_abundance(self, counts_file, count_cols,
 	# 				  dataset_name, tid_col='annot_transcript_id',
@@ -671,35 +674,35 @@ class SwanGraph(Graph):
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility
-	def create_dfs_db(self, database, whitelist, dataset, verbose):
+	def create_dfs_db(self, database, pass_list, verbose):
 
-		# make sure file exists
+		# make sure files exist
 		check_file_loc(database, 'TALON DB')
+		if pass_list:
+			check_file_loc(pass_list, 'pass list')
 
 		# annot = check_annot_validity(annot, database)
 
-		whitelist = handle_filtering(database,
-											True,
-											whitelist,
-											dataset)
-		# create separate gene and transcript whitelists
-		gene_whitelist = []
-		transcript_whitelist = []
-		for key,group in itertools.groupby(whitelist,operator.itemgetter(0)):
-			gene_whitelist.append(key)
+		pass_list = handle_filtering(database, True, pass_list)
+
+		# create separate gene and transcript pass_lists
+		gene_pass_list = []
+		transcript_pass_list = []
+		for key,group in itertools.groupby(pass_list,operator.itemgetter(0)):
+			gene_pass_list.append(key)
 			for id_tuple in list(group):
-				transcript_whitelist.append(id_tuple[1])
+				transcript_pass_list.append(id_tuple[1])
 
 		# get gene, transcript, and exon annotations
 		gene_annotations = get_annotations(database, "gene",
-										   whitelist = gene_whitelist)
+										   pass_list = gene_pass_list)
 		transcript_annotations = get_annotations(database, "transcript",
-												 whitelist = transcript_whitelist)
+												 pass_list = transcript_pass_list)
 		exon_annotations = get_annotations(database, "exon")
 
 		# get transcript data from the database
 		gene_2_transcripts = get_gene_2_transcripts(database,
-							 transcript_whitelist)
+							 transcript_pass_list)
 
 		# get exon location info from database
 		exon_ID_2_location = fetch_exon_locations(database)
@@ -708,7 +711,7 @@ class SwanGraph(Graph):
 		exons = {}
 
 		if verbose:
-			n_transcripts = len(transcript_whitelist)
+			n_transcripts = len(transcript_pass_list)
 			pbar = tqdm(total=n_transcripts)
 			pbar.set_description('Processing transcripts')
 
@@ -728,6 +731,12 @@ class SwanGraph(Graph):
 			# get transcript entries
 			for transcript_entry in transcript_tuples:
 				transcript_ID = transcript_entry["transcript_ID"]
+
+				# if this transcript is already in the SwanGraph, skip
+				# to the next one
+				if transcript_ID in self.t_df.tid.tolist():
+					continue
+
 				curr_transcript_annot = transcript_annotations[transcript_ID]
 
 				transcript_annotation_dict = {}
@@ -736,7 +745,11 @@ class SwanGraph(Graph):
 					value = annot[4]
 					transcript_annotation_dict[attribute] = value
 
+
+				if 'transcript_name' not in transcript_annotation_dict:
+					transcript_annotation_dict['transcript_name'] = transcript_annotation_dict['transcript_id']
 				tid = transcript_annotation_dict['transcript_id']
+				tname = transcript_annotation_dict['transcript_name']
 				gid = gene_annotation_dict['gene_id']
 				gname = gene_annotation_dict['gene_name']
 				strand = transcript_entry['strand']
@@ -746,6 +759,7 @@ class SwanGraph(Graph):
 				entry = {'gid': gid,
 						 'gname': gname,
 						 'tid': tid,
+						 'tname': tname,
 						 'strand': strand,
 						 'novelty': novelty,
 						 'exons': []}
@@ -872,6 +886,7 @@ class SwanGraph(Graph):
 		edge_df = pd.DataFrame(edges)
 
 		transcripts = [{'tid': key,
+					'tname': item['tname'],
 					'gid': item['gid'],
 					'gname': item['gname'],
 					'path': item['path'],
