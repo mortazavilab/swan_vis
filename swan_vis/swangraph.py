@@ -279,7 +279,7 @@ class SwanGraph(Graph):
 		"""
 
 		# read in abundance file
-		check_file_loc(counts_file, 'tsv')
+		check_file_loc(counts_file, 'abundance matrix')
 		try:
 			df = pd.read_csv(counts_file, sep='\t')
 		except:
@@ -388,6 +388,41 @@ class SwanGraph(Graph):
 			adata.uns = self.adata.uns
 
 			self.adata = adata
+
+	def add_metadata(self, fname, overwrite=False):
+		"""
+		Adds metadata to the SwanGraph from a tsv.
+
+		Parameters:
+			fname (str): Path / filename of tab-separated input file to add as
+				metadata for the datasets in the SwanGraph. Must contain column
+				'dataset' which contains dataset names that match those already
+				in the SwanGraph.
+			overwrite (bool): Whether or not to overwrite duplicated columns
+				already present in the SwanGraph.
+		"""
+
+		# read in abundance file
+		check_file_loc(fname, 'metadata file')
+		try:
+			df = pd.read_csv(fname, sep='\t')
+		except:
+			raise Error('Problem reading metadata file {}'.format(fname))
+
+		# warn the user about duplicate columns
+		sg_cols = list(set(self.adata.obs.columns.tolist())-set(['dataset']))
+		meta_cols = list(set(df.columns.tolist())-set(['dataset']))
+		dupe_cols = [c for c in meta_cols if c in sg_cols]
+
+		# drop columns from one table depending on overwrite settings
+		if dupe_cols:
+			if overwrite:
+				self.adata.obs.drop(dupe_cols, axis=1, inplace=True)
+			else:
+				df.drop(dupe_cols, axis=1, inplace=True)
+
+		# merge df with adata obs table
+		self.adata.obs = self.adata.obs.merge(df, how='left', on='dataset')
 
 	# def add_abundance(self, counts_file, count_cols,
 	# 				  dataset_name, tid_col='annot_transcript_id',
