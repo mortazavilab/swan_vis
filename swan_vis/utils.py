@@ -349,6 +349,7 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 		return np.nan, np.nan
 
 	# calculate the percent of each sample each TSS accounts for
+	# TODO: replace with new calc_pi function in swangraph.py
 	cond_pis = []
 	for cond in conditions:
 		total_col = '{}_total'.format(cond)
