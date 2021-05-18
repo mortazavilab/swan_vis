@@ -364,22 +364,22 @@ class SwanGraph(Graph):
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
 			self.adata.layers['tpm'] = tpm_X
-			self.adata.layers['pi'] = self.calc_pi().to_numpy()
+			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df).to_numpy()
 		else:
 
 			# concatenate the raw, tpm, and pi data
-			print(np.shape(X))
+			# print(np.shape(X))
 			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
-			print(np.shape(X))
+			# print(np.shape(X))
 
-			print(np.shape(tpm_X))
+			# print(np.shape(tpm_X))
 			tpm_X = np.concatenate((self.adata.layers['tpm'], tpm_X), axis=0)
-			print(np.shape(tpm_X))
+			# print(np.shape(tpm_X))
 
 			# concatenate obs
-			print(len(obs.index))
+			# print(len(obs.index))
 			obs = pd.concat([self.adata.obs, obs], axis=0)
-			print(len(obs.index))
+			# print(len(obs.index))
 
 			# construct a new adata from the concatenated objects
 			adata = anndata.AnnData(var=var, obs=obs, X=X)
@@ -393,7 +393,7 @@ class SwanGraph(Graph):
 			self.adata = adata
 
 			# recalculate pi and tpm
-			self.adata.layers['pi'] = self.calc_pi().to_numpy()
+			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df).to_numpy()
 
 
 	def add_metadata(self, fname, overwrite=False):
@@ -441,68 +441,68 @@ class SwanGraph(Graph):
 		self.adata.obs['index'] = self.adata.obs.dataset
 		self.adata.obs.set_index('index', inplace=True)
 
-	##########################################################################
-	############### Related to calculating abundance values ##################
-	##########################################################################
-	def calc_pi(self, obs_col='dataset'):
-		"""
-		Calculate the percent isoform per gene per condition given by `obs_col`.
-		Default column to use is `self.adata.obs` index column, `dataset`.
-
-		Parameters:
-			obs_col (str): Column name from self.adata.obs table to group on.
-				Default: 'dataset'
-
-		Returns:
-			df (pandas DataFrame): Pandas datafrom where rows are the different
-				conditions from `obs_col` and the columns are transcript ids in the
-				SwanGraph, and values represent the percent isoform usage per gene
-				per condition.
-		"""
-		df = pd.DataFrame(data=self.adata.X, index=self.adata.obs[obs_col].tolist(), columns=self.adata.var.index.tolist())
-
-		# add up values on condition (row)
-		df = df.groupby(level=0).sum()
-		conditions = df.index.unique().tolist()
-		df = df.transpose()
-
-		# add gid
-		df = df.merge(self.t_df['gid'], how='left', left_index=True, right_index=True)
-
-		# calculate total number of reads per gene per condition
-		temp = df.copy(deep=True)
-		temp.reset_index(drop=True, inplace=True)
-		totals = temp.groupby('gid').sum().reset_index()
-
-		# merge back in
-		df.reset_index(inplace=True)
-		df.rename({'index':'tid'}, axis=1, inplace=True)
-		df = df.merge(totals, on='gid', suffixes=(None, '_total'))
-		del totals
-
-		# calculate percent iso exp for each gene / transcript / condition
-		pi_cols = []
-		for c in conditions:
-		    cond_col = '{}_pi'.format(c)
-		    total_col = '{}_total'.format(c)
-		    df[cond_col] = (df[c]/df[total_col])*100
-		    pi_cols.append(cond_col)
-
-		# cleanup: fill nans with 0, set indices, rename cols
-		df.fillna(0, inplace=True)
-
-		# formatting
-		df.set_index('tid', inplace=True)
-		df = df[pi_cols]
-		for col in pi_cols:
-		    new_col = col[:-3]
-		    df.rename({col: new_col}, axis=1, inplace=True)
-		df = df.transpose()
-
-		# reorder in self.adata.var / self.t_df order
-		df = df[self.t_df.tid.tolist()]
-
-		return df
+	# ##########################################################################
+	# ############### Related to calculating abundance values ##################
+	# ##########################################################################
+	# def calc_pi(self, obs_col='dataset'):
+	# 	"""
+	# 	Calculate the percent isoform per gene per condition given by `obs_col`.
+	# 	Default column to use is `self.adata.obs` index column, `dataset`.
+	#
+	# 	Parameters:
+	# 		obs_col (str): Column name from self.adata.obs table to group on.
+	# 			Default: 'dataset'
+	#
+	# 	Returns:
+	# 		df (pandas DataFrame): Pandas datafrom where rows are the different
+	# 			conditions from `obs_col` and the columns are transcript ids in the
+	# 			SwanGraph, and values represent the percent isoform usage per gene
+	# 			per condition.
+	# 	"""
+	# 	df = pd.DataFrame(data=self.adata.X, index=self.adata.obs[obs_col].tolist(), columns=self.adata.var.index.tolist())
+	#
+	# 	# add up values on condition (row)
+	# 	df = df.groupby(level=0).sum()
+	# 	conditions = df.index.unique().tolist()
+	# 	df = df.transpose()
+	#
+	# 	# add gid
+	# 	df = df.merge(self.t_df['gid'], how='left', left_index=True, right_index=True)
+	#
+	# 	# calculate total number of reads per gene per condition
+	# 	temp = df.copy(deep=True)
+	# 	temp.reset_index(drop=True, inplace=True)
+	# 	totals = temp.groupby('gid').sum().reset_index()
+	#
+	# 	# merge back in
+	# 	df.reset_index(inplace=True)
+	# 	df.rename({'index':'tid'}, axis=1, inplace=True)
+	# 	df = df.merge(totals, on='gid', suffixes=(None, '_total'))
+	# 	del totals
+	#
+	# 	# calculate percent iso exp for each gene / transcript / condition
+	# 	pi_cols = []
+	# 	for c in conditions:
+	# 	    cond_col = '{}_pi'.format(c)
+	# 	    total_col = '{}_total'.format(c)
+	# 	    df[cond_col] = (df[c]/df[total_col])*100
+	# 	    pi_cols.append(cond_col)
+	#
+	# 	# cleanup: fill nans with 0, set indices, rename cols
+	# 	df.fillna(0, inplace=True)
+	#
+	# 	# formatting
+	# 	df.set_index('tid', inplace=True)
+	# 	df = df[pi_cols]
+	# 	for col in pi_cols:
+	# 	    new_col = col[:-3]
+	# 	    df.rename({col: new_col}, axis=1, inplace=True)
+	# 	df = df.transpose()
+	#
+	# 	# reorder in self.adata.var / self.t_df order
+	# 	df = df[self.t_df.tid.tolist()]
+	#
+	# 	return df
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############

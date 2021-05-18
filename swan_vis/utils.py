@@ -196,18 +196,6 @@ def validate_gtf(fname):
 	if missing_fields:
 		raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
 
-	# fields = df.loc[df.entry_type=='exon', 'fields'].tolist()[0]
-	# missing_field = False
-	# missing_fields = []
-	# if not get_field_value('gene_id', fields):
-	# 	missing_field = True
-	# 	missing_fields.append('gene_id')
-	# if not get_field_value('transcript_id', fields):
-	# 	missing_field = True
-	# 	missing_fields.append('transcript_id')
-	# if missing_field:
-	# 	raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
-
 # depending on the strand, determine the start and stop
 # coords of an intron or exon
 def find_edge_start_stop(v1, v2, strand):
@@ -239,6 +227,79 @@ def reorder_exons(exon_ids):
 # 	if strand == '-':
 # 		path.reverse()
 # 	return path
+
+##########################################################################
+############### Related to calculating abundance values ##################
+##########################################################################
+def calc_pi(adata, t_df, obs_col='dataset'):
+	"""
+	Calculate the percent isoform per gene per condition given by `obs_col`.
+	Default column to use is `self.adata.obs` index column, `dataset`.
+
+	Parameters:
+		adata (anndata AnnData): Annotated data object from the SwanGraph
+		t_df (pandas DataFrame): Pandas Dataframe that has index to
+			gene id mapping
+		obs_col (str): Column name from adata.obs table to group on.
+			Default: 'dataset'
+
+	Returns:
+		df (pandas DataFrame): Pandas datafrom where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the percent isoform usage per gene
+			per condition.
+	"""
+
+	adata.X = adata.layers['counts']
+	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
+		columns=adata.var.index.tolist())
+	id_col = adata.var.index.name
+
+	# add up values on condition (row)
+	df = df.groupby(level=0).sum()
+	conditions = df.index.unique().tolist()
+	df = df.transpose()
+
+	# add gid
+	df = df.merge(t_df['gid'], how='left', left_index=True, right_index=True)
+
+	# calculate total number of reads per gene per condition
+	temp = df.copy(deep=True)
+	temp.reset_index(drop=True, inplace=True)
+	totals = temp.groupby('gid').sum().reset_index()
+
+	# merge back in
+	df.reset_index(inplace=True)
+	df.rename({'index':id_col}, axis=1, inplace=True)
+	df = df.merge(totals, on='gid', suffixes=(None, '_total'))
+	del totals
+
+	# calculate percent iso exp for each gene / transcript / condition
+	pi_cols = []
+	for c in conditions:
+		cond_col = '{}_pi'.format(c)
+		total_col = '{}_total'.format(c)
+		df[cond_col] = (df[c]/df[total_col])*100
+		pi_cols.append(cond_col)
+
+	# cleanup: fill nans with 0, set indices, rename cols
+	df.fillna(0, inplace=True)
+
+	# formatting
+	df.set_index(id_col, inplace=True)
+	df = df[pi_cols]
+	for col in pi_cols:
+		new_col = col[:-3]
+		df.rename({col: new_col}, axis=1, inplace=True)
+
+	# reorder columns like adata.obs
+	df = df[adata.obs[obs_col].unique().tolist()]
+	df = df.transpose()
+
+	# reorder in adata.var / t_df order
+	df = df[t_df[id_col].tolist()]
+
+	return df
 
 ################################################################################
 ########################### Analysis-related ###################################
