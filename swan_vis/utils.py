@@ -295,12 +295,30 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	# reorder columns like adata.obs
 	df = df[adata.obs[obs_col].unique().tolist()]
 	df = df.transpose()
+	# df.index.name = obs_col # maybe put this back in ?
 
 	# reorder in adata.var / t_df order
 	df = df[t_df[id_col].tolist()]
-
 	return df
 
+def calc_tpm(adata, t_df, obs_col='dataset'):
+	"""
+	Calculate the TPM per condition given by `obs_col`.
+	Default column to use is `self.adata.obs` index column, `dataset`.
+
+	Parameters:
+		adata (anndata AnnData): Annotated data object from the SwanGraph
+		t_df (pandas DataFrame): Pandas Dataframe that has index to
+			gene id mapping
+		obs_col (str): Column name from adata.obs table to group on.
+			Default: 'dataset'
+
+	Returns:
+		df (pandas DataFrame): Pandas datafrom where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the TPM value per isoform per
+			condition.
+	"""
 ################################################################################
 ########################### Analysis-related ###################################
 ################################################################################
