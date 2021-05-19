@@ -319,6 +319,41 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 			SwanGraph, and values represent the TPM value per isoform per
 			condition.
 	"""
+
+	adata.X = adata.layers['counts']
+	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
+	    columns=adata.var.index.tolist())
+	id_col = adata.var.index.name
+
+	# add up values on condition (row)
+	df = df.groupby(level=0).sum()
+	conditions = df.index.unique().tolist()
+	df = df.transpose()
+
+	# calculate tpm per isoform per condition
+	tpm_cols = []
+	for c in conditions:
+	    cond_col = '{}_tpm'.format(c)
+	    total_col = '{}_total'.format(c)
+	    df[total_col] = df[c].sum()
+	    df[cond_col] = (df[c]*1000000)/df[total_col]
+	    tpm_cols.append(cond_col)
+
+	# formatting
+	df.index.name = 'tid'
+	df = df[tpm_cols]
+	for col in tpm_cols:
+	    new_col = col[:-4]
+	    df.rename({col: new_col}, axis=1, inplace=True)
+
+	# reorder columns like adata.obs
+	df = df[adata.obs[obs_col].unique().tolist()]
+	df = df.transpose()
+
+	# reorder in adata.var / t_df order
+	df = df[t_df[id_col].tolist()]
+
+	return df
 ################################################################################
 ########################### Analysis-related ###################################
 ################################################################################

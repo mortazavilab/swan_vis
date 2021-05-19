@@ -311,24 +311,7 @@ class SwanGraph(Graph):
 		df.fillna(0, inplace=True)
 		df.set_index('tid', inplace=True)
 
-		# TODO probably move TPM and PI calculations to their own functions
-		# for testability
-
-		# calculate TPMs before transposing
-		tpm_df = df.index.to_frame()
-		tpm_df.head()
-		for c in df.columns.tolist():
-		    total_counts = df[c].sum()
-		    tpm_df[c] = (df[c]*1000000)/total_counts
-		tpm_df.drop('tid', axis=1, inplace=True)
-		tpm_df = tpm_df.T
-		tpm_X = tpm_df.to_numpy()
-
-		# calculate percent isoform expression
-		# * calculate counts per gene per condition
-		# * divide counts for each transcript per condition by above counts
-
-		# transpose to get adata format
+ 		# transpose to get adata format
 		df = df.T
 
 		# get adata components - obs, var, and X
@@ -363,7 +346,7 @@ class SwanGraph(Graph):
 
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
-			self.adata.layers['tpm'] = tpm_X
+			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
 			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df).to_numpy()
 		else:
 
@@ -373,7 +356,7 @@ class SwanGraph(Graph):
 			# print(np.shape(X))
 
 			# print(np.shape(tpm_X))
-			tpm_X = np.concatenate((self.adata.layers['tpm'], tpm_X), axis=0)
+			# tpm_X = np.concatenate((self.adata.layers['tpm'], tpm_X), axis=0)
 			# print(np.shape(tpm_X))
 
 			# concatenate obs
@@ -384,7 +367,7 @@ class SwanGraph(Graph):
 			# construct a new adata from the concatenated objects
 			adata = anndata.AnnData(var=var, obs=obs, X=X)
 			adata.layers['counts'] = X
-			adata.layers['tpm'] = tpm_X
+			# adata.layers['tpm'] = tpm_X
 
 			# some cleanup for unstructured data
 			adata.uns = self.adata.uns
@@ -393,6 +376,7 @@ class SwanGraph(Graph):
 			self.adata = adata
 
 			# recalculate pi and tpm
+			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
 			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df).to_numpy()
 
 
