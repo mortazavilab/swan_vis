@@ -351,23 +351,14 @@ class SwanGraph(Graph):
 		else:
 
 			# concatenate the raw, tpm, and pi data
-			# print(np.shape(X))
-			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
-			# print(np.shape(X))
-
-			# print(np.shape(tpm_X))
-			# tpm_X = np.concatenate((self.adata.layers['tpm'], tpm_X), axis=0)
-			# print(np.shape(tpm_X))
+			X = np.concatenate((self.adata.layers['counts'], X), axis=0))
 
 			# concatenate obs
-			# print(len(obs.index))
 			obs = pd.concat([self.adata.obs, obs], axis=0)
-			# print(len(obs.index))
 
 			# construct a new adata from the concatenated objects
 			adata = anndata.AnnData(var=var, obs=obs, X=X)
 			adata.layers['counts'] = X
-			# adata.layers['tpm'] = tpm_X
 
 			# some cleanup for unstructured data
 			adata.uns = self.adata.uns
@@ -424,69 +415,6 @@ class SwanGraph(Graph):
 		# and set index to dataset
 		self.adata.obs['index'] = self.adata.obs.dataset
 		self.adata.obs.set_index('index', inplace=True)
-
-	# ##########################################################################
-	# ############### Related to calculating abundance values ##################
-	# ##########################################################################
-	# def calc_pi(self, obs_col='dataset'):
-	# 	"""
-	# 	Calculate the percent isoform per gene per condition given by `obs_col`.
-	# 	Default column to use is `self.adata.obs` index column, `dataset`.
-	#
-	# 	Parameters:
-	# 		obs_col (str): Column name from self.adata.obs table to group on.
-	# 			Default: 'dataset'
-	#
-	# 	Returns:
-	# 		df (pandas DataFrame): Pandas datafrom where rows are the different
-	# 			conditions from `obs_col` and the columns are transcript ids in the
-	# 			SwanGraph, and values represent the percent isoform usage per gene
-	# 			per condition.
-	# 	"""
-	# 	df = pd.DataFrame(data=self.adata.X, index=self.adata.obs[obs_col].tolist(), columns=self.adata.var.index.tolist())
-	#
-	# 	# add up values on condition (row)
-	# 	df = df.groupby(level=0).sum()
-	# 	conditions = df.index.unique().tolist()
-	# 	df = df.transpose()
-	#
-	# 	# add gid
-	# 	df = df.merge(self.t_df['gid'], how='left', left_index=True, right_index=True)
-	#
-	# 	# calculate total number of reads per gene per condition
-	# 	temp = df.copy(deep=True)
-	# 	temp.reset_index(drop=True, inplace=True)
-	# 	totals = temp.groupby('gid').sum().reset_index()
-	#
-	# 	# merge back in
-	# 	df.reset_index(inplace=True)
-	# 	df.rename({'index':'tid'}, axis=1, inplace=True)
-	# 	df = df.merge(totals, on='gid', suffixes=(None, '_total'))
-	# 	del totals
-	#
-	# 	# calculate percent iso exp for each gene / transcript / condition
-	# 	pi_cols = []
-	# 	for c in conditions:
-	# 	    cond_col = '{}_pi'.format(c)
-	# 	    total_col = '{}_total'.format(c)
-	# 	    df[cond_col] = (df[c]/df[total_col])*100
-	# 	    pi_cols.append(cond_col)
-	#
-	# 	# cleanup: fill nans with 0, set indices, rename cols
-	# 	df.fillna(0, inplace=True)
-	#
-	# 	# formatting
-	# 	df.set_index('tid', inplace=True)
-	# 	df = df[pi_cols]
-	# 	for col in pi_cols:
-	# 	    new_col = col[:-3]
-	# 	    df.rename({col: new_col}, axis=1, inplace=True)
-	# 	df = df.transpose()
-	#
-	# 	# reorder in self.adata.var / self.t_df order
-	# 	df = df[self.t_df.tid.tolist()]
-	#
-	# 	return df
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
@@ -1043,74 +971,8 @@ class SwanGraph(Graph):
 			self.t_df.drop('end_coord', axis=1, inplace=True)
 
 	##########################################################################
-	######################## Finding "interesting" genes #####################
+	######################## Analysis tools  #################################
 	##########################################################################
-
-	# returns a list of genes that are "interesting"
-	def find_genes_with_novel_isoforms(self):
-
-		# get all the datasets, make sure we're not counting transcripts
-		# that are only in the annotation
-		if 'annotation' not in self.datasets:
-			raise Exception('No annotation data in graph. Cannot ',
-				'determine isoform novelty.')
-		datasets = self.get_dataset_cols(include_annotation=False)
-		t_df = self.t_df.copy(deep=True)
-		t_df = t_df.loc[t_df[datasets].any(axis=1)]
-
-		# how many known and novel isoforms does each gene have
-		t_df['known'] = t_df.annotation
-		t_df['novel'] = [not i for i in t_df.annotation.tolist()]
-		keep_cols = ['annotation', 'known', 'novel', 'gid']
-		g_df = t_df[keep_cols].groupby(['gid']).sum()
-
-		# create 'interestingness' column ranking how many novel
-		# compared to known isoforms there are, also ranked by
-		# number of total isoforms
-		g_df.known = g_df.known.astype('int32')
-		g_df.novel = g_df.novel.astype('int32')
-		g_df['interestingness'] = ((g_df.novel+1)/(g_df.known+1))*(g_df.known+g_df.novel)
-		g_df.sort_values(by='interestingness', ascending=False, inplace=True)
-
-		# top 10 in case the user doesn't care about whole df
-		genes = g_df.index.tolist()[:10]
-
-		return genes, g_df
-
-	# find genes with higher expression in novel than known isoforms
-	def find_genes_with_high_novel_expression(self):
-
-		# get all the datasets, make sure we're not counting transcripts
-		# that are only in the annotation
-		if 'annotation' not in self.datasets:
-			raise Exception('No annotation data in graph. Cannot ',
-				'determine isoform novelty.')
-		datasets = self.get_dataset_cols(include_annotation=False)
-		t_df = self.t_df.copy(deep=True)
-		t_df = t_df.loc[t_df[datasets].any(axis=1)]
-
-		# how much expression do known and novel isoforms have?
-		t_df['known'] = t_df.annotation
-		tpm_cols = self.get_tpm_cols()
-		keep_cols = tpm_cols+['known', 'gid']
-		g_df = t_df[keep_cols].groupby(['gid', 'known']).sum()
-		g_df.reset_index(inplace=True)
-		g_df['total_known_exp'] = 0
-		g_df['total_novel_exp'] = 0
-		g_df.loc[g_df.known == True, 'total_known_exp'] = g_df.loc[g_df.known == True, tpm_cols].sum(axis=1)
-		g_df.loc[g_df.known == False, 'total_novel_exp'] = g_df.loc[g_df.known == False, tpm_cols].sum(axis=1)
-		keep_cols = tpm_cols+['total_known_exp', 'total_novel_exp', 'gid']
-		g_df = g_df[keep_cols].groupby('gid').sum()
-
-		# create 'interestingness' column ranking how much expression
-		# of the gene is attributable to novel isoforms versus known isoforms
-		g_df['interestingness'] = ((g_df.total_novel_exp+1)/(g_df.total_known_exp+1))*np.log2(g_df.total_known_exp+1+g_df.total_novel_exp+1)
-		g_df.sort_values(by='interestingness', ascending=False, inplace=True)
-
-		# top 10 in case the user doesn't care about whole df
-		genes = g_df.index.tolist()[:10]
-
-		return genes, g_df
 
 	def find_ir_genes(self):
 		"""
@@ -1460,15 +1322,18 @@ class SwanGraph(Graph):
 		gids = df['index'].tolist()
 		return gids, df
 
-	def get_die_genes(self, dataset_groups, rc_thresh=10):
+	def get_die_genes(self, obs_col='dataset',
+				      obs_conditions=None, rc_thresh=10):
 		"""
-		Finds genes with differential isoform expression.
+		Finds genes with differential isoform expression between two conditions
+		that are in the obs table. If there are more than 2 unique values in
+		`obs_col`,
 
 		Parameters:
-			dataset_groups (list of list of str, len 2): Grouping of datasets
-				from the SwanGraph to be used in the differential
-				expression test
-				Example: [['data1','data2'],['data3','data4']]
+			obs_col (str): Column name from self.adata.obs table to group on.
+				Default: 'dataset'
+			obs_conditions (list of str, len 2): Which conditions from obs_col
+				to compare? Required if obs_col has more than 2 unqiue values.
 			rc_thresh (int): Number of reads required for each conditions
 				in order to test the gene.
 				Default: 10
@@ -1479,8 +1344,18 @@ class SwanGraph(Graph):
 				p-values, as well as change in percent isoform usage (dpi).
 		"""
 
-		adata = self.create_transcript_anndata(dataset_groups)
-		adata.var.reset_index(inplace=True)
+		# check if there are more than 2 unique values in obs_col
+		if len(self.adata.obs[obs_col].unique().tolist()) and not obs_conditions:
+			raise Error('Must provide obs_conditions argument when obs_col has'\
+				'>2 unique values')
+
+		# if we're using datasests, we can use the pi that's already calculated
+		if obs_col == 'dataset':
+			pi_df = self.adata.layers['pi']
+		else:
+			pi_df = calc_pi(self.adata, self.t_df, obs_col=obs_col)
+
+			
 		test = get_die(adata, [1, 0], how='iso', rc=rc_thresh)
 
 		return test

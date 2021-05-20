@@ -363,43 +363,51 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 # col: string, which column the condition labels are in
 # how: 'tss' or 'iso'
 def get_die(adata, conditions, how='tss', rc=15):
+	"""
+	Find differential isoform expression between two conditions. Implementation
+	inspired by Joglekar et. al., 2021.
+
+	Parameters:
+
+
+	"""
 
     if how == 'tss':
         id_col = 'tss_id'
     elif how == 'iso':
         id_col = 'tid'
 
-    # make df that we can groupby
-    col = 'condition'
-    colnames = adata.var[id_col].tolist()
-    rownames = adata.obs.dataset.tolist()
-    raw = adata.X
-    df = pd.DataFrame(data=raw, index=rownames, columns=colnames)
-    df.reset_index(inplace=True)
-    df.rename({'index':'dataset'}, axis=1, inplace=True)
-    samp = adata.obs[['dataset', col]]
-    df = df.merge(samp, how='left', on='dataset')
-
-    # limit to only the samples that we want in this condition
-#     df[col] = df[col].astype('str')
-    df = df.loc[df[col].isin(conditions)]
-
-    # groupby sample type and sum over gen
-    df.drop('dataset', axis=1, inplace=True)
-    df = df.groupby(col).sum().reset_index()
-
-    # melty df
-    var_cols = df.columns.tolist()[1:]
-    df = df.melt(id_vars=col, value_vars=var_cols)
-
-    # rename some cols
-    df.rename({'variable':id_col,'value':'counts'}, axis=1, inplace=True)
-
-    # merge with gene names
-    df = df.merge(adata.var, how='left', on=id_col)
-
-#     # get total number of tss or iso / gene
-#     bop = df[['gid', id_col]].groupby('gid').count().reset_index()
+#     # make df that we can groupby
+#     col = 'condition'
+#     colnames = adata.var[id_col].tolist()
+#     rownames = adata.obs.dataset.tolist()
+#     raw = adata.X
+#     df = pd.DataFrame(data=raw, index=rownames, columns=colnames)
+#     df.reset_index(inplace=True)
+#     df.rename({'index':'dataset'}, axis=1, inplace=True)
+#     samp = adata.obs[['dataset', col]]
+#     df = df.merge(samp, how='left', on='dataset')
+#
+#     # limit to only the samples that we want in this condition
+# #     df[col] = df[col].astype('str')
+#     df = df.loc[df[col].isin(conditions)]
+#
+#     # groupby sample type and sum over gen
+#     df.drop('dataset', axis=1, inplace=True)
+#     df = df.groupby(col).sum().reset_index()
+#
+#     # melty df
+#     var_cols = df.columns.tolist()[1:]
+#     df = df.melt(id_vars=col, value_vars=var_cols)
+#
+#     # rename some cols
+#     df.rename({'variable':id_col,'value':'counts'}, axis=1, inplace=True)
+#
+#     # merge with gene names
+#     df = df.merge(adata.var, how='left', on=id_col)
+#
+# #     # get total number of tss or iso / gene
+# #     bop = df[['gid', id_col]].groupby('gid').count().reset_index()
 
     # construct tables for each gene and test!
     gids = df.gid.unique().tolist()
