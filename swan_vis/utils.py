@@ -8,6 +8,8 @@ import os
 import copy
 from collections import defaultdict
 
+pd.options.mode.chained_assignment = None
+
 # creates the duplicate index
 def create_dupe_index(df, ind_name):
 	df[ind_name+'_back'] = df[ind_name]
@@ -49,32 +51,32 @@ def label_nodes(G, loc_df, f_df, f_n):
 
 # get value associated with keyword in the 9th column of gtf
 def get_field_value(key, fields):
-    if key not in fields:
-        return None
-    else:
-        return fields.split(key+' "')[1].split()[0].replace('";','')
+	if key not in fields:
+		return None
+	else:
+		return fields.split(key+' "')[1].split()[0].replace('";','')
 
 # creates a dictionary of the last field of a gtf
 # adapted from Dana Wyman
 def get_fields(fields):
 
-    attributes = {}
+	attributes = {}
 
-    description = fields.strip()
-    description = [x.strip() for x in description.split(";")]
-    for pair in description:
-        if pair == "": continue
+	description = fields.strip()
+	description = [x.strip() for x in description.split(";")]
+	for pair in description:
+		if pair == "": continue
 
-        pair = pair.replace('"', '')
-        key, val = pair.split()
-        attributes[key] = val
+		pair = pair.replace('"', '')
+		key, val = pair.split()
+		attributes[key] = val
 
-    # put in placeholders for important attributes (such as gene_id) if they
-    # are absent
-    if 'gene_id' not in attributes:
-        attributes['gene_id'] = 'NULL'
+	# put in placeholders for important attributes (such as gene_id) if they
+	# are absent
+	if 'gene_id' not in attributes:
+		attributes['gene_id'] = 'NULL'
 
-    return attributes
+	return attributes
 
 # check to see if a file save location is valid
 def check_dir_loc(loc):
@@ -231,10 +233,37 @@ def reorder_exons(exon_ids):
 ##########################################################################
 ############### Related to calculating abundance values ##################
 ##########################################################################
+def calc_total_counts(adata, obs_col='dataset'):
+	"""
+	Calculate cumulative expression per adata entry based on condition given
+	by `obs_col`. Default column to use is `adata.obs` index column, `dataset`.
+
+	Parameters:
+		adata (anndata AnnData): Annotated data object from the SwanGraph
+		obs_col (str): Column name from adata.obs table to group on.
+			Default: 'dataset'
+
+	Returns:
+		df (pandas DataFrame): Pandas datafrom where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the cumulative counts per isoform
+			per condition.
+
+	"""
+	adata.X = adata.layers['counts']
+	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
+		columns=adata.var.index.tolist())
+
+	# add up values on condition (row)
+	df = df.groupby(level=0).sum()
+	# df = df.transpose()
+
+	return df
+
 def calc_pi(adata, t_df, obs_col='dataset'):
 	"""
 	Calculate the percent isoform per gene per condition given by `obs_col`.
-	Default column to use is `self.adata.obs` index column, `dataset`.
+	Default column to use is `adata.obs` index column, `dataset`.
 
 	Parameters:
 		adata (anndata AnnData): Annotated data object from the SwanGraph
@@ -244,21 +273,24 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 			Default: 'dataset'
 
 	Returns:
-		df (pandas DataFrame): Pandas datafrom where rows are the different
+		df (pandas DataFrame): Pandas DataFrame where rows are the different
 			conditions from `obs_col` and the columns are transcript ids in the
 			SwanGraph, and values represent the percent isoform usage per gene
 			per condition.
+		sums (pandas DataFrame): Pandas DataFrame where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the cumulative counts per isoform
+			per condition.
 	"""
 
-	adata.X = adata.layers['counts']
-	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
-		columns=adata.var.index.tolist())
+	# calculate cumulative counts across obs_col
 	id_col = adata.var.index.name
-
-	# add up values on condition (row)
-	df = df.groupby(level=0).sum()
-	conditions = df.index.unique().tolist()
+	conditions = adata.obs[obs_col].unique().tolist()
+	df = calc_total_counts(adata, obs_col=obs_col)
 	df = df.transpose()
+	sums = df.copy(deep=True)
+	sums = sums[conditions]
+	sums = sums.transpose()
 
 	# add gid
 	df = df.merge(t_df['gid'], how='left', left_index=True, right_index=True)
@@ -299,7 +331,8 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 
 	# reorder in adata.var / t_df order
 	df = df[t_df[id_col].tolist()]
-	return df
+
+	return df, sums
 
 def calc_tpm(adata, t_df, obs_col='dataset'):
 	"""
@@ -320,31 +353,27 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 			condition.
 	"""
 
-	adata.X = adata.layers['counts']
-	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
-	    columns=adata.var.index.tolist())
+	# calculate cumulative counts across obs_col
 	id_col = adata.var.index.name
-
-	# add up values on condition (row)
-	df = df.groupby(level=0).sum()
-	conditions = df.index.unique().tolist()
+	conditions = adata.obs[obs_col].unique().tolist()
+	df = calc_total_counts(adata, obs_col=obs_col)
 	df = df.transpose()
 
 	# calculate tpm per isoform per condition
 	tpm_cols = []
 	for c in conditions:
-	    cond_col = '{}_tpm'.format(c)
-	    total_col = '{}_total'.format(c)
-	    df[total_col] = df[c].sum()
-	    df[cond_col] = (df[c]*1000000)/df[total_col]
-	    tpm_cols.append(cond_col)
+		cond_col = '{}_tpm'.format(c)
+		total_col = '{}_total'.format(c)
+		df[total_col] = df[c].sum()
+		df[cond_col] = (df[c]*1000000)/df[total_col]
+		tpm_cols.append(cond_col)
 
 	# formatting
 	df.index.name = 'tid'
 	df = df[tpm_cols]
 	for col in tpm_cols:
-	    new_col = col[:-4]
-	    df.rename({col: new_col}, axis=1, inplace=True)
+		new_col = col[:-4]
+		df.rename({col: new_col}, axis=1, inplace=True)
 
 	# reorder columns like adata.obs
 	df = df[adata.obs[obs_col].unique().tolist()]
@@ -354,91 +383,33 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 	df = df[t_df[id_col].tolist()]
 
 	return df
-################################################################################
-########################### Analysis-related ###################################
-################################################################################
 
-# adata: adata with TSS or iso expression
-# conditions: len 2 list of strings of conditions to compare
-# col: string, which column the condition labels are in
-# how: 'tss' or 'iso'
-def get_die(adata, conditions, how='tss', rc=15):
+##########################################################################
+######################## Related to DIE testing ##########################
+##########################################################################
+
+def get_die_gene_table(gene_df, conditions, rc):
 	"""
-	Find differential isoform expression between two conditions. Implementation
-	inspired by Joglekar et. al., 2021.
+	Creates a length n (max 11) table ready for DIE testing for a given gene.
+	Returns None for genes deemed untestable if there aren't enough reads per
+	condition or if the gene only has one isoform. Removes isoforms that are
+	unexpressed in both conditions. Aggregates the counts for the
+	lowest-expressed isoforms (11+). Calculates dpi (change in percent isoform
+	usage) between conditions.
 
 	Parameters:
+		gene_df (pandas DataFrame): DataFrame of transcript counts and percent
+			isoform expression per isoform of one gene.
+		conditions (list of str, len 2): Names of 2 conditions being tested
+		rc (int): Number of reads needed per gene per condition for testing
 
-
+	Returns:
+		gene_df (pandas DataFrame): :ength n table of counts per isoform per
+			condition, percent isoform per gene per condition, and change in
+			percent isoform across conditions IF the gene is testable
+		gene_df (None): Returns None if the gene was deemed untestable.
 	"""
 
-    if how == 'tss':
-        id_col = 'tss_id'
-    elif how == 'iso':
-        id_col = 'tid'
-
-#     # make df that we can groupby
-#     col = 'condition'
-#     colnames = adata.var[id_col].tolist()
-#     rownames = adata.obs.dataset.tolist()
-#     raw = adata.X
-#     df = pd.DataFrame(data=raw, index=rownames, columns=colnames)
-#     df.reset_index(inplace=True)
-#     df.rename({'index':'dataset'}, axis=1, inplace=True)
-#     samp = adata.obs[['dataset', col]]
-#     df = df.merge(samp, how='left', on='dataset')
-#
-#     # limit to only the samples that we want in this condition
-# #     df[col] = df[col].astype('str')
-#     df = df.loc[df[col].isin(conditions)]
-#
-#     # groupby sample type and sum over gen
-#     df.drop('dataset', axis=1, inplace=True)
-#     df = df.groupby(col).sum().reset_index()
-#
-#     # melty df
-#     var_cols = df.columns.tolist()[1:]
-#     df = df.melt(id_vars=col, value_vars=var_cols)
-#
-#     # rename some cols
-#     df.rename({'variable':id_col,'value':'counts'}, axis=1, inplace=True)
-#
-#     # merge with gene names
-#     df = df.merge(adata.var, how='left', on=id_col)
-#
-# #     # get total number of tss or iso / gene
-# #     bop = df[['gid', id_col]].groupby('gid').count().reset_index()
-
-    # construct tables for each gene and test!
-    gids = df.gid.unique().tolist()
-    gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
-    for gene in gids:
-        gene_df = df.loc[df.gid==gene]
-        p, dpi = test_gene(gene_df, conditions, col, id_col, rc=rc)
-        gene_de_df.loc[gene, 'p_val'] = p
-        gene_de_df.loc[gene, 'dpi'] = dpi
-
-    # correct p values
-    gene_de_df.dropna(axis=0, inplace=True)
-    p_vals = gene_de_df.p_val.tolist()
-    _, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
-    gene_de_df['adj_p_val'] = adj_p_vals
-
-    gene_de_df.reset_index(inplace=True)
-
-    return gene_de_df
-
-# gene_df: pandas dataframe with expression values in each condition for
-# each TSS or isoform in a gene
-# conditions: list of str of condition names
-# rc: threshold of read count per gene in each condition necessary to test
-def test_gene(gene_df, conditions, col, id_col, rc=10):
-
-	gene_df = gene_df.pivot(index=col, columns=id_col, values='counts')
-	gene_df = gene_df.transpose()
-
-	groups = gene_df.columns.tolist()
-	gene_df['total_counts'] = gene_df[groups].sum(axis=1)
 	gene_df.sort_values(by='total_counts', ascending=False, inplace=True)
 
 	# limit to just isoforms with > 0 expression in at least one condition
@@ -448,8 +419,10 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 
 	# limit to genes with more than 1 isoform expressed
 	if len(gene_df.index) <= 1:
-		return np.nan, np.nan
+		return None
 
+	# if there are more than 11 isoforms, agg. the n - 11 least expressed
+	# isoforms into one
 	if len(gene_df.index) > 11:
 		gene_df.reset_index(inplace=True)
 
@@ -463,33 +436,60 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 
 	# does this gene reach the desired read count threshold?
 	for cond in conditions:
-		if gene_df[cond].sum() < rc:
-			return np.nan, np.nan
+		counts_col = cond+'_counts'
+		if gene_df[counts_col].sum() < rc:
+			return None
 
-	# only do the rest if there's nothing left
+	# only do the rest if there's something left
 	if gene_df.empty:
-		return np.nan, np.nan
-
-	# calculate the percent of each sample each TSS accounts for
-	# TODO: replace with new calc_pi function in swangraph.py
-	cond_pis = []
-	for cond in conditions:
-		total_col = '{}_total'.format(cond)
-		pi_col = '{}_pi'.format(cond)
-		total_count = gene_df[cond].sum()
-
-		cond_pis.append(pi_col)
-
-		gene_df[total_col] = total_count
-		gene_df[pi_col] = (gene_df[cond]/gene_df[total_col])*100
+		return None
 
 	# compute isoform-level and gene-level delta pis
-	gene_df['dpi'] = gene_df[cond_pis[0]] - gene_df[cond_pis[1]]
-	gene_df['abs_dpi'] = gene_df.dpi.abs()
-	gene_dpi = gene_df.iloc[:2].abs_dpi.sum()
+	gene_df['dpi'] = gene_df[cond1] - gene_df[cond2]
+
+	return gene_df
+
+def test_gene(gene_df, conditions):
+	"""
+	Performs a chi-squared test between two conditions on their read counts.
+	Also calculates the gene's DPI, or change in percent isoform as the sum of
+	either the top two positive changes or top two negative changes (whichever
+	is greater in magnitude).
+
+	Parameters:
+		gene_df (pandas DataFrame): Output from get_die_gene_table.
+		conditions (list of str, len 2): Name of condition columns
+
+	Returns:
+		p (float): P-value result of chi-squared test on gene
+		dpi (float): Overall change in isoform expression
+	"""
+
+	counts_cols = [c+'_counts' for c in conditions]
+
+	# get highest 2 positive dpis
+	temp = gene_df.sort_values(by='dpi', ascending=False)
+	temp = temp.loc[temp.dpi > 0]
+
+	# if there are fewer than 2 isoforms
+	if len(temp.index) >= 2:
+		pos_dpi = temp.iloc[:2].dpi.sum(axis=0)
+	else:
+		pos_dpi = temp.dpi.sum(axis=0)
+
+	# get highest 2 negative dpis
+	temp = gene_df.sort_values(by='dpi', ascending=True)
+	temp = temp.loc[temp.dpi < 0]
+
+	# if there are fewer than 2 isoforms
+	if len(temp.index) >= 2:
+		neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
+	else:
+		neg_dpi = abs(temp.dpi.sum(axis=0))
+	gene_dpi = max(pos_dpi, neg_dpi)
 
 	# chi squared test
-	chi_table = gene_df[conditions].to_numpy()
+	chi_table = gene_df[counts_cols].to_numpy()
 	chi2, p, dof, exp = st.chi2_contingency(chi_table)
 
 	return p, gene_dpi
@@ -497,14 +497,14 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 # turn a list of dataset groups and names for those groups into a
 # dictionary
 def make_cond_map(groups, group_names):
-    cond_map = dict()
-    for group, group_name in zip(groups, group_names):
-        if type(group) == list:
-            for group_item in group:
-                cond_map[group_item] = group_name
-        else:
-            cond_map[group] = group_name
-    return cond_map
+	cond_map = dict()
+	for group, group_name in zip(groups, group_names):
+		if type(group) == list:
+			for group_item in group:
+				cond_map[group_item] = group_name
+		else:
+			cond_map[group] = group_name
+	return cond_map
 
 # get novelty types associated with each transcript
 def get_transcript_novelties(fields):

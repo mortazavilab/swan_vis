@@ -20,6 +20,8 @@ from swan_vis.graph import *
 from swan_vis.plottedgraph import PlottedGraph
 from swan_vis.report import Report
 
+pd.options.mode.chained_assignment = None
+
 class SwanGraph(Graph):
 	"""
 	A graph class to represent a transcriptome and perform
@@ -299,9 +301,9 @@ class SwanGraph(Graph):
 		ab_tids = df.tid.tolist()
 
 		# if len(set(sg_tids)-set(ab_tids)) != 0:
-		#     print('Transcripts absent from abundance file will be assigned 0 counts.')
+		#	 print('Transcripts absent from abundance file will be assigned 0 counts.')
 		# if len(set(ab_tids)-set(sg_tids)) != 0:
-		#     print('Transcripts found in abundance matrix that are not in the SwanGraph will not have expression added.')
+		#	 print('Transcripts found in abundance matrix that are not in the SwanGraph will not have expression added.')
 
 		# right merge to keep everything in the t_df already
 		df = df.merge(self.t_df['tid'].to_frame(), how='right', left_on='tid', right_index=True)
@@ -347,11 +349,11 @@ class SwanGraph(Graph):
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
 			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
-			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df).to_numpy()
+			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 		else:
 
 			# concatenate the raw, tpm, and pi data
-			X = np.concatenate((self.adata.layers['counts'], X), axis=0))
+			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
 
 			# concatenate obs
 			obs = pd.concat([self.adata.obs, obs], axis=0)
@@ -368,7 +370,7 @@ class SwanGraph(Graph):
 
 			# recalculate pi and tpm
 			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
-			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df).to_numpy()
+			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 
 
 	def add_metadata(self, fname, overwrite=False):
@@ -409,8 +411,8 @@ class SwanGraph(Graph):
 
 		# make sure all dtypes in obs table are non intergers
 		for ind, entry in self.adata.obs.dtypes.to_frame().iterrows():
-		    if entry[0] == 'int64':
-		        self.adata.obs[ind] = self.adata.obs[ind].astype('str')
+			if entry[0] == 'int64':
+				self.adata.obs[ind] = self.adata.obs[ind].astype('str')
 
 		# and set index to dataset
 		self.adata.obs['index'] = self.adata.obs.dataset
@@ -1323,7 +1325,7 @@ class SwanGraph(Graph):
 		return gids, df
 
 	def get_die_genes(self, obs_col='dataset',
-				      obs_conditions=None, rc_thresh=10):
+					  obs_conditions=None, rc_thresh=10):
 		"""
 		Finds genes with differential isoform expression between two conditions
 		that are in the obs table. If there are more than 2 unique values in
@@ -1342,92 +1344,64 @@ class SwanGraph(Graph):
 			test (pandas DataFrame): A summary table of the differential
 				isoform expression test, including p-values and adjusted
 				p-values, as well as change in percent isoform usage (dpi).
+				Untested genes will have NaN values.
 		"""
 
 		# check if there are more than 2 unique values in obs_col
-		if len(self.adata.obs[obs_col].unique().tolist()) and not obs_conditions:
-			raise Error('Must provide obs_conditions argument when obs_col has'\
-				'>2 unique values')
+		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+			raise ValueError('Must provide obs_conditions argument when obs_col has'\
+				' >2 unique values')
+		elif not obs_conditions:
+			obs_conditions = self.adata.obs[obs_col].unique().tolist()
+		elif len(obs_conditions) != 2:
+			raise ValueError('obs_conditions must have exactly 2 values')
 
-		# if we're using datasests, we can use the pi that's already calculated
+		# use calculated values already in the SwanGraph
 		if obs_col == 'dataset':
-			pi_df = self.adata.layers['pi']
+			df = pd.DataFrame(data=self.adata.layers['pi'],
+								 index=self.adata.obs.index,
+								 columns=self.adata.var.index)
+			sums = calc_total_counts(self.adata, obs_col)
+
+		# recalculate pi and aggregate counts
 		else:
-			pi_df = calc_pi(self.adata, self.t_df, obs_col=obs_col)
+			df, sums = calc_pi(self.adata, self.t_df, obs_col=obs_col)
 
-			
-		test = get_die(adata, [1, 0], how='iso', rc=rc_thresh)
+		df = df.transpose()
+		sums = sums.transpose()
 
-		return test
+		# limit to obs_conditions
+		if obs_conditions:
+			if len(obs_conditions) != 2:
+				raise Error('obs_conditions must have exactly two values.')
+			df = df[obs_conditions]
+			sums = sums[obs_conditions]
+		else:
+			obs_conditions = adata.obs[obs_col].unique().tolist()
 
-	# def find_isoform_switching_genes(self, q=0.05, n_genes=None):
-	# 	""" Finds isoform switching genes; genes that are not differentially
-	# 		expressed but contain at least one transcript that is. Requires
-	# 		that de_gene_test and de_transcript_test have been run.
-	#
-	# 		Parameters:
-	#
-	# 			q (float): q-value threshold to declare a gene/transcript
-	# 				as significant
-	# 				Default: 0.05
-	# 			n_genes (int): Number of results to return.
-	# 				Default: None (returns all found significant)
-	#
-	# 		Returns:
-	#
-	# 			genes (list of str): List of gene names that are categorized as
-	# 				isoform switching
-	# 			switches (pandas DataFrame): Summary table of genes that are
-	# 				categorized as isoform switching
-	# 	"""
-	#
-	# 	# make sure both deg and det tests have been run
-	# 	if self.det_test.empty or self.deg_test.empty:
-	# 		raise Exception('Cannot find isoform switches without test results. '
-	# 			'Run de_gene_test and de_transcript_test first.')
-	#
-	# 	# subset for genes that aren't DE
-	# 	not_degs = self.deg_test.loc[self.deg_test.qval > q]
-	# 	not_degs = not_degs.gid
-	#
-	# 	# subset for dets
-	# 	dets = self.det_test.loc[self.det_test.qval <= q]
-	#
-	# 	# merge on gene id
-	# 	switches = dets.merge(not_degs, how='inner', on='gid')
-	#
-	# 	# list and the df of the top de genes according qval threshold
-	# 	unique_genes = switches.gid.unique().tolist()
-	# 	if not n_genes:
-	# 		genes = unique_genes
-	# 	else:
-	# 		if n_genes < len(unique_genes):
-	# 			n_genes = len(unique_genes)
-	# 		switches = switches.loc[switches.gid.isin(unique_genes[:n_genes])]
-	# 		genes = unique_genes[:n_genes]
-	# 	return genes, switches
+		# add gene id
+		df = df.merge(self.t_df['gid'], how='left', left_index=True, right_index=True)
 
-	# def get_de_and_not_de_transcripts(self, dataset_groups):
-	# 	ann = self.create_transcript_anndata(dataset_groups)
-	# 	results = de.test.wald(data=ann,
-	# 		formula_loc="~ 1 + condition",
-	# 		factor_loc_totest="condition")
-	# 	test = results.summary()
-	# 	test.rename({'gene': 'transcript'}, axis=1, inplace=True)
-	#
-	# 	gnames = self.t_df[['tid', 'gname']].copy(deep=True)
-	# 	gnames.reset_index(drop=True, inplace=True)
-	# 	test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
-	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-	#
-	# 	det = test.loc[test.qval < 0.05]
-	# 	not_det = test.loc[test.qval >= 0.05]
-	# 	genes_w_det = det.gname.tolist()
-	# 	not_det = not_det.loc[not_det.gname.isin(genes_w_det)]
-	# 	df = pd.concat([det, not_det])
-	# 	df = df.loc[df.gname.duplicated(keep=False)]
-	#
-	# 	return df
+		# add counts and cumulative counts across the samples
+		count_cols = sums.columns
+		sums['total_counts'] = sums[count_cols].sum(axis=1)
+		df = df.merge(sums, how='left', left_index=True, right_index=True, suffixes=(None, '_counts'))
+
+		# construct tables for each gene and test!
+		gids = df.gid.unique().tolist()
+		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
+		for gene in gids:
+			gene_df = df.loc[df.gid==gene]
+			gene_df = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
+			# if the gene is valid for testing, do so
+			if isinstance(gene_df, pd.DataFrame):
+				p, dpi = test_gene(gene_df, obs_conditions)
+			else:
+				p = dpi = np.nan
+			gene_de_df.loc[gene, 'p_val'] = p
+			gene_de_df.loc[gene, 'dpi'] = dpi
+
+		return gene_de_df
 
 	def create_gene_anndata(self, dataset_groups):
 		"""
