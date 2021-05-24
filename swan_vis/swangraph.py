@@ -11,6 +11,7 @@ import sqlite3
 import pickle
 import anndata
 import diffxpy.api as de
+from statsmodels.stats.multitest import multipletests
 import multiprocessing
 from itertools import repeat
 from tqdm import tqdm
@@ -1390,6 +1391,7 @@ class SwanGraph(Graph):
 		# construct tables for each gene and test!
 		gids = df.gid.unique().tolist()
 		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
+		gene_de_df.index.name = 'gid'
 		for gene in gids:
 			gene_df = df.loc[df.gid==gene]
 			gene_df = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
@@ -1400,6 +1402,14 @@ class SwanGraph(Graph):
 				p = dpi = np.nan
 			gene_de_df.loc[gene, 'p_val'] = p
 			gene_de_df.loc[gene, 'dpi'] = dpi
+
+		# remove untestable genes and perform p value
+		# Benjamini-Hochberg correction
+		gene_de_df.dropna(axis=0, inplace=True)
+		p_vals = gene_de_df.p_val.tolist()
+		_, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
+		gene_de_df['adj_p_val'] = adj_p_vals
+		gene_de_df.reset_index(inplace=True)
 
 		return gene_de_df
 

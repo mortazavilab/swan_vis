@@ -482,10 +482,12 @@ def test_gene(gene_df, conditions):
 	temp = temp.loc[temp.dpi < 0]
 
 	# if there are fewer than 2 isoforms
+	# print(temp)
 	if len(temp.index) >= 2:
 		neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
 	else:
 		neg_dpi = abs(temp.dpi.sum(axis=0))
+
 	gene_dpi = max(pos_dpi, neg_dpi)
 
 	# chi squared test
