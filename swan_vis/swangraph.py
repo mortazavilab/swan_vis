@@ -69,83 +69,82 @@ class SwanGraph(Graph):
 	############## Related to adding datasets and merging #####################
 	###########################################################################
 
-	def add_datasets(self, config, include_isms=False, verbose=False):
-		"""
-		Add transcripts from multiple datasets from a config TSV file
-
-		Parameters:
-			config (str): Path to TSV config file with the following
-				columns (indicated by the header):
-
-				Required:
-					col: Name of column to add data to in the SwanGraph
-					fname: Path to GTF or TALON db
-
-				Optional:
-					dataset_name: Dataset name in TALON db to add transcripts from
-						Default=None
-					pass_list: TALON pass_list of transcripts to add.
-						Default: None
-					counts_file: Path to tsv counts matrix
-						Default=None
-					count_cols: Column names in counts_file to use
-						Default=None
-					tid_col: Column name in counts_file containing transcript id
-						Default='annot_transcript_id'
-
-			include_isms (bool): Include ISMs from input datasets
-				Default=False
-
-			verbose (bool): Display progress
-				Default: False
-		"""
-
-		# make sure the config file exits
-		check_file_loc(config, 'config')
-
-		# read in the config file
-		df = pd.read_csv(config, sep='\t')
-
-		# check for required columns
-		if 'fname' not in df.columns:
-			raise Exception('Please provide the "fname" column in '
-				'config file for batch SwanGraph initialization.')
-		if 'col' not in df.columns:
-			raise Exception('Please provide the "col" column in '
-				'config file for batch SwanGraph initialization.')
-
-		# are there any unexpected columns?
-		expected_cols = ['fname', 'col',
-						 'pass_list', 'dataset_name',
-						 'counts_file', 'count_cols',
-						 'tid_col', 'include_isms',
-						 'verbose']
-		for c in df.columns.tolist():
-			if c not in expected_cols:
-				print('Encountered unexpected column name "{}"'.format(c))
-
-		# loop through each entry in config file
-		for ind, entry in df.iterrows():
-
-			# get the values for the rest of the arguments
-			file = entry['fname']
-			col = entry['col']
-
-			kwargs = {}
-			for c in df.columns.tolist():
-				if c != 'fname' and c != 'col':
-					if not pd.isnull(entry[c]):
-						kwargs[c] = entry[c]
-
-			# call add_annotation if we got that as a column
-			if col == 'annotation':
-				self.add_annotation(file, verbose=verbose)
-
-			# otherwise add_dataset
-			else:
-				self.add_dataset(col, file,
-					include_isms=include_isms,
-					verbose=verbose, **kwargs)
+	# def add_datasets(self, config, include_isms=False, verbose=False):
+	# 	"""
+	# 	Add transcripts from multiple datasets from a config TSV file
+	#
+	# 	Parameters:
+	# 		config (str): Path to TSV config file with the following
+	# 			columns (indicated by the header):
+	#
+	# 			Required:
+	# 				config (strs): Path to config file
+	#
+	# 			Optional:
+	# 				dataset_name: Dataset name in TALON db to add transcripts from
+	# 					Default=None
+	# 				pass_list: TALON pass_list of transcripts to add.
+	# 					Default: None
+	# 				counts_file: Path to tsv counts matrix
+	# 					Default=Non
+	# 				count_cols: Column names in counts_file to use
+	# 					Default=None
+	# 				tid_col: Column name in counts_file containing transcript id
+	# 					Default='annot_transcript_id'
+	#
+	# 		include_isms (bool): Include ISMs from input datasets
+	# 			Default=False
+	#
+	# 		verbose (bool): Display progress
+	# 			Default: False
+	# 	"""
+	#
+	# 	# make sure the config file exits
+	# 	check_file_loc(config, 'config')
+	#
+	# 	# read in the config file
+	# 	df = pd.read_csv(config, sep='\t')
+	#
+	# 	# check for required columns
+	# 	if 'fname' not in df.columns:
+	# 		raise Exception('Please provide the "fname" column in '
+	# 			'config file for batch SwanGraph initialization.')
+	# 	if 'col' not in df.columns:
+	# 		raise Exception('Please provide the "col" column in '
+	# 			'config file for batch SwanGraph initialization.')
+	#
+	# 	# are there any unexpected columns?
+	# 	expected_cols = ['fname', 'col',
+	# 					 'pass_list', 'dataset_name',
+	# 					 'counts_file', 'count_cols',
+	# 					 'tid_col', 'include_isms',
+	# 					 'verbose']
+	# 	for c in df.columns.tolist():
+	# 		if c not in expected_cols:
+	# 			print('Encountered unexpected column name "{}"'.format(c))
+	#
+	# 	# loop through each entry in config file
+	# 	for ind, entry in df.iterrows():
+	#
+	# 		# get the values for the rest of the arguments
+	# 		file = entry['fname']
+	# 		col = entry['col']
+	#
+	# 		kwargs = {}
+	# 		for c in df.columns.tolist():
+	# 			if c != 'fname' and c != 'col':
+	# 				if not pd.isnull(entry[c]):
+	# 					kwargs[c] = entry[c]
+	#
+	# 		# call add_annotation if we got that as a column
+	# 		if col == 'annotation':
+	# 			self.add_annotation(file, verbose=verbose)
+	#
+	# 		# otherwise add_dataset
+	# 		else:
+	# 			self.add_dataset(col, file,
+	# 				include_isms=include_isms,
+	# 				verbose=verbose, **kwargs)
 
 	def add_annotation(self, fname, verbose=False):
 		"""
@@ -191,14 +190,16 @@ class SwanGraph(Graph):
 					pass_list=None,
 					include_isms=False,
 					annotation=False,
-					verbose=False,
-					**kwargs):
+					verbose=False):
 		"""
 		Add transcripts from a dataset from either a GTF or a TALON database.
 
 		Parameters:
 			fname (str): Path to GTF or TALON db
 			include_isms (bool): Include ISMs from input dataset
+				Default: False
+			annotation (bool): Whether transcripts being added are from
+				an annotation. Set automatically from add_annotation.
 				Default: False
 			verbose (bool): Display progress
 				Default: False
@@ -220,21 +221,6 @@ class SwanGraph(Graph):
 		elif ftype == 'db':
 			self.create_dfs_db(fname, pass_list, verbose)
 
-		# 	# # add column to each df to indicate where data came from
-		# 	# self.loc_df[col] = True
-		# 	# self.edge_df[col] = True
-		# 	# self.t_df[col] = True
-		#
-		# # adding a new dataset to the graph requires us to merge
-		# # SwanGraph objects
-		# else:
-		# 	temp = SwanGraph()
-		# 	if ftype == 'gtf':
-		# 		temp.create_dfs_gtf(fname, verbose)
-		# 	elif ftype == 'db':
-		# 		temp.create_dfs_db(fname, pass_list, dataset_name, verbose)
-		# 	self.merge_dfs(temp, col, verbose)
-
 		if annotation:
 			self.t_df[data] = True
 
@@ -252,14 +238,6 @@ class SwanGraph(Graph):
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 
-		# # update graph metadata
-		# self.datasets.append(col)
-		#
-		# # if we're also adding abundances
-		# if counts_file and count_cols:
-		# 	self.add_abundance(counts_file, count_cols,
-		# 		col, tid_col, verbose)
-
 		if verbose:
 			if annotation:
 				data = 'annotation'
@@ -271,12 +249,15 @@ class SwanGraph(Graph):
 
 	def add_abundance(self, counts_file):
 		"""
-		Adds abundance from a counts matrix to the SwanGraph.
+		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
+		SwanGraph but not in the counts matrix will be assigned 0 counts.
+		Transcripts in the abundance matrix but not in the SwanGraph will not
+		have expression added.
 
 		Parameters:
 			counts_file (str): Path to TSV expression file where first column is
 				the transcript ID and following columns name the added datasets and
-				their counts in each dataset, OR to a TALON abundance matrix
+				their counts in each dataset, OR to a TALON abundance matrix.
 		"""
 
 		# read in abundance file
@@ -300,11 +281,6 @@ class SwanGraph(Graph):
 		# limit to just the transcripts already in the graph
 		sg_tids = self.t_df.tid.tolist()
 		ab_tids = df.tid.tolist()
-
-		# if len(set(sg_tids)-set(ab_tids)) != 0:
-		#	 print('Transcripts absent from abundance file will be assigned 0 counts.')
-		# if len(set(ab_tids)-set(sg_tids)) != 0:
-		#	 print('Transcripts found in abundance matrix that are not in the SwanGraph will not have expression added.')
 
 		# right merge to keep everything in the t_df already
 		df = df.merge(self.t_df['tid'].to_frame(), how='right', left_on='tid', right_index=True)
@@ -338,7 +314,6 @@ class SwanGraph(Graph):
 			mini_datasets = datasets[:5]
 			n = len(datasets) - len(mini_datasets)
 			print('Adding abundance for datasets {}... (and {} more) to SwanGraph'.format(', '.join(mini_datasets), n))
-
 
 		# if there is preexisting abundance data in the SwanGraph, concatenate
 		# otherwise, adata is the new transcript level adata
@@ -426,6 +401,15 @@ class SwanGraph(Graph):
 	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
 	# adapted from Dana Wyman and TALON
 	def create_dfs_gtf(self, gtf_file, verbose):
+		"""
+		Create pandas DataFrames for unique genomic locations, exons, introns,
+		and transcripts from an input GTF file. Merge the resultant DataFrames
+		with those already in the SwanGraph. Called from add_dataset.
+
+		Parameters:
+			gtf_file (str): Path to GTF file
+			vebose (bool): Display progress
+		"""
 
 		# make sure file exists
 		check_file_loc(gtf_file, 'GTF')
@@ -666,6 +650,16 @@ class SwanGraph(Graph):
 	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility
 	def create_dfs_db(self, database, pass_list, verbose):
+		"""
+		Create pandas DataFrames for unique genomic locations, exons, introns,
+		and transcripts from an input TALON database. Merge the resultant DataFrames
+		with those already in the SwanGraph. Called from add_dataset.
+
+		Parameters:
+			database (str): Path to database file
+			pass_list (str): Path to TALON pass list files
+			vebose (bool): Display progress
+		"""
 
 		# make sure files exist
 		check_file_loc(database, 'TALON DB')
@@ -897,8 +891,12 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-	# add node types (internal, TSS, TES) to loc_df
 	def get_loc_types(self):
+		"""
+		Determine what role (TSS, TES, internal) each unique genomic location
+		plays in the transcripts it is used in. Assigns each location in loc_df
+		a boolean label for the TSS, TES, and internal columns based on its use.
+		"""
 
 		self.loc_df['internal'] = False
 		self.loc_df['TSS'] = False
@@ -919,9 +917,17 @@ class SwanGraph(Graph):
 	######################## Other SwanGraph utilities #####################
 	##########################################################################
 
-	# order the transcripts by expression of transcript, transcript id,
-	# or start/end nodes
+
 	def order_transcripts(self, order='tid'):
+		"""
+		Order the transcripts in the SwanGraph t_df based on an input heuristic.
+		Can order alphabetically by transcript ID, by expression of each
+		transcript, or by the genomic location of the transcripts' TSSs or TESs.
+
+		Parameters:
+			order (str): Method to order transcripts by. Choose from ['tid',
+				'expression', 'tss', 'tes']
+		"""
 
 		# order by transcript id
 		if order == 'tid':
@@ -943,7 +949,7 @@ class SwanGraph(Graph):
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')
 
-		# order by coordinate of tss in PlottedGraph
+		# order by coordinate of tss  
 		elif order == 'tss':
 			self.t_df['start_coord'] = self.t_df.apply(lambda x:
 				self.loc_df.loc[x.path[0], 'coord'], axis=1)
