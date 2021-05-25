@@ -415,6 +415,7 @@ class SwanGraph(Graph):
 		check_file_loc(gtf_file, 'GTF')
 
 		# counts the number of transcripts in a given GTF
+		# so that we can track progress
 		def count_transcripts(gtf_file):
 			df = pd.read_csv(gtf_file, sep='\t', usecols=[2],
 				names=['entry_type'], comment='#')
@@ -525,45 +526,75 @@ class SwanGraph(Graph):
 									  'chrom': chrom,
 									  'v1': start,
 									  'v2': stop,
-									  'strand': strand}}
+									  'strand': strand,
+									  'edge_type': 'exon'}}
 						exons.update(edge)
 
-			   		# add this exon to the transcript's list of exons
+					# add this exon to the transcript's list of exons
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
 
-		# close progress bar
-		if verbose:
-			pbar.close()
-
 		# once we have all transcripts, make loc_df
 		# start numbering locations at the max of the previously-existing
-		# locations in the SwanGraph
-		locs = {}
+		# locations in the SwanGraph and add existing locations to the dict
+		# of those that already exist
 		if len(self.loc_df.index) != 0:
 			vertex_id = self.loc_df.vertex_id.max()+1
+			ids = self.loc_df.vertex_id.tolist()
+			chroms = self.loc_df.chrom.tolist()
+			coords = self.loc_df.coord.tolist()
+			locs = dict([((ch, co), vid) for ch, co, vid in zip(chroms, coords, ids)])
 		else:
 			vertex_id = 0
+			locs = {}
 		for edge_id, edge in exons.items():
 			chrom = edge['chrom']
-			strand = edge['strand']
 
 			v1 = edge['v1']
 			v2 = edge['v2']
 
 			# exon start
-			key = (chrom, v1, strand)
+			key = (chrom, v1)
 			if key not in locs:
 				locs[key] = vertex_id
 				vertex_id += 1
 			# exon end
-			key = (chrom, v2, strand)
+			key = (chrom, v2)
 			if key not in locs:
 				locs[key] = vertex_id
 				vertex_id += 1
 
 		# add locs-indexed path to transcripts, and populate edges
 		edges = {}
+		if len(self.edge_df.index) != 0:
+			edge_id = self.edge_df.edge_id.max()+1
+
+			# populate edges dict with those that already exist
+			temp = self.loc_df[['chrom', 'coord', 'vertex_id']]
+			self.edge_df = self.edge_df.merge(temp, how='left',
+				left_on='v1', right_on='vertex_id')
+			self.edge_df.rename({'coord': 'v1_coord'}, axis=1, inplace=True)
+			temp = self.loc_df[['coord', 'vertex_id']]
+			self.edge_df = self.edge_df.merge(temp, how='left',
+				left_on='v2', right_on='vertex_id')
+			self.edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
+			drop_cols = ['chrom', 'v1_coord', 'vertex_id_x', 'v2_coord', 'vertex_id_y']
+
+			self.edge_df.head()
+			ids = self.edge_df.edge_id.tolist()
+			chroms = self.edge_df.chrom.tolist()
+			v1s = self.edge_df.v1_coord.tolist()
+			v2s = self.edge_df.v2_coord.tolist()
+			strands = self.edge_df.strand.tolist()
+			types = self.edge_df.edge_type.tolist()
+
+			edges = {}
+			for eid,ch,v1,v2,strand,etype in zip(ids,chroms,v1s,v2s,strands,types):
+			    edges[(ch,v1,v2,strand,etype)] = {'edge_id': eid}
+			self.edge_df.drop(drop_cols, axis=1, inplace=True)
+
+		else:
+			edge_id = 0
 		for _,t in transcripts.items():
 			t['path'] = []
 			strand = t['strand']
@@ -582,37 +613,43 @@ class SwanGraph(Graph):
 				strand = exon['strand']
 
 				# add current exon and subsequent intron
-				# (if not the last exon) for each exon to edges
-				key = (chrom, v1, v2, strand)
-				v1_key = (chrom, v1, strand)
-				v2_key = (chrom, v2, strand)
-				edge_id = (locs[v1_key], locs[v2_key])
+				# (if not the last exon) for each exon to edge
+				# also add this exon to the current transcript's path
+				key = (chrom, v1, v2, strand, 'exon')
+				v1_key = (chrom, v1)
+				v2_key = (chrom, v2)
 				if key not in edges:
-					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
-
-				# add exon locs to path
-				t['path'] += list(edge_id)
+					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon',
+								  'v1': locs[v1_key], 'v2': locs[v2_key]}
+					t['path'] += [edge_id]
+					edge_id += 1
+				else:
+					t['path'] += [edges[key]['edge_id']]
 
 				# if this isn't the last exon, we also needa add an intron
 				# this consists of v2 of the prev exon and v1 of the next exon
+				# also add this intron to the current transcript's path
 				if i < len(t_exons)-1:
 					next_exon = exons[t_exons[i+1]]
 					v1 = next_exon['v1']
-					key = (chrom, v2, v1, strand)
-					v1_key = (chrom, v1, strand)
-					edge_id = (locs[v2_key], locs[v1_key])
+					key = (chrom, v2, v1, strand, 'intron')
+					v1_key = (chrom, v1)
 					if key not in edges:
-						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
+						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron',
+									  'v1': locs[v2_key], 'v2': locs[v1_key]}
+						t['path'] += [edge_id]
+						edge_id += 1
+					else:
+						t['path'] += [edges[key]['edge_id']]
 
 		# turn transcripts, edges, and locs into dataframes
 		locs = [{'chrom': key[0],
 				 'coord': key[1],
-				 'strand': key[2],
 				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
 		loc_df = pd.DataFrame(locs)
 
-		edges = [{'v1': item['edge_id'][0],
-				  'v2': item['edge_id'][1],
+		edges = [{'v1': item['v1'],
+				  'v2': item['v2'],
 				  'strand': key[3],
 				  'edge_id': item['edge_id'],
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
@@ -631,7 +668,6 @@ class SwanGraph(Graph):
 						'gid': item['gid'],
 						'gname': item['gname'],
 						'path': item['path']} for key, item in transcripts.items()]
-
 		t_df = pd.DataFrame(transcripts)
 
 		# final df formatting
@@ -793,6 +829,8 @@ class SwanGraph(Graph):
 					if tid in transcripts:
 						transcripts[tid]['exons'].append(eid)
 
+		# TODO - pull this shit out and stick it in its own function cause it's
+		# the same as what's in create_dfs_gtf
 		# once we have all transcripts, make loc_df
 		locs = {}
 		vertex_id = 0
@@ -949,7 +987,7 @@ class SwanGraph(Graph):
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')
 
-		# order by coordinate of tss  
+		# order by coordinate of tss
 		elif order == 'tss':
 			self.t_df['start_coord'] = self.t_df.apply(lambda x:
 				self.loc_df.loc[x.path[0], 'coord'], axis=1)
@@ -1307,6 +1345,7 @@ class SwanGraph(Graph):
 	# filter differential isoform expression test results based on
 	# both an adjusted p value and dpi cutoff
 	# TODO make this more object-oriented when migration to adata happens
+	# ie store test results in adata.uns? Indexed by obs_col, obs_conditions
 	def filter_die_results(self, df, p=0.05, dpi=10):
 		"""
 		Filters differential isoform expression test results based on adj.
@@ -1350,8 +1389,8 @@ class SwanGraph(Graph):
 		Returns:
 			test (pandas DataFrame): A summary table of the differential
 				isoform expression test, including p-values and adjusted
-				p-values, as well as change in percent isoform usage (dpi).
-				Untested genes will have NaN values.
+				p-values, as well as change in percent isoform usage (dpi) for
+				all tested genes.
 		"""
 
 		# check if there are more than 2 unique values in obs_col
@@ -1419,99 +1458,101 @@ class SwanGraph(Graph):
 
 		return gene_de_df
 
-	def create_gene_anndata(self, dataset_groups):
-		"""
-		Creates a gene-level AnnData object containing TPM that's
-		compatible with diffxpy. Assigns different condition labels
-		to the given dataset groups.
-
-		Parameters:
-			dataset_groups (list of list of str, len 2): Grouping of datasets
-				from the SwanGraph to be used in the differential
-				expression test
-				Example: [['data1','data2'],['data3','data4']]
-
-		Returns:
-			ann (AnnData): AnnData object containing gene-level TPM
-				with different conditions labelled for DE testing
-		"""
-
-		# group t_df into gene df and sum up abundances
-		# both across genes and across datasets
-		t_df = self.t_df.copy(deep=True)
-		dataset_cols = []
-		all_dataset_cols = []
-		for group in dataset_groups:
-			tpm_cols = self.get_tpm_cols(group)
-			dataset_cols.append(tpm_cols)
-			all_dataset_cols.extend(tpm_cols)
-
-		keep_cols = all_dataset_cols+['gid']
-		g_df = t_df[keep_cols].groupby('gid').sum()
-
-		# add pseudocounts for each gene
-		g_df[all_dataset_cols] = g_df[all_dataset_cols] + 1
-
-		# create obs, var, and x entries for the anndata object
-		ann_x = g_df.to_numpy().T
-		ann_var = pd.DataFrame(index=g_df.index)
-		ann_obs = pd.DataFrame(columns=['dataset'],
-							   data=all_dataset_cols)
-		ann_obs['condition'] = np.nan
-		for i, group in enumerate(dataset_cols):
-			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
-		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
-
-		return ann
-
-	def create_transcript_anndata(self, dataset_groups, how='counts'):
-		"""
-		Creates a transcript-level AnnData object containing TPM that's
-		compatible with diffxpy. Assigns different condition labels
-		to the given dataset groups.
-
-		Parameters:
-			dataset_groups (list of list of str, len 2): Grouping of datasets
-				from the SwanGraph to be used in the differential
-				expression test
-				Example: [['data1','data2'],['data3','data4']]
-			how (str): How to calculate expression from each group. Choose
-				from 'tpm' or 'counts'
-
-		Returns:
-			ann (AnnData): AnnData object containing transcript-level TPM
-				with different conditions labelled for DE testing
-		"""
-
-		# group t_df
-		t_df = self.t_df.copy(deep=True)
-		dataset_cols = []
-		all_dataset_cols = []
-		for group in dataset_groups:
-			if how == 'tpm':
-				cols = self.get_tpm_cols(group)
-			elif how == 'counts':
-				cols = self.get_count_cols(group)
-			dataset_cols.append(cols)
-			all_dataset_cols.extend(cols)
-
-		if how == 'tpm':
-			# add pseudocounts for each transcript
-			t_df[all_dataset_cols] = t_df[all_dataset_cols] + 1
-
-		# create obs, var, and x entries for the anndata object
-		ann_x = t_df[all_dataset_cols].to_numpy().T
-		ann_var = t_df[['gid', 'gname']]
-		# ann_var['tid'] = ann_var.index
-		# ann_var = pd.DataFrame(index=t_df.index)
-		ann_obs = pd.DataFrame(columns=['dataset'],
-							   data=all_dataset_cols)
-		ann_obs['condition'] = np.nan
-		for i, group in enumerate(dataset_cols):
-			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
-		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
-
-		return ann
+# 	def create_gene_anndata(self, dataset_groups):
+# 		"""
+# 		Creates a gene-level AnnData object containing TPM that's
+# 		compatible with diffxpy. Assigns different condition labels
+# 		to the given dataset groups.
+#
+# 		Parameters:
+# 			dataset_groups (list of list of str, len 2): Grouping of datasets
+# 				from the SwanGraph to be used in the differential
+# 				expression test
+# 				Example: [['data1','data2'],['data3','data4']]
+#
+# 		Returns:
+# 			ann (AnnData): AnnData object containing gene-level TPM
+# 				with different conditions labelled for DE testing
+# 		"""
+#
+# 		# group t_df into gene df and sum up abundances
+# 		# both across genes and across datasets
+# 		t_df = self.t_df.copy(deep=True)
+# 		dataset_cols = []
+# 		all_dataset_cols = []
+# 		for group in dataset_groups:
+# 			tpm_cols = self.get_tpm_cols(group)
+# 			dataset_cols.append(tpm_cols)
+# 			all_dataset_cols.extend(tpm_cols)
+#
+# 		keep_cols = all_dataset_cols+['gid']
+# 		g_df = t_df[keep_cols].groupby('gid').sum()
+#
+# 		# add pseudocounts for each gene
+# 		g_df[all_dataset_cols] = g_df[all_dataset_cols] + 1
+#
+# 		# create obs, var, and x entries for the anndata object
+# 		ann_x = g_df.to_numpy().T
+# 		ann_var = pd.DataFrame(index=g_df.index)
+# 		ann_obs = pd.DataFrame(columns=['dataset'],
+# 							   data=all_dataset_cols)
+# 		ann_obs['condition'] = np.nan
+# 		for i, group in enumerate(dataset_cols):
+# 			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
+# 		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
+#
+# 		return ann
+#
+# 	def create_transcript_anndata(self, obs_col='dataset',
+# 								  obs_conditions=None, how='counts'):
+# 		"""
+# 		Creates a transcript-level AnnData object containing TPM that's
+# 		compatible with diffxpy. Assigns different condition labels
+# 		to the given dataset groups.
+#
+# Parameters:
+# 	obs_col (str): Column name from self.adata.obs table to group on.
+# 		Default: 'dataset'
+# 	obs_conditions (list of str, len 2): Which conditions from obs_col
+# 		to compare? Required if obs_col has more than 2 unqiue values.
+# 	rc_thresh (int): Number of reads required for each conditions
+# 		in order to test the gene.
+# 		Default: 10
+#
+# 		Returns:
+# 			ann (AnnData): AnnData object containing transcript-level TPM
+# 				with different conditions labelled for DE testing
+# 		"""
+#
+# 		# group t_df
+# 		t_df = self.t_df.copy(deep=True)
+# 		dataset_cols = []
+# 		all_dataset_cols = []
+# 		for group in dataset_groups:
+# 			if how == 'tpm':
+# 				cols = self.get_tpm_cols(group)
+# 			elif how == 'counts':
+# 				cols = self.get_count_cols(group)
+# 			dataset_cols.append(cols)
+# 			all_dataset_cols.extend(cols)
+#
+# 		if how == 'tpm':
+# 			# add pseudocounts for each transcript
+# 			t_df[all_dataset_cols] = t_df[all_dataset_cols] + 1
+#
+# 		# create obs, var, and x entries for the anndata object
+# 		ann_x = t_df[all_dataset_cols].to_numpy().T
+# 		ann_var = t_df[['gid', 'gname']]
+# 		# ann_var['tid'] = ann_var.index
+# 		# ann_var = pd.DataFrame(index=t_df.index)
+# 		ann_obs = pd.DataFrame(columns=['dataset'],
+# 							   data=all_dataset_cols)
+# 		ann_obs['condition'] = np.nan
+# 		for i, group in enumerate(dataset_cols):
+# 			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
+# 		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
+#
+# 		return ann
 
 	##########################################################################
 	######################## Loading/saving SwanGraphs #####################

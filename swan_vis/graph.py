@@ -36,7 +36,7 @@ class Graph:
 		self.annotation = False
 
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
-									   'strand','vertex_id',
+									   'vertex_id',
 									   'TSS',
 									   'TES',
 									   'internal'])
