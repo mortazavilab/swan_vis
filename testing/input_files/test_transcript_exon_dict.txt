@@ -80,12 +80,35 @@
 		'strand': '-', 
 		'edge_type': 'exon'
 	},
-		'chr2_75_65_-_exon': {
+	'chr2_75_65_-_exon': {
 		'eid': 'chr2_75_60_-_exon',
 		'chrom': 'chr2',
 		'v1': '75',
 		'v2': '65',
 		'strand': '-', 
 		'edge_type': 'exon'
+	}, 
+	'chr2_45_50_+_exon': {
+		'eid': 'chr2_45_50_+_exon',
+		'chrom': 'chr2',
+		'v1': '45',
+		'v2': '50',
+		'strand': '+',
+		'edge_type': 'exon'
+		},
+	'chr2_100_80_-_exon': {
+		'eid': 'chr2_100_80_-_exon',
+		'chrom': 'chr2',
+		'v1': '100',
+		'v2': '80',
+		'strand': '-',
+		'edge_type': 'exon'
+	},
+	'chr2_60_50_-_exon': {
+		'eid': 'chr2_60_50_-_exon',
+		'chrom': 'chr2',
+		'v1': '60',
+		'v2': '50',
+		'strand': '-'
 	}
 }

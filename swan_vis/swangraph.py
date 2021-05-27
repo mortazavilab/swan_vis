@@ -480,7 +480,7 @@ class SwanGraph(Graph):
 		exons = exons.to_dict(orient='index')
 
 		locs = self.create_loc_dict(exons)
-		edges = self.create_edge_dict(transcripts, exons)
+		transcripts, edges = self.create_transcript_edge_dicts(transcripts, exons, locs)
 
 		# turn transcripts, edges, and locs into dataframes
 		locs = [{'chrom': key[0],
@@ -529,9 +529,15 @@ class SwanGraph(Graph):
 		Create location dictionary using the exons found from a GTF or TALON
 		DB.
 
+		Parameters:
+			exons (dict): Dictionary of exons found in the GTF or TALON DB.
+				Keys (str): chr_v1_c2_strand_exon.
+				Items (dict): eid, chrom, v1, v2, strand, edge_type
+
 		Returns:
 			locs (dict): Dictionary of locations and their vertex IDs
-				in the SwanGraph. Keys: (chrom, coord). Items: vertex_id.
+				in the SwanGraph, including existing and novel locations.
+				Keys: (chrom, coord). Items: vertex_id.
 		"""
 
 		locs, vertex_id = self.get_current_locs()
@@ -555,14 +561,16 @@ class SwanGraph(Graph):
 
 		return locs
 
-	def create_edge_dict(self, transcripts, locs):
+	def create_transcript_edge_dicts(self, transcripts, exons, locs):
 		"""
 		Create edge dictionary using the exons found from a GTF or TALON DB.
+
+
 		"""
 
 		edges, edge_id = self.get_current_edges()
 		edge_id += 1
-		for ind,entry in t_df.iterrows():
+		for key, t in transcripts.items():
 			t['path'] = []
 			strand = t['strand']
 			t_exons = t['exons']
@@ -608,7 +616,7 @@ class SwanGraph(Graph):
 						edge_id += 1
 					else:
 						t['path'] += [edges[key]['edge_id']]
-		return edges
+		return transcripts, edges
 
 	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
 	# adapted from Dana Wyman and TALON
