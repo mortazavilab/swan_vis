@@ -453,16 +453,21 @@ class SwanGraph(Graph):
 			self.edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
 			drop_cols = ['chrom', 'v1_coord', 'vertex_id_x', 'v2_coord', 'vertex_id_y']
 
-			ids = self.edge_df.edge_id.tolist()
-			chroms = self.edge_df.chrom.tolist()
-			v1s = self.edge_df.v1_coord.tolist()
-			v2s = self.edge_df.v2_coord.tolist()
-			strands = self.edge_df.strand.tolist()
-			types = self.edge_df.edge_type.tolist()
-
 			edges = {}
-			for eid,ch,v1,v2,strand,etype in zip(ids,chroms,v1s,v2s,strands,types):
-				edges[(ch,v1,v2,strand,etype)] = {'edge_id': eid}
+			for ind, entry in self.edge_df.iterrows():
+				ch = entry.chrom
+				v1_coord = entry.v1_coord
+				v2_coord = entry.v2_coord
+				strand = entry.strand
+				edge_type = entry.edge_type
+				v1 = entry.v1
+				v2 = entry.v2
+				key = (ch,v1_coord,v2_coord,strand,edge_type)
+				item = {'edge_id': entry['edge_id'],
+						'edge_type': edge_type,
+						'v1': v1,
+						'v2': v2}
+				edges[key] = item
 			self.edge_df.drop(drop_cols, axis=1, inplace=True)
 		else:
 			edges = {}
