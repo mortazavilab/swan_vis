@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import os
 import copy
 from collections import defaultdict
+from tqdm import tqdm
+
 
 pd.options.mode.chained_assignment = None
 
@@ -91,43 +93,6 @@ def check_file_loc(loc, ftype):
 	if not os.path.isfile(loc):
 		raise Exception('{} file not found at {}. '
 			'Check path.'.format(ftype, loc))
-
-# return a table indexed by transcript id with the appropriate
-# abundance
-def process_abundance_file(file, cols, tid_col):
-
-	if type(cols) != list: cols = [cols]
-
-	df = pd.read_csv(file, sep='\t')
-
-	# make sure that tid_col is even in the table
-	if tid_col not in df.columns:
-		raise Exception('Column {} not found in abundance file.'.format(tid_col))
-
-	# make sure that cols are also in the table
-	for col in cols:
-		if col not in df.columns:
-			raise Exception('Dataset column {} not found in abundance file.'.format(col))
-
-	keep_cols = [tid_col]+cols
-	df = df[keep_cols]
-
-	# get the counts
-	df['counts'] = df[cols].sum(axis=1)
-
-	# get tpms
-	for col in cols:
-		total_counts = df[col].sum()
-		df['{}_tpm'.format(col)] = (df[col]*1000000)/total_counts
-	tpm_cols = ['{}_tpm'.format(col) for col in cols]
-	df['tpm'] = df[tpm_cols].mean(axis=1)
-
-	# set up for merging
-	cols += tpm_cols
-	df.drop(cols, axis=1, inplace=True)
-	df.rename({tid_col: 'tid'}, inplace=True, axis=1)
-
-	return df
 
 # creates a file name based on input plotting arguments
 def create_fname(prefix, indicate_dataset,
@@ -233,6 +198,7 @@ def reorder_exons(exon_ids):
 ##########################################################################
 ############### Related to calculating abundance values ##################
 ##########################################################################
+
 def calc_total_counts(adata, obs_col='dataset'):
 	"""
 	Calculate cumulative expression per adata entry based on condition given
@@ -383,6 +349,148 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 	df = df[t_df[id_col].tolist()]
 
 	return df
+
+##########################################################################
+####################### Related to file parsing ##########################
+##########################################################################
+
+def parse_gtf(gtf_file, verbose):
+	"""
+	Get the unique transcripts and exons that are present in a GTF
+	transcriptome.
+
+	Returns:
+		transcripts (dict of dict): Dictionary of transcripts in GTF. Keys are
+			transcript ids. Items are a dictionary of gene id, gene name,
+			transcript id (same as key), transcript name, strand, and exons
+			belonging to the transcript.
+		exons (dict of dict): Dictionary of exons in GTF. Keys are exon ids
+			which consist of chromosome_v1_v2_strand_exon. Items are a
+			dictionary of edge id (same as key), chromosome, v1, v2, strand,
+			and edge type (all exon in this case) of each exon.
+		from_talon (bool): Whether or not the GTF was determined to be
+			from TALON
+	"""
+
+	# counts the number of transcripts in a given GTF
+	# so that we can track progress
+	def count_transcripts(gtf_file):
+		df = pd.read_csv(gtf_file, sep='\t', usecols=[2],
+			names=['entry_type'], comment='#')
+		df = df.loc[df.entry_type == 'transcript']
+		n = len(df.index)
+		return n
+
+	# get the number of transcripts in the file
+	n_transcripts = count_transcripts(gtf_file)
+
+	# dictionaries to hold unique edges and transcripts
+	transcripts = {}
+	exons = {}
+
+	# display progess
+	if verbose:
+		pbar = tqdm(total=n_transcripts)
+		counter = 0
+
+	with open(gtf_file) as gtf:
+		for line in gtf:
+
+			# ignore header lines
+			if line.startswith('#'):
+				continue
+
+			# split each entry
+			line = line.strip().split('\t')
+
+			# get some fields from gtf that we care about
+			chrom = line[0]
+			entry_type = line[2]
+			start = int(line[3])
+			stop = int(line[4])
+			strand = line[6]
+			fields = line[-1]
+
+			# transcript entry
+			if entry_type == "transcript":
+
+				# update progress bar
+				if verbose:
+					counter+=1
+					if counter % 100 == 0:
+						pbar.update(100)
+						pbar.set_description('Processing transcripts')
+
+				attributes = get_fields(fields)
+
+				# check if this gtf has transcript novelty vals
+				# for the first transcript entry
+				if not transcripts:
+					if 'talon_transcript' in attributes:
+						from_talon = True
+					else:
+						from_talon = False
+
+				tid = attributes['transcript_id']
+				gid = attributes['gene_id']
+
+				# check if there's a gene/transcript name field and
+				# add one if not
+				if 'gene_name' not in attributes:
+					attributes['gene_name'] = attributes['gene_id']
+				if 'transcript_name' not in attributes:
+					attributes['transcript_name'] = attributes['transcript_id']
+
+				gname = attributes['gene_name']
+				tname = attributes['transcript_name']
+
+				# add transcript to dictionary
+				entry = {'gid': gid,
+						 'gname': gname,
+						 'tid': tid,
+						 'tname': tname,
+						 'strand': strand,
+						 'exons': []}
+
+				# if we're using a talon gtf, add a novelty field
+				if from_talon:
+					novelty = get_transcript_novelties(attributes)
+					entry['novelty'] = novelty
+
+				transcript = {tid: entry}
+				transcripts.update(transcript)
+
+			# exon entry
+			elif entry_type == "exon":
+				attributes = get_fields(fields)
+				start, stop = find_edge_start_stop(start, stop, strand)
+				eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
+				if tid in ['ENSMUST00000179865.6', 'ENSMUST00000020637.8']:
+					if start == 50310867 or stop == 50310794:
+						print()
+						print(tid)
+						print('Start: {}'.format(start))
+						print('Stop: {}'.format(stop))
+						print('Exon ID: {}'.format(eid))
+				tid = attributes['transcript_id']
+
+				# add novel exon to dictionary
+				if eid not in exons:
+					edge = {eid: {'eid': eid,
+								  'chrom': chrom,
+								  'v1': start,
+								  'v2': stop,
+								  'strand': strand,
+								  'edge_type': 'exon'}}
+					exons.update(edge)
+
+				# add this exon to the transcript's list of exons
+				if tid in transcripts:
+					transcripts[tid]['exons'].append(eid)
+
+	t_df = pd.DataFrame(transcripts).transpose()
+	exon_df = pd.DataFrame(exons).transpose()
+	return t_df, exon_df, from_talon
 
 ##########################################################################
 ######################## Related to DIE testing ##########################
@@ -538,6 +646,7 @@ def reformat_talon_abundance(fname, ofile=None):
 	# if not writing output file just return df
 	if not ofile:
 		return df
+
 	# otherwise dump to output file
 	df.to_csv(ofile, sep='\t', index=False)
 

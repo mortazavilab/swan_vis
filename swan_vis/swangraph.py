@@ -14,7 +14,7 @@ import diffxpy.api as de
 from statsmodels.stats.multitest import multipletests
 import multiprocessing
 from itertools import repeat
-from tqdm import tqdm
+# from tqdm import tqdm
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -217,8 +217,10 @@ class SwanGraph(Graph):
 
 		# get loc_df, edge_df, t_df
 		if ftype == 'gtf':
+			check_file_loc(fname, 'GTF')
 			self.create_dfs_gtf(fname, verbose)
 		elif ftype == 'db':
+			check_file_loc(fname, 'TALON DB')
 			self.create_dfs_db(fname, pass_list, verbose)
 
 		if annotation:
@@ -398,176 +400,47 @@ class SwanGraph(Graph):
 	############# Related to creating dfs from GTF or TALON DB ###############
 	##########################################################################
 
-	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
-	# adapted from Dana Wyman and TALON
-	def create_dfs_gtf(self, gtf_file, verbose):
+
+	def get_current_locs(self):
 		"""
-		Create pandas DataFrames for unique genomic locations, exons, introns,
-		and transcripts from an input GTF file. Merge the resultant DataFrames
-		with those already in the SwanGraph. Called from add_dataset.
+		Get a dictionary of unique locations already in the SwanGraph, along
+		with the number of unique locations. Used to create the dataframes
+		in create_dfs_gtf and create_dfs_db.
 
-		Parameters:
-			gtf_file (str): Path to GTF file
-			vebose (bool): Display progress
+		Returns:
+			locs (dict): Dictionary of unique genomic locations. Keys are
+				(chromosome, coordinate). Items are the vertex IDs from the
+				SwanGraph.
+			n (int): Number of unique genomic locations. -1 if SwanGraph
+				is empty.
 		"""
-
-		# make sure file exists
-		check_file_loc(gtf_file, 'GTF')
-
-		# counts the number of transcripts in a given GTF
-		# so that we can track progress
-		def count_transcripts(gtf_file):
-			df = pd.read_csv(gtf_file, sep='\t', usecols=[2],
-				names=['entry_type'], comment='#')
-			df = df.loc[df.entry_type == 'transcript']
-			n = len(df.index)
-			return n
-
-		# get the number of transcripts in the file
-		n_transcripts = count_transcripts(gtf_file)
-
-		# dictionaries to hold unique edges and transcripts
-		transcripts = {}
-		exons = {}
-
-		# display progess
-		if verbose:
-			pbar = tqdm(total=n_transcripts)
-			counter = 0
-
-		with open(gtf_file) as gtf:
-			for line in gtf:
-
-				# ignore header lines
-				if line.startswith('#'):
-					continue
-
-				# split each entry
-				line = line.strip().split('\t')
-
-				# get some fields from gtf that we care about
-				chrom = line[0]
-				entry_type = line[2]
-				start = int(line[3])
-				stop = int(line[4])
-				strand = line[6]
-				fields = line[-1]
-
-				# transcript entry
-				if entry_type == "transcript":
-
-					# update progress bar
-					if verbose:
-						counter+=1
-						if counter % 100 == 0:
-							pbar.update(100)
-							pbar.set_description('Processing transcripts')
-
-					attributes = get_fields(fields)
-
-					# check if this gtf has transcript novelty vals
-					# for the first transcript entry
-					if not transcripts:
-						if 'talon_transcript' in attributes:
-							from_talon = True
-						else:
-							from_talon = False
-
-					tid = attributes['transcript_id']
-
-					# if this transcript is already in the SwanGraph, skip
-					# to the next one
-					if tid in self.t_df.tid.tolist():
-						continue
-
-					gid = attributes['gene_id']
-
-					# check if there's a gene/transcript name field and
-					# add one if not
-					if 'gene_name' not in attributes:
-						attributes['gene_name'] = attributes['gene_id']
-					if 'transcript_name' not in attributes:
-						attributes['transcript_name'] = attributes['transcript_id']
-
-					gname = attributes['gene_name']
-					tname = attributes['transcript_name']
-
-					# add transcript to dictionary
-					entry = {'gid': gid,
-							 'gname': gname,
-							 'tid': tid,
-							 'tname': tname,
-							 'strand': strand,
-							 'exons': []}
-
-					# if we're using a talon gtf, add a novelty field
-					if from_talon:
-						novelty = get_transcript_novelties(attributes)
-						entry['novelty'] = novelty
-
-					transcript = {tid: entry}
-					transcripts.update(transcript)
-
-				# exon entry
-				elif entry_type == "exon":
-					attributes = get_fields(fields)
-					start, stop = find_edge_start_stop(start, stop, strand)
-					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
-					tid = attributes['transcript_id']
-
-					# if this transcript is already in the SwanGraph, skip
-					# to the next one
-					if tid in self.t_df.tid.tolist():
-						continue
-
-					# add novel exon to dictionary
-					if eid not in exons:
-						edge = {eid: {'eid': eid,
-									  'chrom': chrom,
-									  'v1': start,
-									  'v2': stop,
-									  'strand': strand,
-									  'edge_type': 'exon'}}
-						exons.update(edge)
-
-					# add this exon to the transcript's list of exons
-					if tid in transcripts:
-						transcripts[tid]['exons'].append(eid)
-
-		# once we have all transcripts, make loc_df
-		# start numbering locations at the max of the previously-existing
-		# locations in the SwanGraph and add existing locations to the dict
-		# of those that already exist
 		if len(self.loc_df.index) != 0:
-			vertex_id = self.loc_df.vertex_id.max()+1
+			n = self.loc_df.vertex_id.max()
+
 			ids = self.loc_df.vertex_id.tolist()
 			chroms = self.loc_df.chrom.tolist()
 			coords = self.loc_df.coord.tolist()
 			locs = dict([((ch, co), vid) for ch, co, vid in zip(chroms, coords, ids)])
 		else:
-			vertex_id = 0
 			locs = {}
-		for edge_id, edge in exons.items():
-			chrom = edge['chrom']
+			n = -1
 
-			v1 = edge['v1']
-			v2 = edge['v2']
+		return locs, n
 
-			# exon start
-			key = (chrom, v1)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
-			# exon end
-			key = (chrom, v2)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
+	def get_current_edges(self):
+		"""
+		Get a dictionary of unique edges already in the SwanGraph, along with
+		the number of unique edges. Used to create the dataframes in
+		create_dfs_gtf and create_dfs_db.
 
-		# add locs-indexed path to transcripts, and populate edges
-		edges = {}
+		Returns:
+			edges (dict): Dictionary of unique edges. Keys are (chromosome,
+				start (v1) coord, end (v2) coord, strand, edge_type). Items are
+				the edge IDs from the SwanGraph.
+			n (int): Number of unique edges. -1 if SwanGraph is emtpy.
+		"""
 		if len(self.edge_df.index) != 0:
-			edge_id = self.edge_df.edge_id.max()+1
+			n = self.edge_df.edge_id.max()
 
 			# populate edges dict with those that already exist
 			temp = self.loc_df[['chrom', 'coord', 'vertex_id']]
@@ -580,7 +453,6 @@ class SwanGraph(Graph):
 			self.edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
 			drop_cols = ['chrom', 'v1_coord', 'vertex_id_x', 'v2_coord', 'vertex_id_y']
 
-			self.edge_df.head()
 			ids = self.edge_df.edge_id.tolist()
 			chroms = self.edge_df.chrom.tolist()
 			v1s = self.edge_df.v1_coord.tolist()
@@ -590,12 +462,103 @@ class SwanGraph(Graph):
 
 			edges = {}
 			for eid,ch,v1,v2,strand,etype in zip(ids,chroms,v1s,v2s,strands,types):
-			    edges[(ch,v1,v2,strand,etype)] = {'edge_id': eid}
+				edges[(ch,v1,v2,strand,etype)] = {'edge_id': eid}
 			self.edge_df.drop(drop_cols, axis=1, inplace=True)
-
 		else:
-			edge_id = 0
-		for _,t in transcripts.items():
+			edges = {}
+			n = -1
+
+		return edges, n
+
+	def create_dfs(self, transcripts, exons, from_talon):
+		"""
+		Create loc, edge, and transcript dataframes.
+		"""
+
+		# turn each dataframe back into a dict
+		transcripts = transcripts.to_dict(orient='index')
+		exons = exons.to_dict(orient='index')
+
+		locs = self.create_loc_dict(exons)
+		edges = self.create_edge_dict(transcripts, exons)
+
+		# turn transcripts, edges, and locs into dataframes
+		locs = [{'chrom': key[0],
+				 'coord': key[1],
+				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
+		loc_df = pd.DataFrame(locs)
+
+		edges = [{'v1': item['v1'],
+				  'v2': item['v2'],
+				  'strand': key[3],
+				  'edge_id': item['edge_id'],
+				  'edge_type': item['edge_type']} for key, item in edges.items()]
+		edge_df, transcripts = pd.DataFrame(edges)
+
+		if from_talon:
+			transcripts = [{'tid': key,
+						'tname': item['tname'],
+						'gid': item['gid'],
+						'gname': item['gname'],
+						'path': item['path'],
+						'novelty': item['novelty']} for key, item in transcripts.items()]
+		else:
+			transcripts = [{'tid': key,
+						'tname': item['tname'],
+						'gid': item['gid'],
+						'gname': item['gname'],
+						'path': item['path']} for key, item in transcripts.items()]
+		t_df = pd.DataFrame(transcripts)
+
+		# drop transcripts that are already in the SwanGraph
+		curr_tids = self.t_df.tid.tolist()
+		t_df = t_df.loc[~t_df.tid.isin(curr_tids)]
+
+		# final df formatting
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		return loc_df, edge_df, t_df
+
+	def create_loc_dict(self, exon_df):
+		"""
+		Create location dictionary using the exons found from a GTF or TALON
+		DB.
+		"""
+
+		locs, vertex_id = self.get_current_locs()
+		vertex_id += 1
+		for eid, edge in exon_df.items():
+			chrom = edge['chrom']
+			v1 = edge['v1']
+			v2 = edge['v2']
+
+			# exon start
+			key = (chrom, v1)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
+
+			# exon end
+			key = (chrom, v2)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
+
+		return locs
+
+	def create_edge_dict(self, transcripts, locs):
+		"""
+		Create edge dictionary using the exons found from a GTF or TALON DB.
+		"""
+
+		edges, edge_id = self.get_current_edges()
+		edge_id += 1
+		for ind,entry in t_df.iterrows():
 			t['path'] = []
 			strand = t['strand']
 			t_exons = t['exons']
@@ -641,42 +604,23 @@ class SwanGraph(Graph):
 						edge_id += 1
 					else:
 						t['path'] += [edges[key]['edge_id']]
+		return edges
 
-		# turn transcripts, edges, and locs into dataframes
-		locs = [{'chrom': key[0],
-				 'coord': key[1],
-				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
-		loc_df = pd.DataFrame(locs)
+	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
+	# adapted from Dana Wyman and TALON
+	def create_dfs_gtf(self, gtf_file, verbose):
+		"""
+		Create pandas DataFrames for unique genomic locations, exons, introns,
+		and transcripts from an input GTF file. Merge the resultant DataFrames
+		with those already in the SwanGraph. Called from add_dataset.
 
-		edges = [{'v1': item['v1'],
-				  'v2': item['v2'],
-				  'strand': key[3],
-				  'edge_id': item['edge_id'],
-				  'edge_type': item['edge_type']} for key, item in edges.items()]
-		edge_df = pd.DataFrame(edges)
+		Parameters:
+			gtf_file (str): Path to GTF file
+			vebose (bool): Display progress
+		"""
 
-		if from_talon:
-			transcripts = [{'tid': key,
-						'tname': item['tname'],
-						'gid': item['gid'],
-						'gname': item['gname'],
-						'path': item['path'],
-						'novelty': item['novelty']} for key, item in transcripts.items()]
-		else:
-			transcripts = [{'tid': key,
-						'tname': item['tname'],
-						'gid': item['gid'],
-						'gname': item['gname'],
-						'path': item['path']} for key, item in transcripts.items()]
-		t_df = pd.DataFrame(transcripts)
-
-		# final df formatting
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
+		t_df, exon_df, from_talon = self.parse_gtf(gtf_file, verbose)
+		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
 
 		# concatenate dfs
 		self.loc_df = pd.concat([self.loc_df, loc_df])
@@ -698,7 +642,6 @@ class SwanGraph(Graph):
 		"""
 
 		# make sure files exist
-		check_file_loc(database, 'TALON DB')
 		if pass_list:
 			check_file_loc(pass_list, 'pass list')
 
