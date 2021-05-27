@@ -1,0 +1,91 @@
+{
+	'test1': {
+		'gid': 'test1_gid',
+		'gname': 'test1_gname',
+		'tid': 'test1',
+		'tname': 'test1_tname',
+		'strand': '+',
+		'exons': ['chr1_1_20_+_exon',
+				  'chr1_25_30_+_exon',
+				  'chr1_35_40_+_exon']
+	},
+	'test2': {
+		'gid': 'test2_gid',
+		'gname': 'test2_gname',
+		'tid': 'test2',
+		'tname': 'test2_tname',
+		'strand': '-', 
+		'exons': ['chr2_100_80_-_exon',
+		          'chr2_75_60_-_exon',
+		          'chr2_50_45_-_exon']
+	},
+	'test3': {
+		'gid': 'test2_gid',
+		'gname': 'test2_gname',
+		'tid': 'test3',
+		'tname': 'test3_tname',
+		'strand': '-', 
+		'exons': ['chr2_100_80_-_exon',
+		          'chr2_75_65_-_exon',
+		          'chr2_50_45_-_exon']
+	},
+}
+
+{
+	'chr1_1_20_+_exon': {
+		'eid': 'chr1_1_20_+_exon',
+		'chrom': 'chr1',
+		'v1': '1',
+		'v2': '20',
+		'strand': '+', 
+		'edge_type': 'exon'
+	},
+	'chr1_25_30_+_exon': {
+		'eid': 'chr1_25_30_+_exon',
+		'chrom': 'chr1',
+		'v1': '25',
+		'v2': '30',
+		'strand': '+', 
+		'edge_type': 'exon'
+	},
+	'chr1_35_40_+_exon': {
+		'eid': 'chr1_35_40_+_exon',
+		'chrom': 'chr1',
+		'v1': '35',
+		'v2': '40',
+		'strand': '+', 
+		'edge_type': 'exon'
+	},
+	'chr2_100_80_-_exon': {
+		'eid': 'chr2_100_80_-_exon',
+		'chrom': 'chr2',
+		'v1': '100',
+		'v2': '80',
+		'strand': '-', 
+		'edge_type': 'exon'
+	},
+	'chr2_75_60_-_exon': {
+		'eid': 'chr2_75_60_-_exon',
+		'chrom': 'chr2',
+		'v1': '75',
+		'v2': '60',
+		'strand': '-', 
+		'edge_type': 'exon'
+	},
+	'chr2_50_45_-_exon': {
+		'eid': 'chr2_50_45_-_exon',
+		'chrom': 'chr2',
+		'v1': '50',
+		'v2': '45',
+		'strand': '-', 
+		'edge_type': 'exon'
+	},
+		'chr2_75_65_-_exon': {
+		'eid': 'chr2_75_60_-_exon',
+		'chrom': 'chr2',
+		'v1': '75',
+		'v2': '65',
+		'strand': '-', 
+		'edge_type': 'exon'
+	}
+}

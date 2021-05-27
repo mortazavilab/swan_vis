@@ -465,13 +465,6 @@ def parse_gtf(gtf_file, verbose):
 				attributes = get_fields(fields)
 				start, stop = find_edge_start_stop(start, stop, strand)
 				eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
-				if tid in ['ENSMUST00000179865.6', 'ENSMUST00000020637.8']:
-					if start == 50310867 or stop == 50310794:
-						print()
-						print(tid)
-						print('Start: {}'.format(start))
-						print('Stop: {}'.format(stop))
-						print('Exon ID: {}'.format(eid))
 				tid = attributes['transcript_id']
 
 				# add novel exon to dictionary
@@ -590,7 +583,6 @@ def test_gene(gene_df, conditions):
 	temp = temp.loc[temp.dpi < 0]
 
 	# if there are fewer than 2 isoforms
-	# print(temp)
 	if len(temp.index) >= 2:
 		neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
 	else:

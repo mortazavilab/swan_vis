@@ -524,15 +524,19 @@ class SwanGraph(Graph):
 
 		return loc_df, edge_df, t_df
 
-	def create_loc_dict(self, exon_df):
+	def create_loc_dict(self, exons):
 		"""
 		Create location dictionary using the exons found from a GTF or TALON
 		DB.
+
+		Returns:
+			locs (dict): Dictionary of locations and their vertex IDs
+				in the SwanGraph. Keys: (chrom, coord). Items: vertex_id.
 		"""
 
 		locs, vertex_id = self.get_current_locs()
 		vertex_id += 1
-		for eid, edge in exon_df.items():
+		for eid, edge in exons.items():
 			chrom = edge['chrom']
 			v1 = edge['v1']
 			v2 = edge['v2']
@@ -589,7 +593,7 @@ class SwanGraph(Graph):
 				else:
 					t['path'] += [edges[key]['edge_id']]
 
-				# if this isn't the last exon, we also needa add an intron
+				# if this isn't the last exon, we also need to add an intron
 				# this consists of v2 of the prev exon and v1 of the next exon
 				# also add this intron to the current transcript's path
 				if i < len(t_exons)-1:
@@ -619,7 +623,7 @@ class SwanGraph(Graph):
 			vebose (bool): Display progress
 		"""
 
-		t_df, exon_df, from_talon = self.parse_gtf(gtf_file, verbose)
+		t_df, exon_df, from_talon = parse_gtf(gtf_file, verbose)
 		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
 
 		# concatenate dfs
