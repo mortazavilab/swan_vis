@@ -436,7 +436,7 @@ class SwanGraph(Graph):
 		Returns:
 			edges (dict): Dictionary of unique edges. Keys are (chromosome,
 				start (v1) coord, end (v2) coord, strand, edge_type). Items are
-				the edge IDs from the SwanGraph.
+				the edge IDs, v1, v2, and edge_type from the SwanGraph.
 			n (int): Number of unique edges. -1 if SwanGraph is emtpy.
 		"""
 		if len(self.edge_df.index) != 0:
@@ -475,14 +475,30 @@ class SwanGraph(Graph):
 
 		return edges, n
 
-	def create_dfs(self, transcripts, exons, from_talon):
+	def create_dfs(self, transcripts, exons, from_talon=False):
 		"""
-		Create loc, edge, and transcript dataframes.
+		Create loc, edge, and transcript dataframes. Input parameters are from
+		either parse_gtf or parse_db.
+
+		Parameters:
+			transcripts (dict of dict): Dictionary of transcripts in GTF. Keys are
+				transcript ids. Items are a dictionary of gene id, gene name,
+				transcript id (same as key), transcript name, strand, and exons
+				belonging to the transcript.
+			exons (dict of dict): Dictionary of exons in GTF. Keys are exon ids
+				which consist of chromosome_v1_v2_strand_exon. Items are a
+				dictionary of edge id (same as key), chromosome, v1, v2, strand,
+				and edge type (all exon in this case) of each exon.
+			from_talon (bool): Whether or not the GTF was determined to be
+				from TALON.
+				Default: False
 		"""
 
-		# turn each dataframe back into a dict
-		transcripts = transcripts.to_dict(orient='index')
-		exons = exons.to_dict(orient='index')
+		# turn each dataframe back into a dict, if there's any data
+		if type(transcripts) != dict:
+			transcripts = transcripts.to_dict(orient='index')
+		if type(exons) != dict:
+			exons = exons.to_dict(orient='index')
 
 		locs = self.create_loc_dict(exons)
 		transcripts, edges = self.create_transcript_edge_dicts(transcripts, exons, locs)
@@ -498,7 +514,7 @@ class SwanGraph(Graph):
 				  'strand': key[3],
 				  'edge_id': item['edge_id'],
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
-		edge_df, transcripts = pd.DataFrame(edges)
+		edge_df = pd.DataFrame(edges)
 
 		if from_talon:
 			transcripts = [{'tid': key,

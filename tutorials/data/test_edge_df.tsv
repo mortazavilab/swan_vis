@@ -9,8 +9,8 @@ edge_id_index	v1	v2	strand	edge_type	edge_id	v1_coord	v2_coord
 7	8	9	-	exon	7	75	60
 8	9	10	-	intron	8	60	50
 9	10	11	-	exon	9	50	45
-10	6	7	-	exon	10	100	80
-11	7	8	-	intron	11	80	75
-12	8	12	-	exon	12	75	65
-13	12	10	-	intron	13	65	50
-14	10	11	-	exon	14	50	45
+10	8	12	-	exon	10	75	65
+11	12	10	-	intron	11	65	50
+12	11	10	+	exon	12	45	50
+13	7	9	-	intron	13	80	60
+14	9	10	-	exon	14	60	50
