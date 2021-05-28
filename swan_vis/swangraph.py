@@ -444,10 +444,15 @@ class SwanGraph(Graph):
 
 			# populate edges dict with those that already exist
 			temp = self.loc_df[['chrom', 'coord', 'vertex_id']]
+			temp.reset_index(inplace=True, drop=True)
+
 			self.edge_df = self.edge_df.merge(temp, how='left',
 				left_on='v1', right_on='vertex_id')
 			self.edge_df.rename({'coord': 'v1_coord'}, axis=1, inplace=True)
+
 			temp = self.loc_df[['coord', 'vertex_id']]
+			temp.reset_index(inplace=True, drop=True)
+
 			self.edge_df = self.edge_df.merge(temp, how='left',
 				left_on='v2', right_on='vertex_id')
 			self.edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
@@ -494,7 +499,7 @@ class SwanGraph(Graph):
 				Default: False
 		"""
 
-		# turn each dataframe back into a dict, if there's any data
+		# turn each dataframe back into a dict
 		if type(transcripts) != dict:
 			transcripts = transcripts.to_dict(orient='index')
 		if type(exons) != dict:
@@ -531,9 +536,9 @@ class SwanGraph(Graph):
 						'path': item['path']} for key, item in transcripts.items()]
 		t_df = pd.DataFrame(transcripts)
 
-		# drop transcripts that are already in the SwanGraph
-		curr_tids = self.t_df.tid.tolist()
-		t_df = t_df.loc[~t_df.tid.isin(curr_tids)]
+		# # drop transcripts that are already in the SwanGraph
+		# curr_tids = self.t_df.tid.tolist()
+		# t_df = t_df.loc[~t_df.tid.isin(curr_tids)]
 
 		# final df formatting
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
