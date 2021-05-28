@@ -1,16 +1,14 @@
-edge_id_index	v1	v2	strand	edge_type	edge_id	v1_coord	v2_coord
-0	0	1	+	exon	0	1	20
-1	1	2	+	intron	1	20	25
-2	2	3	+	exon	2	25	30
-3	3	4	+	intron	3	30	35
-4	4	5	+	exon	4	35	40
-5	6	7	-	exon	5	100	80
-6	7	8	-	intron	6	80	75
-7	8	9	-	exon	7	75	60
-8	9	10	-	intron	8	60	50
-9	10	11	-	exon	9	50	45
-10	6	7	-	exon	10	100	80
-11	7	8	-	intron	11	80	75
-12	8	12	-	exon	12	75	65
-13	12	10	-	intron	13	65	50
-14	10	11	-	exon	14	50	45
+vertex_id_index	chrom	coord	vertex_id
+0	chr1	1	0
+1	chr1	20	1
+2	chr1	25	2
+3	chr1	30	3
+4	chr1	35	4
+5	chr1	40	5
+6	chr2	100	6
+7	chr2	80	7
+8	chr2	75	8
+9	chr2	60	9
+10	chr2	50	10
+11	chr2	45	11
+12	chr2	65	12
