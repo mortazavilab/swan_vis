@@ -1,0 +1,2 @@
+tid_index	tname	gid	gname	edge_path	tid	loc_path	novelty
+test2	test2_tname	test2_gid	test2_gname	"0,1,2,3,4"	test2	"0,1,2,3,4,5"	Known

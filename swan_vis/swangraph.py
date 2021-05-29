@@ -174,7 +174,9 @@ class SwanGraph(Graph):
 		# set flag
 		self.annotation = True
 
-	def add_transcriptome(self, fname, pass_list=None, include_isms=False, verbose=False):
+	def add_transcriptome(self, fname, pass_list=None,
+		include_isms=False, verbose=False):
+
 		"""
 		Adds a whole transcriptome from a set of samples. No abundance is
 		included here!
@@ -184,7 +186,7 @@ class SwanGraph(Graph):
 		"""
 
 		# use the add_dataset function to add transcripts to graph
-		self.add_dataset(fname, pass_list=pass_list,
+		tids = self.add_dataset(fname, pass_list=pass_list,
 			include_isms=include_isms,
 			verbose=verbose)
 
@@ -224,15 +226,27 @@ class SwanGraph(Graph):
 		# get loc_df, edge_df, t_df
 		if ftype == 'gtf':
 			check_file_loc(fname, 'GTF')
-			self.create_dfs_gtf(fname, verbose)
+			t_df, exon_df, from_talon = parse_gtf(fname, verbose)
 		elif ftype == 'db':
 			check_file_loc(fname, 'TALON DB')
-			self.create_dfs_db(fname, pass_list, verbose)
+			# t_df, exon_df = parse_db(fname, verbose)
+			# self.create_dfs_db(fname, pass_list, verbose)
 
-		# TODO - this won't work if we add the annotation after
-		# a transcriptome!
+		# keep track of transcripts from GTF if we're adding annotation
 		if annotation:
-			self.t_df[data] = True
+			annot_tids = t_df.tid.tolist()
+
+		# create the dfs with new and preexisting data and assign them to the
+		# df fields of the SwanGraph
+		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
+
+		# label elements from the annotation
+		if annotation:
+			pass
+			# loc_df, edge_df, t_df = self.label_annotated(annot_tids)
 
 		# remove isms if we have access to that information
 		if 'novelty' in self.t_df.columns and not include_isms:
@@ -578,7 +592,8 @@ class SwanGraph(Graph):
 		t_df = pd.concat([self.t_df, t_df])
 
 		# account for mixed novelty content
-		t_df['novelty'] = t_df['novelty'].fillna('Undefined')
+		if 'novelty' in t_df.columns:
+			t_df['novelty'] = t_df['novelty'].fillna('Undefined')
 
 		return loc_df, edge_df, t_df
 
@@ -638,13 +653,11 @@ class SwanGraph(Graph):
 		Returns:
 			transcripts (dict): Dictionary of only NEW transcripts.
 				Keys (str): transcript ID
+				Items (str): TODO
 			edges (dict): Dictionary of edges and their edge IDs
 				in the SwanGraph, including existing and novel edges.
 				Keys: TODO
 				Items: TODO
-
-
-
 		"""
 
 		edges, edge_id = self.get_current_edges()
@@ -697,41 +710,35 @@ class SwanGraph(Graph):
 						t['path'] += [edges[key]['edge_id']]
 		return transcripts, edges
 
-	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
-	# adapted from Dana Wyman and TALON
-	def create_dfs_gtf(self, gtf_file, verbose, annotation):
-		"""
-		Create pandas DataFrames for unique genomic locations, exons, introns,
-		and transcripts from an input GTF file. Merge the resultant DataFrames
-		with those already in the SwanGraph. Called from add_dataset.
-
-		Parameters:
-			gtf_file (str): Path to GTF file
-			verbose (bool): Display progress
-			annotation (bool): GTF contains annotation
-		"""
-
-		t_df, exon_df, from_talon = parse_gtf(gtf_file, verbose)
-
-		# keep track of transcripts from GTF if we're adding annotation
-		if annotation:
-			annot_tids = t_df.tid.tolist()
-
-		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
-
-		# add annotation column
-		if annotation:
-			t_df['annotation'] = t_df.loc[t_df.tid.isin(annot_tids)]
-
-		# set SwanGraph dfs
-		self.loc_df = loc_df
-		self.edge_df = edge_df
-		self.t_df = t_df
-
-		# # concatenate dfs
-		# self.loc_df = pd.concat([self.loc_df, loc_df])
-		# self.edge_df = pd.concat([self.edge_df, edge_df])
-		# self.t_df = pd.concat([self.t_df, t_df])
+	# # create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
+	# # adapted from Dana Wyman and TALON
+	# def create_dfs_gtf(self, gtf_file, verbose):
+	# 	"""
+	# 	Create pandas DataFrames for unique genomic locations, exons, introns,
+	# 	and transcripts from an input GTF file. Merge the resultant DataFrames
+	# 	with those already in the SwanGraph. Called from add_dataset.
+	#
+	# 	Parameters:
+	# 		gtf_file (str): Path to GTF file
+	# 		verbose (bool): Display progress
+	# 	"""
+	#
+	# 	t_df, exon_df, from_talon = parse_gtf(gtf_file, verbose)
+	#
+	# 	# keep track of transcripts from GTF if we're adding annotation
+	# 	if annotation:
+	# 		annot_tids = t_df.tid.tolist()
+	#
+	# 	loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
+	#
+	# 	# add annotation column
+	# 	if annotation:
+	# 		t_df['annotation'] = t_df.loc[t_df.tid.isin(annot_tids)]
+	#
+	# 	# set SwanGraph dfs
+	# 	self.loc_df = loc_df
+	# 	self.edge_df = edge_df
+	# 	self.t_df = t_df
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility
