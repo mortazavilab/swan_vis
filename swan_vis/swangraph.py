@@ -156,6 +156,10 @@ class SwanGraph(Graph):
 				Default: False
 		"""
 
+		# is there already an annotation?
+		if self.annotation:
+			raise ValueError('Annotation already added to SwanGraph')
+
 		# column name for annotation
 		col = 'annotation'
 
@@ -180,7 +184,9 @@ class SwanGraph(Graph):
 		"""
 
 		# use the add_dataset function to add transcripts to graph
-		self.add_dataset(fname, pass_list=pass_list, include_isms=include_isms, verbose=verbose)
+		self.add_dataset(fname, pass_list=pass_list,
+			include_isms=include_isms,
+			verbose=verbose)
 
 		# fill NaN annotation transcripts with false
 		if 'annotation' in self.t_df.columns:
@@ -223,6 +229,8 @@ class SwanGraph(Graph):
 			check_file_loc(fname, 'TALON DB')
 			self.create_dfs_db(fname, pass_list, verbose)
 
+		# TODO - this won't work if we add the annotation after
+		# a transcriptome!
 		if annotation:
 			self.t_df[data] = True
 
@@ -372,7 +380,7 @@ class SwanGraph(Graph):
 		except:
 			raise Error('Problem reading metadata file {}'.format(fname))
 
-		# warn the user about duplicate columns
+		# which columns are duplicate?
 		sg_cols = list(set(self.adata.obs.columns.tolist())-set(['dataset']))
 		meta_cols = list(set(df.columns.tolist())-set(['dataset']))
 		dupe_cols = [c for c in meta_cols if c in sg_cols]
@@ -399,7 +407,6 @@ class SwanGraph(Graph):
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
 	##########################################################################
-
 
 	def get_current_locs(self):
 		"""
@@ -480,23 +487,35 @@ class SwanGraph(Graph):
 
 		return edges, n
 
-	def create_dfs(self, transcripts, exons, from_talon=False):
+	def create_dfs(self, transcripts, exons,
+				   from_talon=False):
 		"""
 		Create loc, edge, and transcript dataframes. Input parameters are from
-		either parse_gtf or parse_db.
+		either parse_gtf or parse_db. By default retains structure and metadata
+		from preexisting transcripts in the SwanGraph.
 
 		Parameters:
-			transcripts (dict of dict): Dictionary of transcripts in GTF. Keys are
-				transcript ids. Items are a dictionary of gene id, gene name,
-				transcript id (same as key), transcript name, strand, and exons
-				belonging to the transcript.
-			exons (dict of dict): Dictionary of exons in GTF. Keys are exon ids
-				which consist of chromosome_v1_v2_strand_exon. Items are a
-				dictionary of edge id (same as key), chromosome, v1, v2, strand,
-				and edge type (all exon in this case) of each exon.
+			transcripts (dict of dict): Dictionary of transcripts from file.
+				Keys (str): transcript id
+				Items (dict): gene id, gene name, transcript id (same as key),
+				transcript name, strand, and exons belonging to the transcript.
+			exons (dict of dict): Dictionary of exons in GTF.
+				Keys (str): exon ids (chromosome_v1_v2_strand_exon)
+				Items (dict): edge id (same as key), chromosome, v1, v2, strand,
+				and edge type (all exon in this case)
 			from_talon (bool): Whether or not the GTF was determined to be
 				from TALON.
 				Default: False
+
+		Returns:
+			loc_df (pandas DataFrame): DataFrame of unique genomic locations
+				from input TALON DB or GTF as well as those already in the
+				SwanGraph.
+			edge_df (pandas DataFrame): DataFrame of unique introns and exons
+				from input TALON DB or GTF as well as those already in the
+				SwanGraph.
+			t_df (pandas DataFrame): DataFrame of unique transcripts from input
+				TALON DB or GTF as well as those already in the SwanGraph.
 		"""
 
 		# turn each dataframe back into a dict
@@ -536,17 +555,30 @@ class SwanGraph(Graph):
 						'path': item['path']} for key, item in transcripts.items()]
 		t_df = pd.DataFrame(transcripts)
 
-		# # drop transcripts that are already in the SwanGraph
-		# curr_tids = self.t_df.tid.tolist()
-		# t_df = t_df.loc[~t_df.tid.isin(curr_tids)]
+		# remove entries that are already in the SwanGraph so we just get
+		# dfs of new entries
+		tids = self.t_df.tid.tolist()
+		eids = self.edge_df.edge_id.tolist()
+		vids = self.loc_df.vertex_id.tolist()
+		t_df = t_df.loc[~t_df.tid.isin(tids)]
+		edge_df = edge_df.loc[~edge_df.edge_id.isin(eids)]
+		loc_df = loc_df.loc[~loc_df.vertex_id.isin(vids)]
 
-		# final df formatting
+		# format indices of dfs
 		loc_df = create_dupe_index(loc_df, 'vertex_id')
 		loc_df = set_dupe_index(loc_df, 'vertex_id')
 		edge_df = create_dupe_index(edge_df, 'edge_id')
 		edge_df = set_dupe_index(edge_df, 'edge_id')
 		t_df = create_dupe_index(t_df, 'tid')
 		t_df = set_dupe_index(t_df, 'tid')
+
+		# and concatenate with those that exist
+		loc_df = pd.concat([self.loc_df, loc_df])
+		edge_df = pd.concat([self.edge_df, edge_df])
+		t_df = pd.concat([self.t_df, t_df])
+
+		# account for mixed novelty content
+		t_df['novelty'] = t_df['novelty'].fillna('Undefined')
 
 		return loc_df, edge_df, t_df
 
@@ -589,7 +621,28 @@ class SwanGraph(Graph):
 
 	def create_transcript_edge_dicts(self, transcripts, exons, locs):
 		"""
-		Create edge dictionary using the exons found from a GTF or TALON DB.
+		Create edge dictionary using the exons found from a GTF or TALON DB, and
+		add the edge path to the transcript dictionary (only dictionary
+		attribute added by this function).
+
+		Parameters:
+			transcripts (dict): Dictionary of transcripts found in the GTF or
+				TALON DB.
+				Keys (str): transcript ID
+				Items (dict): gid, gname, tid, tname, strand, novelty (if talon),
+					exons (list of 'chr_coord1_coord2_strand_exon').
+			exons (dict): Dictionary of exons found in the GTF or TALON DB.
+				Keys (str): chr_v1_c2_strand_exon.
+				Items (dict): eid, chrom, v1, v2, strand, edge_type
+
+		Returns:
+			transcripts (dict): Dictionary of only NEW transcripts.
+				Keys (str): transcript ID
+			edges (dict): Dictionary of edges and their edge IDs
+				in the SwanGraph, including existing and novel edges.
+				Keys: TODO
+				Items: TODO
+
 
 
 		"""
@@ -646,7 +699,7 @@ class SwanGraph(Graph):
 
 	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
 	# adapted from Dana Wyman and TALON
-	def create_dfs_gtf(self, gtf_file, verbose):
+	def create_dfs_gtf(self, gtf_file, verbose, annotation):
 		"""
 		Create pandas DataFrames for unique genomic locations, exons, introns,
 		and transcripts from an input GTF file. Merge the resultant DataFrames
@@ -654,16 +707,31 @@ class SwanGraph(Graph):
 
 		Parameters:
 			gtf_file (str): Path to GTF file
-			vebose (bool): Display progress
+			verbose (bool): Display progress
+			annotation (bool): GTF contains annotation
 		"""
 
 		t_df, exon_df, from_talon = parse_gtf(gtf_file, verbose)
+
+		# keep track of transcripts from GTF if we're adding annotation
+		if annotation:
+			annot_tids = t_df.tid.tolist()
+
 		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
 
-		# concatenate dfs
-		self.loc_df = pd.concat([self.loc_df, loc_df])
-		self.edge_df = pd.concat([self.edge_df, edge_df])
-		self.t_df = pd.concat([self.t_df, t_df])
+		# add annotation column
+		if annotation:
+			t_df['annotation'] = t_df.loc[t_df.tid.isin(annot_tids)]
+
+		# set SwanGraph dfs
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
+
+		# # concatenate dfs
+		# self.loc_df = pd.concat([self.loc_df, loc_df])
+		# self.edge_df = pd.concat([self.edge_df, edge_df])
+		# self.t_df = pd.concat([self.t_df, t_df])
 
 	# create SwanGraph dataframes from a TALON db. Code very ripped from
 	# TALON's create_GTF utility

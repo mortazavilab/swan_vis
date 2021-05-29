@@ -36,15 +36,12 @@ class Graph:
 		self.annotation = False
 
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
-									   'vertex_id',
-									   'TSS',
-									   'TES',
-									   'internal'])
-		self.edge_df = pd.DataFrame(columns=['edge_id', 'edge_type',
-									    'strand', 'v1', 'v2'])
+									   'vertex_id'])
+		self.edge_df = pd.DataFrame(columns=['v1', 'v2', 'strand',
+											 'edge_type', 'edge_id'])
 		self.adata = anndata.AnnData()
-		self.t_df = pd.DataFrame(columns=['tid', 'tname',
-			'gid', 'gname', 'path'])
+		self.t_df = pd.DataFrame(columns=['tname',
+			'gid', 'gname', 'path', 'tid'])
 
 	##########################################################################
 	################# Related to checking contents of Graph ##################
