@@ -359,6 +359,10 @@ def parse_gtf(gtf_file, verbose):
 	Get the unique transcripts and exons that are present in a GTF
 	transcriptome.
 
+	Parameters:
+		gtf_file (str): File path of GTF
+		verbose (bool): Display progress
+
 	Returns:
 		transcripts (dict of dict): Dictionary of transcripts in GTF. Keys are
 			transcript ids. Items are a dictionary of gene id, gene name,
@@ -387,6 +391,7 @@ def parse_gtf(gtf_file, verbose):
 	# dictionaries to hold unique edges and transcripts
 	transcripts = {}
 	exons = {}
+	from_talon = False
 
 	# display progess
 	if verbose:
@@ -428,8 +433,6 @@ def parse_gtf(gtf_file, verbose):
 				if not transcripts:
 					if 'talon_transcript' in attributes:
 						from_talon = True
-					else:
-						from_talon = False
 
 				tid = attributes['transcript_id']
 				gid = attributes['gene_id']

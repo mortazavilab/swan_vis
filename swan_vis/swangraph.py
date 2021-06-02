@@ -160,9 +160,6 @@ class SwanGraph(Graph):
 		if self.annotation:
 			raise ValueError('Annotation already added to SwanGraph')
 
-		# column name for annotation
-		col = 'annotation'
-
 		# use the add_dataset function to add stuff to graph
 		self.add_dataset(fname, include_isms=True, \
 			annotation=True, verbose=verbose)
@@ -183,6 +180,11 @@ class SwanGraph(Graph):
 
 		Parameters:
 			fname (str): Path to GTF or TALON db
+			pass_list (str): Path to pass list file (if passing a TALON DB)
+			include_isms (bool): Include ISMs from input dataset
+				Default: False
+			verbose (bool): Display progress
+				Default: False
 		"""
 
 		# use the add_dataset function to add transcripts to graph
@@ -204,6 +206,7 @@ class SwanGraph(Graph):
 
 		Parameters:
 			fname (str): Path to GTF or TALON db
+			pass_list (str): Path to pass list file
 			include_isms (bool): Include ISMs from input dataset
 				Default: False
 			annotation (bool): Whether transcripts being added are from
@@ -245,22 +248,31 @@ class SwanGraph(Graph):
 
 		# label elements from the annotation
 		if annotation:
-			pass
-			# loc_df, edge_df, t_df = self.label_annotated(annot_tids)
+			self.label_annotated(annot_tids)
 
 		# remove isms if we have access to that information
 		if 'novelty' in self.t_df.columns and not include_isms:
 			self.t_df = self.t_df.loc[self.t_df.novelty != 'ISM']
 
-		# order node ids by genomic position, add node types,
-		# and create graph
-		if verbose:
-			print('Reindexing and sorting entries on genomic location...')
-		self.update_ids(verbose=verbose)
-		self.order_edge_df()
-		self.order_transcripts()
-		self.get_loc_types()
-		self.create_graph_from_dfs()
+		# if there's already an annotation, label the transcripts added
+		# that are not in the annotation
+		if self.annotation and not annotation:
+			self.t_df.annotation = self.t_df.annotation.fillna(False)
+			self.edge_df.annotation = self.edge_df.annotation.fillna(False)
+			self.loc_df.annotation = self.loc_df.annotation.fillna(False)
+
+		# TODO fix this
+		#
+		# # order node ids by genomic position, add node types,
+		# # and create graph
+		# if verbose:
+		# 	print('Reindexing and sorting entries on genomic location...')
+		#
+		# self.update_ids(verbose=verbose)
+		# self.order_edge_df()
+		# self.order_transcripts()
+		# self.get_loc_types()
+		# self.create_graph_from_dfs()
 
 		if verbose:
 			if annotation:
@@ -268,7 +280,7 @@ class SwanGraph(Graph):
 			else:
 				data = 'transcriptome'
 			print()
-			print('{} to the SwanGraph'.format(data.capitalize()))
+			print('{} added to the SwanGraph'.format(data.capitalize()))
 
 
 	def add_abundance(self, counts_file):
@@ -461,26 +473,15 @@ class SwanGraph(Graph):
 			n (int): Number of unique edges. -1 if SwanGraph is emtpy.
 		"""
 		if len(self.edge_df.index) != 0:
+
+			# number of edges currently
 			n = self.edge_df.edge_id.max()
 
-			# populate edges dict with those that already exist
-			temp = self.loc_df[['chrom', 'coord', 'vertex_id']]
-			temp.reset_index(inplace=True, drop=True)
-
-			self.edge_df = self.edge_df.merge(temp, how='left',
-				left_on='v1', right_on='vertex_id')
-			self.edge_df.rename({'coord': 'v1_coord'}, axis=1, inplace=True)
-
-			temp = self.loc_df[['coord', 'vertex_id']]
-			temp.reset_index(inplace=True, drop=True)
-
-			self.edge_df = self.edge_df.merge(temp, how='left',
-				left_on='v2', right_on='vertex_id')
-			self.edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
-			drop_cols = ['chrom', 'v1_coord', 'vertex_id_x', 'v2_coord', 'vertex_id_y']
+			# get a version of edge_df with the coordinates
+			edge_df = self.add_edge_coords()
 
 			edges = {}
-			for ind, entry in self.edge_df.iterrows():
+			for ind, entry in edge_df.iterrows():
 				ch = entry.chrom
 				v1_coord = entry.v1_coord
 				v2_coord = entry.v2_coord
@@ -494,12 +495,37 @@ class SwanGraph(Graph):
 						'v1': v1,
 						'v2': v2}
 				edges[key] = item
-			self.edge_df.drop(drop_cols, axis=1, inplace=True)
 		else:
 			edges = {}
 			n = -1
 
 		return edges, n
+
+	def add_edge_coords(self):
+		"""
+		Add coordinates and chromosome to edge_df from loc_df.
+
+		Returns:
+			edge_df (pandas DataFrame): Copy of self.edge_df with genomic
+				coordinate information
+		"""
+		temp = self.loc_df[['chrom', 'coord', 'vertex_id']]
+		temp.reset_index(inplace=True, drop=True)
+
+		edge_df = self.edge_df.copy(deep=True)
+
+		edge_df = edge_df.merge(temp, how='left',
+			left_on='v1', right_on='vertex_id')
+		edge_df.rename({'coord': 'v1_coord'}, axis=1, inplace=True)
+
+		temp = self.loc_df[['coord', 'vertex_id']]
+		temp.reset_index(inplace=True, drop=True)
+
+		edge_df = edge_df.merge(temp, how='left',
+			left_on='v2', right_on='vertex_id')
+		edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
+
+		return edge_df
 
 	def create_dfs(self, transcripts, exons,
 				   from_talon=False):
@@ -709,6 +735,44 @@ class SwanGraph(Graph):
 					else:
 						t['path'] += [edges[key]['edge_id']]
 		return transcripts, edges
+
+
+	def label_annotated(self, tids):
+		"""
+		From a list of transcript IDs that were added as part of the annotation,
+		add a boolean column to each DataFrame in the SwanGraph indicating if
+		that location/edge/transcript is or is not in the SwanGraph.
+
+		Parameters:
+			tids (list of str): List of transcript IDs from t_df that were parts
+				of the added annotation
+		"""
+
+		print('transcript ids')
+		print(tids)
+
+		# obtain all unique annotated edges
+		edges = self.t_df.loc[tids, 'path'].tolist()
+		edges = list(set([e for path in edges for e in path]))
+		print('annotataed edges')
+		print(edges)
+
+		# obtain all unique annotated locations
+		v1_locs = self.edge_df.loc[edges, 'v1'].tolist()
+		v2_locs = self.edge_df.loc[edges, 'v2'].tolist()
+		print('annotated locs')
+		print(v1_locs)
+		print(v2_locs)
+		locs = list(set(v1_locs+v2_locs))
+
+		# set the annotated column to True for these tids, edges, and locs
+		self.t_df['annotation'] = False
+		self.t_df.loc[tids, 'annotation'] = True
+		self.edge_df['annotation'] = False
+		self.edge_df.loc[edges, 'annotation'] = True
+		self.loc_df['annotation'] = False
+		self.loc_df.loc[locs, 'annotation'] = True
+
 
 	# # create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
 	# # adapted from Dana Wyman and TALON

@@ -129,21 +129,11 @@ class Graph:
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
 
-		# split loc_df into + and - strand parts
-		plus_loc_df = self.loc_df.loc[self.loc_df.strand == '+'].copy(deep=True)
-		minus_loc_df = self.loc_df.loc[self.loc_df.strand == '-'].copy(deep=True)
-
 		# sort each of the dfs by chrom, coord either ascending
 		# or descending based on strand
-		plus_loc_df.sort_values(['chrom', 'coord'],
+		self.loc_df.sort_values(['chrom', 'coord'],
 								 ascending=[True, True],
 								 inplace=True)
-		minus_loc_df.sort_values(['chrom', 'coord'],
-								  ascending=[True, False],
-								  inplace=True)
-
-		# concatenate the two dfs
-		self.loc_df = pd.concat([plus_loc_df, minus_loc_df])
 
 		# dictionary mapping vertex_id to new_id
 		self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]
@@ -264,12 +254,11 @@ class Graph:
 	# convert loc_df, edge_df, and t_df to dictionaries
 	def dfs_to_dicts(self):
 
-
-		# weird bug workaround - when an edge's coordinates and
-		# strandedness are both used as an exon AND an intron...
-		dupe_eids = self.edge_df.loc[self.edge_df.edge_id.duplicated(), 'edge_id'].tolist()
-		for eid in dupe_eids:
-			self.edge_df = self.edge_df.loc[~((self.edge_df.edge_id==eid)&(self.edge_df.edge_type=='exon'))]
+		# # weird bug workaround - when an edge's coordinates and
+		# # strandedness are both used as an exon AND an intron...
+		# dupe_eids = self.edge_df.loc[self.edge_df.edge_id.duplicated(), 'edge_id'].tolist()
+		# for eid in dupe_eids:
+		# 	self.edge_df = self.edge_df.loc[~((self.edge_df.edge_id==eid)&(self.edge_df.edge_type=='exon'))]
 
 		self.loc_df = self.loc_df.to_dict('index')
 		self.edge_df = self.edge_df.to_dict('index')
@@ -308,6 +297,10 @@ class Graph:
 		if 'novelty' in self.t_df.columns.tolist():
 			return True
 		else: return False
+
+	##########################################################################
+	############################# Accessing data ############################
+	##########################################################################
 
 	# gets the names of the dataset columns in the graph
 	def get_dataset_cols(self, include_annotation=True):
@@ -367,6 +360,19 @@ class Graph:
 	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
 		return self.t_df.loc[tid].path
+
+	def get_loc_path_from_edge_path(self, e_path):
+		"""
+		Given the edge path of a transcript, return the corresponding path of
+		locations from loc_df.
+
+		Parameters:
+			e_path (list of int): Edge path from t_df.
+
+		Returns:
+			loc_path (list of int): Location path corresponding to e_path.
+		"""
+
 
 	# get the gene id from the gene name
 	def get_gid_from_gname(self, gname):
