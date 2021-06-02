@@ -41,6 +41,29 @@ class TestFiles(object):
 ###########################################################################
 class TestCreateDFs(object):
 
+    # get_loc_path
+
+    # tests get_loc_path
+    def get_loc_path(self):
+        sg = swan.SwanGraph()
+        data = [[0, [0,1]],
+                [1, [2,3]],
+                 [2, [4,5]]]
+        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path'])
+
+        data = [[0,0,1], [1,1,2], [2,2,3], [3,3,4],
+                [4,4,5], [5,5,6]]
+        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
+
+        data = [0,1,2,3,4,5,6]
+        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
+
+        sg.get_loc_path()
+
+        ctrl_loc_paths = [[0,1,2],[3,4,5],[6,7,8]]
+        loc_paths = sg.t_df.loc_path.tolist()
+        assert ctrl_loc_paths == loc_paths
+
     # tests add_edge_coords
     def test_add_edge_coords(self):
         sg = swan.SwanGraph()
@@ -67,7 +90,6 @@ class TestCreateDFs(object):
         print('control')
         print(ctrl_edge_df)
         assert (edge_df == ctrl_edge_df).all(axis=0).all()
-
 
     # tests get_current_locs with an empty swangraph
     def test_get_current_locs_empty_sg(self):
@@ -685,6 +707,70 @@ class TestCreateDFs(object):
 ############### Related higher-level dataset addition #####################
 ###########################################################################
 class TestDataset(object):
+
+    # tests add_dataset, add_transcriptome, add_annotation, label_annotated,
+    # get_loc_types,
+
+    # test get_loc_types
+    def test_get_loc_types(self):
+        sg = swan.SwanGraph()
+        data = [[0, [0,1], [0,1,2]],
+                [1, [2,3], [3,4,5]],
+                 [2, [4,5], [6,7,8]]]
+        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path', 'loc_path'])
+
+        data = [[0,0,1], [1,1,2], [2,3,4], [3,4,5],
+                [4,6,7], [5,7,8]]
+        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
+
+        data = [0,1,2,3,4,5,6,7,8]
+        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
+
+        sg.get_loc_types()
+
+        ctrl_tss = [0,3,6]
+        tss = sg.loc_df.loc[sg.loc_df.TSS == True, 'vertex_id'].tolist()
+        assert set(ctrl_tss) == set(tss)
+        ctrl_int = [1,4,7]
+        int = sg.loc_df.loc[sg.loc_df.internal == True, 'vertex_id'].tolist()
+        assert set(ctrl_int) == set(int)
+        ctrl_tes = [2,5,8]
+        tes = sg.loc_df.loc[sg.loc_df.TES == True, 'vertex_id'].tolist()
+        assert set(ctrl_tes) == set(ctrl_tes)
+
+
+    # label annotated transcripts
+    def test_label_annotated(self):
+        sg = swan.SwanGraph()
+        data = [[0, [0,1]],
+                [1, [2,3]],
+                 [2, [4,5]]]
+        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path'])
+
+        data = [[0,0,1], [1,1,2], [2,2,3], [3,3,4],
+                [4,4,5], [5,5,6]]
+        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
+
+        data = [0,1,2,3,4,5,6]
+        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
+
+        tids = [0,1]
+        sg.label_annotated(tids)
+
+        ctrl_tids = [0,1]
+        tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
+        assert set(ctrl_tids) == set(tids)
+
+        ctrl_edges = [0,1,2,3]
+        edges = sg.edge_df.loc[sg.edge_df.annotation == True, 'edge_id'].tolist()
+        assert set(ctrl_edges) == set(edges)
+
+        ctrl_locs = [0,1,2,3,4]
+        locs = sg.loc_df.loc[sg.loc_df.annotation == True, 'vertex_id'].tolist()
+        assert set(ctrl_locs) == set(locs)
+
+    # test
+
 
     # add to empty sg, don't add isms
     def test_add_transcriptome(self):

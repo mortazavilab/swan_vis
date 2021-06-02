@@ -34,7 +34,6 @@ class Graph:
 
 		self.datasets = []
 		self.annotation = False
-
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'vertex_id'])
 		self.edge_df = pd.DataFrame(columns=['v1', 'v2', 'strand',
@@ -236,7 +235,7 @@ class Graph:
 		G = nx.DiGraph()
 
 		# add nodes to graph from transcript paths
-		paths = self.t_df.path.tolist()
+		paths = self.t_df.loc_path.tolist()
 		for path in paths:
 			nx.add_path(G, path)
 
@@ -361,17 +360,17 @@ class Graph:
 	def get_path_from_tid(self, tid):
 		return self.t_df.loc[tid].path
 
-	def get_loc_path_from_edge_path(self, e_path):
-		"""
-		Given the edge path of a transcript, return the corresponding path of
-		locations from loc_df.
-
-		Parameters:
-			e_path (list of int): Edge path from t_df.
-
-		Returns:
-			loc_path (list of int): Location path corresponding to e_path.
-		"""
+	# def get_loc_path_from_edge_path(self, e_path):
+	# 	"""
+	# 	Given the edge path of a transcript, return the corresponding path of
+	# 	locations from loc_df.
+	#
+	# 	Parameters:
+	# 		e_path (list of int): Edge path from t_df.
+	#
+	# 	Returns:
+	# 		loc_path (list of int): Location path corresponding to e_path.
+	# 	"""
 
 
 	# get the gene id from the gene name
@@ -451,6 +450,6 @@ def subset_on_gene(sg, gid):
 
 	return subset_sg
 
-# convert a list of vertex ids to a list of edge ids
-def vertex_to_edge_path(path):
-	return [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])]
+# # convert a list of vertex ids to a list of edge ids
+# def vertex_to_edge_path(path):
+# 	return [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])]
