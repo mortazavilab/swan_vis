@@ -1124,22 +1124,22 @@ class SwanGraph(Graph):
 		Requires that an annotation has been added to the SwanGraph.
 
 		Returns:
-		    ir_genes (list of str): A list of gene ids from the SwanGraph with
-		        at least one novel intron retention event
-		    ir_transcripts (list of str): A list of transcript ids from the
-		        SwanGraph with at least one novel intron retention event
-		    ir_edges (list of tuples): A list of exonic edges in the
-		        SwanGraph that retain at least one intronic edge
+			ir_genes (list of str): A list of gene ids from the SwanGraph with
+				at least one novel intron retention event
+			ir_transcripts (list of str): A list of transcript ids from the
+				SwanGraph with at least one novel intron retention event
+			ir_edges (list of tuples): A list of exonic edges in the
+				SwanGraph that retain at least one intronic edge
 		"""
 
 		# get only novel edges
 		if 'annotation' not in self.edge_df.columns:
-		    raise Exception('Cannot find novel IR events without '
-		        'annotation in SwanGraph.')
+			raise Exception('Cannot find novel IR events without '
+				'annotation in SwanGraph.')
 
 		edge_ids = self.edge_df.loc[ \
-		    (self.edge_df.annotation == False)& \
-		    (self.edge_df.edge_type == 'exon'), 'edge_id']
+			(self.edge_df.annotation == False)& \
+			(self.edge_df.edge_type == 'exon'), 'edge_id']
 		print('Analyzing {} exonic edges for IR'.format(len(edge_ids)))
 
 		# get subset of transcripts that are novel to look for ir edges in
@@ -1151,55 +1151,56 @@ class SwanGraph(Graph):
 		ir_genes = []
 		ir_transcripts = []
 		for i, eid in enumerate(edge_ids):
-		    entry = self.edge_df.loc[eid]
-		    v1 = entry.v1
-		    v2 = entry.v2
-		    sub_nodes = [i for i in range(v1+1,v2)]
-		    sub_G = self.G.subgraph(sub_nodes)
+			# subgraph consisting of all nodes between the candidate
+			# intron-retaining edge coords in order and its edges
+			entry = self.edge_df.loc[eid]
+			v1 = entry.v1
+			v2 = entry.v2
+			sub_nodes = [i for i in range(v1+1,v2)]
+			sub_G = self.G.subgraph(sub_nodes)
+			sub_edges = list(sub_G.edges())
+			self.edge_df['tuple_edge_id'] = self.edge_df[['v1', 'v2']].apply(tuple, axis=1)
+			sub_edges = self.edge_df.loc[self.edge_df.tuple_edge_id.isin(sub_edges)]
+			self.edge_df.drop('tuple_edge_id', axis=1, inplace=True)
 
-		    # need way to get this working, bc (v1,v2) ind does not work anymore
-		    sub_edges = list(sub_G.edges())
-		    self.edge_df['tuple_edge_id'] = self.edge_df[['v1', 'v2']].apply(tuple, axis=1)
-		    sub_edges = self.edge_df.loc[self.edge_df.tuple_edge_id.isin(sub_edges)]
+			# find edges that are intronic; if there are none, this is not
+			# an intron-retaining edge
+			sub_edges = sub_edges.loc[sub_edges.edge_type == 'intron']
 
-		    # find edges that are intronic; if there are none, this is not
-		    # an intron-retaining edge
-		    sub_edges = sub_edges.loc[sub_edges.edge_type == 'intron']
+			if len(sub_edges.index) > 0:
 
-		    if len(sub_edges.index) > 0:
+				# transcripts that contain the exon-skipping edge
+				cand_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
 
-		        # transcripts that contain the exon-skipping edge
-		        cand_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
+				# circumvent the ISM bug
+				if len(cand_t_df) == 0:
+					continue
 
-		        # circumvent the ISM bug
-		        if len(cand_t_df) == 0:
-		            continue
+				# does at least one of the retained introns belong
+				# to the same gene as the retaining edge?
+				else:
+					# genes that contain the intron-retaining edge edge
+					cand_genes = cand_t_df.gid.values.tolist()
+					cand_g_df = self.t_df.loc[self.t_df.gid.isin(cand_genes)]
 
-		        # does at least one of the retained introns belong
-		        # to the same gene as the retaining edge?
-		        else:
-		            # genes that contain the intron-retaining edge edge
-		            cand_genes = cand_t_df.gid.values.tolist()
-		            cand_g_df = self.t_df.loc[self.t_df.gid.isin(cand_genes)]
-
-		            # check if the retained edges are in one of the
-		            # intron-retaining genes (wow this is confusing)
-		            for gid in cand_genes:
-		                if gid in ir_genes: continue
-		                for cand_eid in sub_edges.index:
-		                    temp_df = cand_g_df[[cand_eid in path for path in cand_g_df.path.values.tolist()]]
-		                    tids = cand_t_df.tid.tolist()
-		                    if len(temp_df.index) > 0:
-		                        ir_edges.append(eid)
-		                        ir_genes.append(gid)
-		                        ir_transcripts.extend(tids)
+					# check if the retained edges are in one of the
+					# intron-retaining genes (wow this is confusing)
+					for gid in cand_genes:
+						if gid in ir_genes: continue
+						for cand_eid in sub_edges.index:
+							temp_df = cand_g_df[[cand_eid in path for path in cand_g_df.path.values.tolist()]]
+							tids = cand_t_df.tid.tolist()
+							if len(temp_df.index) > 0:
+								ir_edges.append(eid)
+								ir_genes.append(gid)
+								ir_transcripts.extend(tids)
 
 		ir_genes = list(set(ir_genes))
 		ir_transcripts = list(set(ir_transcripts))
 		ir_edges = list(set(ir_edges))
 
 		print('Found {} novel ir events from {} transcripts.'.format(len(ir_genes),
-		    len(ir_transcripts)))
+			len(ir_transcripts)))
 
 		return ir_genes, ir_transcripts, ir_edges
 
@@ -1244,7 +1245,10 @@ class SwanGraph(Graph):
 			sub_nodes = [i for i in range(v1+1,v2)]
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
-			sub_edges = self.edge_df.loc[sub_edges]
+			self.edge_df['tuple_edge_id'] = self.edge_df[['v1', 'v2']].apply(tuple, axis=1)
+			sub_edges = self.edge_df.loc[self.edge_df.tuple_edge_id.isin(sub_edges)]
+			self.edge_df.drop('tuple_edge_id', axis=1, inplace=True)
+
 			# find edges that are exonic; if there are none, this is not
 			# an exon-skipping edge
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'exon']
@@ -1252,7 +1256,7 @@ class SwanGraph(Graph):
 			if len(sub_edges.index) > 0:
 
 				# transcripts that contain the candidate exon-skipping edge
-				skip_t_df = nt_df[[eid in nt_df.path.values.tolist()]]
+				skip_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
 
 				# circumvent the ISM bug
 				if len(skip_t_df) == 0:
@@ -1271,8 +1275,7 @@ class SwanGraph(Graph):
 						if gid in es_genes: continue
 						for skip_eid in sub_edges.index:
 							# transcripts with the exons that are skipped
-							temp_df = skip_g_df[[skip_eid in vertex_to_edge_path(x) \
-									for x in skip_g_df.path.values.tolist()]]
+							temp_df = skip_g_df[[skip_eid in path for path in skip_g_df.path.values.tolist()]]
 							tids = skip_t_df.tid.tolist()
 							if len(temp_df.index) > 0:
 								es_edges.append(eid)
