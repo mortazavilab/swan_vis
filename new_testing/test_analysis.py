@@ -13,6 +13,9 @@ class TestSGAnalysis(object):
 
 # tests find_ir_genes, find_es_genes
 
+# TODO - add update_ids() call before running both find_ir/es_genes to make sure
+# the subgraph shit works
+
     # tests find_es_genes - requires edges to be in order
     def test_find_es_genes(self):
         sg = swan.SwanGraph()

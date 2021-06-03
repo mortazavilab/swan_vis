@@ -141,8 +141,14 @@ class Graph:
 
 		return id_map
 
-	# update vertex ids in loc_df
 	def update_loc_df_ids(self, id_map, verbose):
+		"""
+		Update the vertex IDs in self.loc_df dictionary according to id_map.
+
+		Parameters:
+			id_map (dict): Map of {old_vertex_id: new_vertex_id}
+			verbose (bool): Display progress
+		"""
 
 		loc_df = {}
 
@@ -165,8 +171,15 @@ class Graph:
 
 		self.loc_df = loc_df
 
-	# update vertex ids in edge_df
 	def update_edge_df_ids(self, id_map, verbose):
+		"""
+		Update the vertex IDs in self.edge_df (v1 and v2) dictionary according
+		to id_map.
+
+		Parameters:
+			id_map (dict): Map of {old_vertex_id: new_vertex_id}
+			verbose (bool): Display progress
+		"""
 
 		edge_df = {}
 
@@ -182,11 +195,10 @@ class Graph:
 					pbar.update(1000)
 					pbar.set_description('Reindexing edges')
 
-			new_id = (id_map[edge_id[0]],id_map[edge_id[1]])
-			edge_df[new_id] = item
-			edge_df[new_id]['v1'] = new_id[0]
-			edge_df[new_id]['v2'] = new_id[1]
-			edge_df[new_id]['edge_id'] = new_id
+			edge_df[edge_id] = {}
+			edge_df[edge_id]['v1'] = id_map[item['v1']]
+			edge_df[edge_id]['v2'] = id_map[item['v2']]
+			edge_df[edge_id]['edge_id'] = edge_id
 
 		if verbose:
 			pbar.close()
