@@ -136,14 +136,6 @@ class Graph:
 
 		# dictionary mapping vertex_id to new_id
 		self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]
-
-		# account for combined nodes, will still be labelled as c#,
-		# but can reorder the '#' according to starting coord
-		if 'combined' in self.loc_df.columns:
-			combined_ids = self.loc_df.loc[self.loc_df.combined, 'vertex_id']
-			combined_new_ids = ['c{}'.format(i) for i in range(len(combined_ids))]
-			self.loc_df.loc[combined_ids, 'new_id'] = combined_new_ids
-
 		id_map = self.loc_df['new_id'].to_dict()
 		self.loc_df.drop('new_id', axis=1, inplace=True)
 
@@ -253,12 +245,6 @@ class Graph:
 	# convert loc_df, edge_df, and t_df to dictionaries
 	def dfs_to_dicts(self):
 
-		# # weird bug workaround - when an edge's coordinates and
-		# # strandedness are both used as an exon AND an intron...
-		# dupe_eids = self.edge_df.loc[self.edge_df.edge_id.duplicated(), 'edge_id'].tolist()
-		# for eid in dupe_eids:
-		# 	self.edge_df = self.edge_df.loc[~((self.edge_df.edge_id==eid)&(self.edge_df.edge_type=='exon'))]
-
 		self.loc_df = self.loc_df.to_dict('index')
 		self.edge_df = self.edge_df.to_dict('index')
 		self.t_df = self.t_df.to_dict('index')
@@ -270,11 +256,9 @@ class Graph:
 		self.loc_df = pd.DataFrame.from_dict(self.loc_df, orient='index')
 		self.loc_df.index.names = ['vertex_id']
 
-		# pandas interprets the tuple as a multiindex so we need to fix it
+		# edge_df
 		self.edge_df = pd.DataFrame.from_dict(self.edge_df, orient='index')
-		self.edge_df.reset_index(drop=True, inplace=True)
-		self.edge_df = create_dupe_index(self.edge_df, 'edge_id')
-		self.edge_df = set_dupe_index(self.edge_df, 'edge_id')
+		self.loc_df.index.names = ['edge_id']
 
 		# t_df
 		self.t_df = pd.DataFrame.from_dict(self.t_df, orient='index')

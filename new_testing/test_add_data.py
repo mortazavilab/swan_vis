@@ -41,7 +41,8 @@ class TestFiles(object):
 ###########################################################################
 class TestCreateDFs(object):
 
-    # get_loc_path
+    # get_loc_path, add_edge_coords, get_current_locs, get_current_edges,
+    # create_loc_dict, create_transcript_edge_dict create_dfs,
 
     # tests get_loc_path
     def get_loc_path(self):
