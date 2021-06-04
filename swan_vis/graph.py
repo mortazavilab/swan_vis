@@ -233,43 +233,10 @@ class Graph:
 		self.t_df['loc_path'] = self.t_df.apply(lambda x: \
 			get_transcript_loc_path(x.path, self.edge_df), axis=1)
 
-	def update_t_df_paths(self, id_map, verbose):
-		"""
-		Update the vertex IDs in self.t_df (path) dictionary according
-		to id_map.
-
-		Parameters:
-			id_map (dict): Map of {old_vertex_id: new_vertex_id}
-			verbose (bool): Display progress
-		"""
-
-		t_df = {}
-
-		if verbose:
-			pbar = tqdm(total=len(self.t_df.items()))
-			counter = 0
-
-		for tid, item in self.t_df.items():
-			if verbose:
-				counter+=1
-				if counter % 100 == 0:
-					pbar.update(100)
-					pbar.set_description('Reindexing transcripts')
-
-			path = item['path']
-			new_path = []
-			for n in path:
-				new_path.append(id_map[n])
-			t_df[tid] = item
-			t_df[tid]['path'] = new_path
-
-		if verbose:
-			pbar.close()
-
-		self.t_df = t_df
-
-	# create the graph object from the dataframes
 	def create_graph_from_dfs(self):
+		"""
+		Create the networkx graph object from t_df. 
+		"""
 
 		G = nx.DiGraph()
 
@@ -427,46 +394,46 @@ class Graph:
 ################################## Extras #################################
 ##########################################################################
 
- # subset a graph based on a gene
-def subset_on_gene(sg, gid):
+	 # subset a graph based on a gene
+	def subset_on_gene(self, gid):
 
-	# make sure this gid is even in the Graph
-	sg.check_gene(gid)
+		# make sure this gid is even in the Graph
+		self.check_gene(gid)
 
-	# subset t_df first, it's the easiest
-	t_df = sg.t_df.loc[sg.t_df.gid == gid].copy(deep=True)
-	t_df['path'] = sg.t_df.loc[sg.t_df.gid == gid].apply(
-			lambda x: copy.deepcopy(x.path), axis=1)
+		# subset t_df first, it's the easiest
+		t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
+		t_df['path'] = self.t_df.loc[self.t_df.gid == gid].apply(
+				lambda x: copy.deepcopy(x.path), axis=1)
 
-	# subset loc_df based on all the locs that are in the paths from
-	# the already-subset t_df
-	paths = t_df['path'].tolist()
-	locs = [node for path in paths for node in path]
-	locs = np.unique(locs)
-	loc_df = sg.loc_df.loc[locs].copy(deep=True)
+		# subset loc_df based on all the locs that are in the paths from
+		# the already-subset t_df
+		paths = t_df['path'].tolist()
+		locs = [node for path in paths for node in path]
+		locs = np.unique(locs)
+		loc_df = self.loc_df.loc[locs].copy(deep=True)
 
-	# subset edge_df based on all the edges that are in the paths from
-	# the alread-subset t_df
-	edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
-	edges = list(set(edges))
-	edge_df = sg.edge_df.loc[edges].copy(deep=True)
+		# subset edge_df based on all the edges that are in the paths from
+		# the alread-subset t_df
+		edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
+		edges = list(set(edges))
+		edge_df = self.edge_df.loc[edges].copy(deep=True)
 
-	# create a new graph that's been subset
-	subset_sg = Graph()
-	subset_sg.loc_df = loc_df
-	subset_sg.edge_df = edge_df
-	subset_sg.t_df = t_df
-	subset_sg.datasets = sg.datasets
-	subset_sg.counts = sg.counts
-	subset_sg.tpm = sg.tpm
+		# create a new graph that's been subset
+		subset_sg = Graph()
+		subset_self.loc_df = loc_df
+		subset_self.edge_df = edge_df
+		subset_self.t_df = t_df
+		subset_self.datasets = self.datasets
+		subset_self.counts = self.counts
+		subset_self.tpm = self.tpm
 
-	# renumber locs
-	subset_sg.update_ids()
+		# renumber locs
+		subset_self.update_ids()
 
-	# finally create the graph
-	subset_sg.create_graph_from_dfs()
+		# finally create the graph
+		subset_self.create_graph_from_dfs()
 
-	return subset_sg
+		return subset_sg
 
 # # convert a list of vertex ids to a list of edge ids
 # def vertex_to_edge_path(path):

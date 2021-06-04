@@ -261,21 +261,19 @@ class SwanGraph(Graph):
 			self.edge_df.annotation = self.edge_df.annotation.fillna(False)
 			self.loc_df.annotation = self.loc_df.annotation.fillna(False)
 
-		# TODO fix this
-		#
-		# # order node ids by genomic position, add node types,
-		# # and create graph
-		# if verbose:
-		# 	print('Reindexing and sorting entries on genomic location...')
-		#
-		# self.update_ids(verbose=verbose)
-		# self.order_edge_df()
-		# self.order_transcripts()
-		# self.get_loc_types()
-		# self.create_graph_from_dfs()
+		# order node ids by genomic position, add node types, add loc_path,
+		# and create graph
+		if verbose:
+			print('Reindexing and sorting entries on genomic location...')
 
-		# add the location path as well
-		self.get_loc_path()
+		self.update_ids(verbose=verbose)
+		self.order_edge_df()
+		self.order_transcripts()
+		self.get_loc_types()
+		self.create_graph_from_dfs()
+
+		# # add the location path as well
+		# self.get_loc_path()
 
 		if verbose:
 			if annotation:
@@ -1011,20 +1009,6 @@ class SwanGraph(Graph):
 		self.loc_df = loc_df
 		self.edge_df = edge_df
 		self.t_df = t_df
-
-	def get_loc_path(self):
-		"""
-		Determine the location path of each transcript in the SwanGraph using
-		the edge path and add it to the SwanGraph.
-		"""
-		def get_transcript_loc_path(path, edge_df):
-			start_v1 = [edge_df.loc[path[0], 'v1']]
-			v2s = edge_df.loc[path, 'v2'].tolist()
-			loc_path = start_v1+v2s
-			return loc_path
-
-		self.t_df['loc_path'] = self.t_df.apply(lambda x: \
-			get_transcript_loc_path(x.path, self.edge_df), axis=1)
 
 	def get_loc_types(self):
 		"""

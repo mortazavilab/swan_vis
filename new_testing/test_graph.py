@@ -13,10 +13,10 @@ class TestGraph(object):
 
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
-    # update_edge_df_ids
+    # update_edge_df_ids, update_ids
 
     # todo
-    # update_ids
+    # create_graph_from_dfs, order_edge_df, is_empty, has_novelty, subset_on_gene
 
     # test get_ordered_id_map
     # should order locations by their chromosome, and coordinate
@@ -302,7 +302,49 @@ class TestGraph(object):
                   sg.t_df, ctrl_t_df)
 
 
+    # tests create_graph_from_dfs
+    def test_create_graph_from_dfs(self):
+        sg = swan.SwanGraph()
 
+        data = [[0, 'chr3', 20],
+             [1, 'chr1', 500],
+             [2, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+        sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
+        data = [[2, 'chr3', 20],
+                       [1, 'chr1', 500],
+                       [0, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+
+        # edge
+        data = [[0, 0, 1],
+                [1, 1, 2],
+                [2, 0, 2]]
+        cols = ['edge_id', 'v1', 'v2']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+        sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+
+        # t
+        data = [[0, [0,1], [0,1,2]],
+                [1, [2], [0,2]]]
+        cols = ['tid', 'path', 'loc_path']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+        sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')
+
+        sg.create_graph_from_dfs()
+
+        ctrl_locs = [0,1,2]
+        ctrl_edges = [(0,1), (0,2), (1,2)]
+
+        display_test_ctrl(list(sg.G.nodes), ctrl_locs, 'graph nodes')
+        assert set(list(sg.G.nodes)) == set(ctrl_locs)
+
+        display_test_ctrl(sg.G.edges, ctrl_edges, 'graph edges')
+        assert set(sg.G.edges) == set(ctrl_edges)
 
 
 
