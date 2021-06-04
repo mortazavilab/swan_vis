@@ -5,6 +5,8 @@ import swan_vis as swan
 import networkx as nx
 import math
 import pandas as pd
+import anndata
+
 
 ###########################################################################
 ###################### Utilities in graph.py ##############################
@@ -14,11 +16,58 @@ class TestGraph(object):
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
     # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
-    # check_gene, check_transcript
+    # check_gene, check_transcript, order_edge_df, is_empty, has_novelty
 
     # todo
-    # order_edge_df, is_empty, has_novelty,
+    # , has_abundance,
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # test has_abundance - SwanGraph does have abundance
+    def test_has_abundance_1(self):
+        sg = swan.SwanGraph()
+        obs = ['sample1']
+        var = ['gene1']
+        X = np.array([[0]])
+        sg.adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+        assert sg.has_abundance() == True
+
+    # test has_abundance - SwanGraph does not have abundance
+    def test_has_abundance_2(self):
+        sg = swan.SwanGraph()
+        print(len(sg.adata.obs.index))
+        assert sg.has_abundance() == False
+
+    # test is_empty - SwanGraph is not empty
+    def test_is_empty_1(self):
+        sg = swan.SwanGraph()
+        data = [0]
+        cols = ['tid']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+
+        assert sg.is_empty() == False
+
+    # test is_empty - SwanGraph is empty
+    def test_is_empty_2(self):
+        sg = swan.SwanGraph()
+        assert sg.is_empty() == True
+
+    # test has_novelty - SwanGraph has novelty
+    def test_has_novelty_1(self):
+        sg = swan.SwanGraph()
+        data = [[0, 'ISM']]
+        cols = ['tid', 'novelty']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+
+        assert sg.has_novelty() == True
+
+    # test has_novelty - SwanGraph does not have novelty
+    def test_has_novelty_2(self):
+        sg = swan.SwanGraph()
+        assert sg.has_novelty() == False
+
+
+
 
     # test order_edge_df
     def order_edge_df(self):

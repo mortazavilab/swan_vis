@@ -247,6 +247,7 @@ class Graph:
 		Determine the location path of each transcript in the SwanGraph using
 		the edge path and add it to the SwanGraph.
 		"""
+
 		def get_transcript_loc_path(path, edge_df):
 			start_v1 = [edge_df.loc[path[0], 'v1']]
 			v2s = edge_df.loc[path, 'v2'].tolist()
@@ -312,25 +313,32 @@ class Graph:
 	############################# Other utilities ############################
 	##########################################################################
 
-	# check if any transcripts have been added to the SwanGraph
 	def is_empty(self):
+		"""
+		Checks if any transcripts have been added to the Graph.
+		"""
 		if len(self.t_df.index) == 0:
 			return True
 		else:
 			return False
 
-	# check if novelty information is in the graph
 	def has_novelty(self):
+		"""
+		Checks if any novelty information from the transcripts
+		have been added to the Graph.
+		"""
 		if 'novelty' in self.t_df.columns.tolist():
 			return True
 		else: return False
 
-	# check if the SwanGraph has abundance information
 	def has_abundance(self):
+		"""
+		Checks if any abundance data has been added to the Graph.
+		"""
 		if len(self.adata.obs.index) == 0:
-			return True
-		else:
 			return False
+		else:
+			return True
 
 	##########################################################################
 	############################# Accessing data ############################
