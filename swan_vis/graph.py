@@ -108,6 +108,15 @@ class Graph:
 
 	# update ids according to coordinates in loc_df, edge_df, and t_df
 	def update_ids(self, id_map=None, verbose=False):
+		"""
+		Reindex SwanGraph using sorted genomic coordinates (chromosome, coord).
+		Modifies vertex_ids and replaces them in edge_df and t_df.loc_path.
+
+		Parameters:
+			id_map (dict): Dictionary mapping {old_vertex_id: new_vertex_id}
+				Default: None, will order based on genomic location
+			verbose (bool): Display progress
+		"""
 
 		# if the user didn't already input an id map, just order
 		# according to genomic position
@@ -120,10 +129,12 @@ class Graph:
 		# update the ids according to id_map
 		self.update_loc_df_ids(id_map, verbose)
 		self.update_edge_df_ids(id_map, verbose)
-		self.update_t_df_paths(id_map, verbose)
 
 		# convert back to dfs
 		self.dicts_to_dfs()
+
+		# and add new location paths from the updated vertex ids
+		self.get_loc_path()
 
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
@@ -198,6 +209,9 @@ class Graph:
 			edge_df[edge_id] = {}
 			edge_df[edge_id]['v1'] = id_map[item['v1']]
 			edge_df[edge_id]['v2'] = id_map[item['v2']]
+
+			# edge id stays the same, just change the vertices associated
+			# with it
 			edge_df[edge_id]['edge_id'] = edge_id
 
 		if verbose:
@@ -205,8 +219,29 @@ class Graph:
 
 		self.edge_df = edge_df
 
-	# update vertex ids in t_df
+	def get_loc_path(self):
+		"""
+		Determine the location path of each transcript in the SwanGraph using
+		the edge path and add it to the SwanGraph.
+		"""
+		def get_transcript_loc_path(path, edge_df):
+			start_v1 = [edge_df.loc[path[0], 'v1']]
+			v2s = edge_df.loc[path, 'v2'].tolist()
+			loc_path = start_v1+v2s
+			return loc_path
+
+		self.t_df['loc_path'] = self.t_df.apply(lambda x: \
+			get_transcript_loc_path(x.path, self.edge_df), axis=1)
+
 	def update_t_df_paths(self, id_map, verbose):
+		"""
+		Update the vertex IDs in self.t_df (path) dictionary according
+		to id_map.
+
+		Parameters:
+			id_map (dict): Map of {old_vertex_id: new_vertex_id}
+			verbose (bool): Display progress
+		"""
 
 		t_df = {}
 
@@ -355,19 +390,6 @@ class Graph:
 	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
 		return self.t_df.loc[tid].path
-
-	# def get_loc_path_from_edge_path(self, e_path):
-	# 	"""
-	# 	Given the edge path of a transcript, return the corresponding path of
-	# 	locations from loc_df.
-	#
-	# 	Parameters:
-	# 		e_path (list of int): Edge path from t_df.
-	#
-	# 	Returns:
-	# 		loc_path (list of int): Location path corresponding to e_path.
-	# 	"""
-
 
 	# get the gene id from the gene name
 	def get_gid_from_gname(self, gname):

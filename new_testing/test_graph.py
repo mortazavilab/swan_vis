@@ -16,7 +16,7 @@ class TestGraph(object):
     # update_edge_df_ids
 
     # todo
-    #
+    # update_ids
 
     # test get_ordered_id_map
     # should order locations by their chromosome, and coordinate
@@ -163,6 +163,148 @@ class TestGraph(object):
         sg.update_edge_df_ids(id_map, False)
         display_test_ctrl(sg.edge_df, ctrl_edge_df)
         assert sg.edge_df == ctrl_edge_df
+
+    # tests get_loc_path
+    def get_loc_path(self):
+        sg = swan.SwanGraph()
+        data = [[0, [0,1]],
+                [1, [2,3]],
+                 [2, [4,5]]]
+        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path'])
+
+        data = [[0,0,1], [1,1,2], [2,2,3], [3,3,4],
+                [4,4,5], [5,5,6]]
+        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
+
+        data = [0,1,2,3,4,5,6]
+        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
+
+        sg.get_loc_path()
+
+        ctrl_loc_paths = [[0,1,2],[3,4,5],[6,7,8]]
+        loc_paths = sg.t_df.loc_path.tolist()
+        assert ctrl_loc_paths == loc_paths
+
+    # tests update_ids with id_map=None
+    def test_update_ids(self):
+        sg = swan.SwanGraph()
+
+        # loc
+        data = [[0, 'chr3', 20],
+             [1, 'chr1', 500],
+             [2, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+        sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
+        # ctrl_id_map = {2: 0, 1: 1, 0: 2}
+        data = [[2, 'chr3', 20],
+                       [1, 'chr1', 500],
+                       [0, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        # edge
+        data = [[0, 0, 1],
+                [1, 1, 2],
+                [2, 0, 2]]
+        cols = ['edge_id', 'v1', 'v2']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+        sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+        # ctrl_id_map = {2: 0, 1: 1, 0: 2}
+        data = [[0, 2, 1],
+                [1, 1, 0],
+                [2, 2, 0]]
+        cols = ['edge_id', 'v1', 'v2']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # t
+        data = [[0, [0,1], [0,1,2]],
+                [1, [2], [0,2]]]
+        cols = ['tid', 'path', 'loc_path']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+        sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')        # ctrl_id_map = {2: 0, 1: 1, 0: 2}
+        data = [[0, [0,1], [2,1,0]],
+                [1, [2], [2,0]]]
+        cols = ['tid', 'path', 'loc_path']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        sg.update_ids()
+        check_dfs(sg.loc_df, ctrl_loc_df,
+                  sg.edge_df, ctrl_edge_df,
+                  sg.t_df, ctrl_t_df)
+
+    # tests update_ids with a given id_map
+    def test_update_ids_id_map(self):
+        sg = swan.SwanGraph()
+
+        # loc
+        data = [[0, 'chr3', 20],
+             [1, 'chr1', 500],
+             [2, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+        sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
+        # id_map = {2: 7, 1: 5, 0: 6}
+        data = [[6, 'chr3', 20],
+                       [5, 'chr1', 500],
+                       [7, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        # edge
+        data = [[0, 0, 1],
+                [1, 1, 2],
+                [2, 0, 2]]
+        cols = ['edge_id', 'v1', 'v2']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+        sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+        # id_map = {2: 7, 1: 5, 0: 6}
+        data = [[0, 6, 5],
+                [1, 5, 7],
+                [2, 6, 7]]
+        cols = ['edge_id', 'v1', 'v2']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # t
+        data = [[0, [0,1], [0,1,2]],
+                [1, [2], [0,2]]]
+        cols = ['tid', 'path', 'loc_path']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+        sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')
+        # id_map = {2: 7, 1: 5, 0: 6}
+        data = [[0, [0,1], [6,5,7]],
+                [1, [2], [6,7]]]
+        cols = ['tid', 'path', 'loc_path']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        id_map = {2: 7, 1: 5, 0: 6}
+        sg.update_ids(id_map=id_map)
+        check_dfs(sg.loc_df, ctrl_loc_df,
+                  sg.edge_df, ctrl_edge_df,
+                  sg.t_df, ctrl_t_df)
+
+
+
+
+
 
 
 def display_test_ctrl(test, ctrl, kind=None):

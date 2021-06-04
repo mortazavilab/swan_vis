@@ -41,29 +41,8 @@ class TestFiles(object):
 ###########################################################################
 class TestCreateDFs(object):
 
-    # get_loc_path, add_edge_coords, get_current_locs, get_current_edges,
+    # add_edge_coords, get_current_locs, get_current_edges,
     # create_loc_dict, create_transcript_edge_dict create_dfs,
-
-    # tests get_loc_path
-    def get_loc_path(self):
-        sg = swan.SwanGraph()
-        data = [[0, [0,1]],
-                [1, [2,3]],
-                 [2, [4,5]]]
-        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path'])
-
-        data = [[0,0,1], [1,1,2], [2,2,3], [3,3,4],
-                [4,4,5], [5,5,6]]
-        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
-
-        data = [0,1,2,3,4,5,6]
-        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
-
-        sg.get_loc_path()
-
-        ctrl_loc_paths = [[0,1,2],[3,4,5],[6,7,8]]
-        loc_paths = sg.t_df.loc_path.tolist()
-        assert ctrl_loc_paths == loc_paths
 
     # tests add_edge_coords
     def test_add_edge_coords(self):
