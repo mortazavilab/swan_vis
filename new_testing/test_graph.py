@@ -13,11 +13,36 @@ class TestGraph(object):
 
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
-    # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene
+    # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
+    #
 
     # todo
-    # order_edge_df, is_empty, has_novelty, check_datsets
+    # order_edge_df, is_empty, has_novelty,
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+
+    # test check_gene - gene in SwanGraph
+    def test_check_gene_1(self):
+        sg = swan.SwanGraph()
+        data = [[1,1],
+                [2,1],
+                [3,2]]
+        cols = ['tid', 'gid']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.check_gene(1)
+        sg.check_gene(2)
+
+    # test check_gene - gene is not in SwanGraph
+    def test_check_gene_2(self):
+        sg = swan.SwanGraph()
+        data = [[1,1],
+                [2,1],
+                [3,2]]
+        cols = ['tid', 'gid']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        with pytest.raises(Exception) as e:
+            sg.check_gene(3)
+        assert 'Gene 3 not' in str(e.value)
 
     # test check_datasets - dataset is in SwanGraph, non-list dataset
     def test_check_datasets_1(self):

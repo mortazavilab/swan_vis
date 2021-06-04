@@ -66,19 +66,19 @@ class Graph:
 								'Datasets in graph are {}'.format(d, g_datasets))
 
 
-	# check that input datasets have abundance data in the Graph:
-	def check_abundances(self, datasets):
-
-		# make sure we have an iterable
-		if type(datasets) != list:
-			datasets = [datasets]
-
-		ab_cols = self.get_count_cols()
-		for d in datasets:
-			if '{}_counts'.format(d) not in ab_cols:
-				raise Exception('Abundance for dataset {} not present in graph. '
-								'Datasets with abundance information '
-								'in graph are {}'.format(d, ab_cols))
+	# # check that input datasets have abundance data in the Graph:
+	# def check_abundances(self, datasets):
+	#
+	# 	# make sure we have an iterable
+	# 	if type(datasets) != list:
+	# 		datasets = [datasets]
+	#
+	# 	ab_cols = self.get_count_cols()
+	# 	for d in datasets:
+	# 		if '{}_counts'.format(d) not in ab_cols:
+	# 			raise Exception('Abundance for dataset {} not present in graph. '
+	# 							'Datasets with abundance information '
+	# 							'in graph are {}'.format(d, ab_cols))
 
 	# check that de tests have been run
 	def check_de(self, de_type):
@@ -91,14 +91,19 @@ class Graph:
 		else:
 			return False
 
-	# check if there are even any datasets
-	def check_if_any_datasets(self, task):
-		if self.datasets == None:
-			raise Exception('No datasets found in graph. '
-				'Cannot perform {}'.format(task))
+	# # check if there are even any datasets
+	# def check_if_any_datasets(self, task):
+	# 	if self.datasets == None:
+	# 		raise Exception('No datasets found in graph. '
+	# 			'Cannot perform {}'.format(task))
 
-	# check if gid is in SwanGraph
 	def check_gene(self, gid):
+		"""
+		Check if gene is in Graph. Raise exception if not.
+
+		Parameters:
+			gid (str): Gene ID to check for
+		"""
 		if gid not in self.t_df.gid.tolist():
 			raise Exception('Gene {} not found in Graph.'.format(gid))
 
