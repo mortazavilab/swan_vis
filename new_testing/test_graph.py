@@ -14,12 +14,35 @@ class TestGraph(object):
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
     # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
-    #
+    # check gene
 
     # todo
     # order_edge_df, is_empty, has_novelty,
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
 
+    # test check_transcript - trnascript in SwanGraph
+    def test_check_transcript_1(self):
+        sg = swan.SwanGraph()
+        data = [[1,1],
+                [2,1],
+                [3,2]]
+        cols = ['tid', 'gid']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.check_transcript(1)
+        sg.check_transcript(2)
+        sg.check_transcript(3)
+
+    # test check_transcript - transcript is not in SwanGraph
+    def test_check_transcript_2(self):
+        sg = swan.SwanGraph()
+        data = [[1,1],
+                [2,1],
+                [3,2]]
+        cols = ['tid', 'gid']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        with pytest.raises(Exception) as e:
+            sg.check_transcript(4)
+        assert 'Transcript 4 not' in str(e.value)
 
     # test check_gene - gene in SwanGraph
     def test_check_gene_1(self):

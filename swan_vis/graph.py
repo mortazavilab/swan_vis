@@ -107,8 +107,13 @@ class Graph:
 		if gid not in self.t_df.gid.tolist():
 			raise Exception('Gene {} not found in Graph.'.format(gid))
 
-	# check if tid is in SwanGraph
 	def check_transcript(self, tid):
+		"""
+		Check if transcript is in Graph. Raise exception if not.
+
+		Parameters:
+			tid (str): Transcript ID to check for
+		"""
 		if tid not in self.t_df.tid.tolist():
 			raise Exception('Transcript {} not found in Graph.'.format(tid))
 
