@@ -235,7 +235,7 @@ class Graph:
 
 	def create_graph_from_dfs(self):
 		"""
-		Create the networkx graph object from t_df. 
+		Create the networkx graph object from t_df.
 		"""
 
 		G = nx.DiGraph()
@@ -394,8 +394,17 @@ class Graph:
 ################################## Extras #################################
 ##########################################################################
 
-	 # subset a graph based on a gene
+	# subset a graph based on a gene
 	def subset_on_gene(self, gid):
+		"""
+		Subset the swan Graph on a given gene and return the subset graph.
+
+		Parameters:
+			gid (str): Gene ID to subset on
+
+		returns:
+			subset_sg (swan Graph): Swan Graph subset on the input gene.
+		"""
 
 		# make sure this gid is even in the Graph
 		self.check_gene(gid)
@@ -404,34 +413,35 @@ class Graph:
 		t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
 		t_df['path'] = self.t_df.loc[self.t_df.gid == gid].apply(
 				lambda x: copy.deepcopy(x.path), axis=1)
+		t_df['loc_path'] = self.t_df.loc[self.t_df.gid == gid].apply(
+				lambda x: copy.deepcopy(x.loc_path), axis=1)
 
 		# subset loc_df based on all the locs that are in the paths from
 		# the already-subset t_df
-		paths = t_df['path'].tolist()
+		paths = t_df['loc_path'].tolist()
 		locs = [node for path in paths for node in path]
 		locs = np.unique(locs)
 		loc_df = self.loc_df.loc[locs].copy(deep=True)
 
 		# subset edge_df based on all the edges that are in the paths from
 		# the alread-subset t_df
-		edges = [(v1,v2) for path in paths for v1,v2 in zip(path[:-1],path[1:])]
-		edges = list(set(edges))
+		paths = t_df['path'].tolist()
+		edges = [node for path in paths for node in path]
+		edges = np.unique(edges)
 		edge_df = self.edge_df.loc[edges].copy(deep=True)
 
 		# create a new graph that's been subset
 		subset_sg = Graph()
-		subset_self.loc_df = loc_df
-		subset_self.edge_df = edge_df
-		subset_self.t_df = t_df
-		subset_self.datasets = self.datasets
-		subset_self.counts = self.counts
-		subset_self.tpm = self.tpm
+		subset_sg.loc_df = loc_df
+		subset_sg.edge_df = edge_df
+		subset_sg.t_df = t_df
+		subset_sg.datasets = self.datasets
 
 		# renumber locs
-		subset_self.update_ids()
+		subset_sg.update_ids()
 
 		# finally create the graph
-		subset_self.create_graph_from_dfs()
+		subset_sg.create_graph_from_dfs()
 
 		return subset_sg
 

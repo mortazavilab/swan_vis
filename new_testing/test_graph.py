@@ -13,10 +13,10 @@ class TestGraph(object):
 
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
-    # update_edge_df_ids, update_ids
+    # update_edge_df_ids, , create_graph_from_dfs
 
     # todo
-    # create_graph_from_dfs, order_edge_df, is_empty, has_novelty, subset_on_gene
+    # order_edge_df, is_empty, has_novelty, subset_on_gene
 
     # test get_ordered_id_map
     # should order locations by their chromosome, and coordinate
@@ -346,8 +346,157 @@ class TestGraph(object):
         display_test_ctrl(sg.G.edges, ctrl_edges, 'graph edges')
         assert set(sg.G.edges) == set(ctrl_edges)
 
+    # tests subset_on_gene_1
+    def test_subset_on_gene_1(self):
+        sg = swan.SwanGraph()
 
+        # loc_df
+        data = [[0, 1, 0],
+                [1, 1, 1],
+                [2, 1, 2],
+                [3, 1, 3],
+                [4, 1, 4],
+                [5, 1, 5],
+                [6, 1, 6]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+        sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
 
+        data = [[0, 1, 0],
+                [1, 1, 1],
+                [2, 1, 2],
+                [3, 1, 3]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        # edge_df
+        data = [[0, 0, 1],
+                [1, 1, 2],
+                [2, 2, 3],
+                [3, 0, 3],
+                [4, 4, 5],
+                [5, 5, 6],
+                [6, 1, 4]]
+        cols = ['edge_id', 'v1', 'v2']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+        sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+
+        data = [[0, 0, 1],
+                [1, 1, 2],
+                [2, 2, 3],
+                [3, 0, 3]]
+        cols = ['edge_id', 'v1', 'v2']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # t_df
+        data = [[0, 1, [0,1,2], [0,1,2,3]],
+                [1, 1, [3], [0,3]],
+                [2, 2, [4,5], [1,4,5,6]]]
+        cols = ['tid', 'gid', 'path', 'loc_path']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+        sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')
+
+        data = [[0, 1, [0,1,2], [0,1,2,3]],
+                [1, 1, [3], [0,3]]]
+        cols = ['tid', 'gid', 'path', 'loc_path']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        sg_subset = sg.subset_on_gene(1)
+
+        check_dfs(sg_subset.loc_df, ctrl_loc_df,
+                  sg_subset.edge_df, ctrl_edge_df,
+                  sg_subset.t_df, ctrl_t_df)
+
+    # tests subset_on_gene_2
+    def test_subset_on_gene_2(self):
+        sg = swan.SwanGraph()
+
+        # loc_df
+        data = [[0, 1, 0],
+                [1, 1, 1],
+                [2, 1, 2],
+                [3, 1, 3],
+                [4, 1, 4],
+                [5, 1, 5],
+                [6, 1, 6]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+        sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
+
+        # data = [[0, 1, 0],
+        #         [0 (1), 1, 1],
+        #         [2, 1, 2],
+        #         [3, 1, 3],
+        #         [1 (4), 1, 4],
+        #         [2 (5), 1, 5],
+        #         [3 (6), 1, 6]]
+        data = [[0, 1, 1],
+                [1, 1, 4],
+                [2, 1, 5],
+                [3, 1, 6]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        # edge_df
+        data = [[0, 0, 1],
+                [1, 0, 1],
+                [2, 2, 3],
+                [3, 0, 3],
+                [4, 4, 5],
+                [5, 5, 6],
+                [6, 1, 4]]
+        cols = ['edge_id', 'v1', 'v2']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+        sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+
+        # data = [[0, 0, 1],
+        #         [1, 1, 2],
+        #         [2, 2, 3],
+        #         [3, 0, 3],
+        #         [4, 1(4), 2(5)],
+        #         [5, 2(5), 3(6)],
+        #         [6, 0(1), 1(4)]]
+        data = [[4, 1, 2],
+                [5, 2, 3],
+                [6, 0, 1]]
+        cols = ['edge_id', 'v1', 'v2']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # t_df
+        data = [[0, 1, [0,1,2], [0,1,2,3]],
+                [1, 1, [3], [0,3]],
+                [2, 2, [6,4,5], [1,4,5,6]]]
+        cols = ['tid', 'gid', 'path', 'loc_path']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+        sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')
+
+        data = [[2, 2, [6,4,5], [0,1,2,3]]]
+        cols = ['tid', 'gid', 'path', 'loc_path']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        sg_subset = sg.subset_on_gene(2)
+
+        check_dfs(sg_subset.loc_df, ctrl_loc_df,
+                  sg_subset.edge_df, ctrl_edge_df,
+                  sg_subset.t_df, ctrl_t_df)
 
 def display_test_ctrl(test, ctrl, kind=None):
     if kind:
