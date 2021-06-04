@@ -13,10 +13,36 @@ class TestGraph(object):
 
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
-    # update_edge_df_ids, , create_graph_from_dfs
+    # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene
 
     # todo
-    # order_edge_df, is_empty, has_novelty, subset_on_gene
+    # order_edge_df, is_empty, has_novelty, check_datsets
+    # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # test check_datasets - dataset is in SwanGraph, non-list dataset
+    def test_check_datasets_1(self):
+        sg = swan.SwanGraph()
+        sg.datasets = 'test1'
+        query = 'test1'
+        sg.check_datasets(query)
+
+    # test check_datasets - datasets are in SwanGraph, list datasets
+    def test_check_datasets_2(self):
+        sg = swan.SwanGraph()
+        sg.datasets = ['test1', 'test2']
+        query = ['test1', 'test2']
+        sg.check_datasets(query)
+
+    # test check_datasets - dataset is not in the SwanGraph
+    def test_check_datasets_3(self):
+        sg = swan.SwanGraph()
+        sg.datasets = ['test1', 'test2']
+        query = 'test3'
+        with pytest.raises(Exception) as e:
+            sg.check_datasets(query)
+        assert 'Dataset test3 not' in str(e.value)
+
+
 
     # test get_ordered_id_map
     # should order locations by their chromosome, and coordinate

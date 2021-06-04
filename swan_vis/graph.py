@@ -17,10 +17,8 @@ class Graph:
 		----------
 		datasets (list of str):
 			Names of datasets in the Graph
-		counts (list of str):
-			Names of columns holding counts in the Graph
-		tpm (list of str):
-			Names of columns holding tpm values in the Graph
+		annotation (bool):
+			Whether an annotation transcriptome has been added.
 		loc_df (pandas DataFrame):
 			DataFrame of all unique observed genomic
 			coordinates in the transcriptome
@@ -48,6 +46,14 @@ class Graph:
 
 	# check that input datasets are in the Graph:
 	def check_datasets(self, datasets):
+		"""
+		Checks that an input dataset or list of datasets are present in
+		the Graph. Raises an exception if the dataset is not found.
+
+		Parameters:
+			datasets (str or list of str): Dataset or list of datasets to
+				check for.
+		"""
 
 		# make sure we have an iterable
 		if type(datasets) != list:
@@ -282,9 +288,9 @@ class Graph:
 	############################# Other utilities ############################
 	##########################################################################
 
-	# check if anything has been added to the graph yet
+	# check if any transcripts have been added to the SwanGraph
 	def is_empty(self):
-		if len(self.adata.obs.index) == 0:
+		if len(self.t_df.index) == 0:
 			return True
 		else:
 			return False
@@ -294,6 +300,13 @@ class Graph:
 		if 'novelty' in self.t_df.columns.tolist():
 			return True
 		else: return False
+
+	# check if the SwanGraph has abundance information
+	def has_abundance(self):
+		if len(self.adata.obs.index) == 0:
+			return True
+		else:
+			return False
 
 	##########################################################################
 	############################# Accessing data ############################
@@ -311,39 +324,39 @@ class Graph:
 				datasets.remove('annotation')
 				return datasets
 
-	# gets the names of the counts columns in the graph
-	# returns None if no counts have been added
-	# if datasets option given, returns the counts
-	# columns associated with the input datasets
-	def get_count_cols(self, datasets=None):
-
-		if datasets:
-			if type(datasets) != list:
-				datasets = [datasets]
-			self.check_abundances(datasets)
-			counts_cols = []
-			for d in datasets:
-				counts_cols.append('{}_counts'.format(d))
-			return counts_cols
-
-		return self.counts
-
-	# gets the names of tpm columns in the graph
-	# returns None if no counts have been added
-	# if datasets option given, returns the counts
-	# columns associated with the input datasets
-	def get_tpm_cols(self, datasets=None):
-
-		if datasets:
-			if type(datasets) != list:
-				datasets = [datasets]
-			self.check_abundances(datasets)
-			tpm_cols = []
-			for d in datasets:
-				tpm_cols.append('{}_tpm'.format(d))
-			return tpm_cols
-
-		return self.tpm
+	# # gets the names of the counts columns in the graph
+	# # returns None if no counts have been added
+	# # if datasets option given, returns the counts
+	# # columns associated with the input datasets
+	# def get_count_cols(self, datasets=None):
+	#
+	# 	if datasets:
+	# 		if type(datasets) != list:
+	# 			datasets = [datasets]
+	# 		self.check_abundances(datasets)
+	# 		counts_cols = []
+	# 		for d in datasets:
+	# 			counts_cols.append('{}_counts'.format(d))
+	# 		return counts_cols
+	#
+	# 	return self.counts
+	#
+	# # gets the names of tpm columns in the graph
+	# # returns None if no counts have been added
+	# # if datasets option given, returns the counts
+	# # columns associated with the input datasets
+	# def get_tpm_cols(self, datasets=None):
+	#
+	# 	if datasets:
+	# 		if type(datasets) != list:
+	# 			datasets = [datasets]
+	# 		self.check_abundances(datasets)
+	# 		tpm_cols = []
+	# 		for d in datasets:
+	# 			tpm_cols.append('{}_tpm'.format(d))
+	# 		return tpm_cols
+	#
+	# 	return self.tpm
 
 	# gets strandedness of transcript from transcript id
 	def get_strand_from_tid(self, tid):
@@ -444,7 +457,3 @@ class Graph:
 		subset_sg.create_graph_from_dfs()
 
 		return subset_sg
-
-# # convert a list of vertex ids to a list of edge ids
-# def vertex_to_edge_path(path):
-# 	return [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])]
