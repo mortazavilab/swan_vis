@@ -354,7 +354,7 @@ class SwanGraph(Graph):
 
 		# if there is preexisting abundance data in the SwanGraph, concatenate
 		# otherwise, adata is the new transcript level adata
-		if self.is_empty():
+		if self.has_abundance():
 
 			# create transcript-level adata object
 			self.adata = anndata.AnnData(var=var, obs=obs, X=X)
@@ -448,7 +448,7 @@ class SwanGraph(Graph):
 			n (int): Number of unique genomic locations. -1 if SwanGraph
 				is empty.
 		"""
-		if len(self.loc_df.index) != 0:
+		if not self.is_empty():
 			n = self.loc_df.vertex_id.max()
 
 			ids = self.loc_df.vertex_id.tolist()
@@ -473,7 +473,8 @@ class SwanGraph(Graph):
 				the edge IDs, v1, v2, and edge_type from the SwanGraph.
 			n (int): Number of unique edges. -1 if SwanGraph is emtpy.
 		"""
-		if len(self.edge_df.index) != 0:
+
+		if not self.is_empty():
 
 			# number of edges currently
 			n = self.edge_df.edge_id.max()

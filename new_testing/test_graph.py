@@ -14,11 +14,32 @@ class TestGraph(object):
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
     # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
-    # check gene
+    # check_gene, check_transcript
 
     # todo
     # order_edge_df, is_empty, has_novelty,
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # test order_edge_df
+    def order_edge_df(self):
+        sg = swan.SwanGraph()
+        data = [[0, 6, 7],
+                [1, 0, 1],
+                [2, 2, 3]]
+        cols = ['edge_id', 'v1', 'v2']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        data = [[1, 0, 1],
+                [2, 2, 3],
+                [0, 6, 7]]
+        cols = ['edge_id', 'v1', 'v2']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+
+        print('test')
+        print(sg.edge_df)
+        print('control')
+        print(ctrl_edge_df)
+        assert (edge_df == ctrl_edge_df).all(axis=0).all()
+
 
     # test check_transcript - trnascript in SwanGraph
     def test_check_transcript_1(self):

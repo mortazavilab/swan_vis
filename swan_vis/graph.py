@@ -154,6 +154,13 @@ class Graph:
 
 	# get a dictionary mapping vertex id to ordered new vertex id
 	def get_ordered_id_map(self):
+		"""
+		Get a dictionary to convert old vertex IDs to new vertex IDs, with
+		locs ordered by genomic location (chr, coord).
+
+		Returns:
+			id_map (dict): Dictionary of {old_vertex_id: new_vertex_id}
+		"""
 
 		# sort each of the dfs by chrom, coord either ascending
 		# or descending based on strand
@@ -263,24 +270,31 @@ class Graph:
 
 		self.G = G
 
-	# order edge df based on source id
 	def order_edge_df(self):
+		"""
+		Order Graph's edge_df based on the v1 vertex ID, followed by
+		v2 vertex ID.
+		"""
 		self.edge_df.sort_values(by=['v1', 'v2'], inplace=True)
-
 
 	##########################################################################
 	####### Functions to switch back and forth between dfs and dicts #########
 	##########################################################################
 
-	# convert loc_df, edge_df, and t_df to dictionaries
 	def dfs_to_dicts(self):
+		"""
+		Convert Graph's, loc_df, edge_df, and t_df to dictionaries.
+		"""
 
 		self.loc_df = self.loc_df.to_dict('index')
 		self.edge_df = self.edge_df.to_dict('index')
 		self.t_df = self.t_df.to_dict('index')
 
-	# convert dictionary versions of loc_df, edge_df, and t_df to dfs
 	def dicts_to_dfs(self):
+		"""
+		Convert Graph's loc_df, edge_df, and t_df dictionaries back into
+		pandas DataFrames
+		"""
 
 		# loc_df
 		self.loc_df = pd.DataFrame.from_dict(self.loc_df, orient='index')
