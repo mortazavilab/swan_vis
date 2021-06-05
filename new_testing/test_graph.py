@@ -16,13 +16,23 @@ class TestGraph(object):
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
     # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
     # check_gene, check_transcript, order_edge_df, is_empty, has_novelty,
-    # has_abundance
+    # has_abundance, get_strand_from_gid, get_strand_from_tid
 
     # todo
-    # get_strand_from_tid, get_strand_from_gid, get_path_from_tid,
+    # get_path_from_tid,
     # get get_gid_from_gname, get_gid_from_tid, get_gene_min_max
     # get_transcript_min_max
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # test get_path_from_tid
+    def test_get_path_from_tid(self):
+        sg = make_gene_sg()
+        assert sg.get_path_from_tid(0) == [0, 1]
+
+    # test get_loc_path_from_tid
+    def test_get_loc_path_from_tid(self):
+        sg = make_gene_sg()
+        assert sg.get_loc_path_from_tid(0) == [2,1,0]
 
     # tests get_strand_from_gid - no antisense
     def test_get_strand_from_gid_1(self):
@@ -727,7 +737,7 @@ def make_gene_sg():
     sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
 
     data = [[0, 1, '1', [0, 1], [2,1,0], 'Antisense'],
-            [1, 1, '1', [2,3], [0,1,2], 'Known'],
+            [1, 1, '1', [2, 3], [0,1,2], 'Known'],
             [2, 2, '2', [4], [3,4], 'NIC'],
             [3, 2, '2', [4], [2,4], 'Known']]
     cols = ['tid', 'gid', 'gname', 'path', 'loc_path', 'novelty']

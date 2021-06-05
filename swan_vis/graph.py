@@ -413,9 +413,23 @@ class Graph:
 			vertex = self.t_df.loc[(self.t_df.gid == gid)].path.tolist()[0][0]
 		return self.edge_df.loc[vertex, 'strand']
 
-	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
+		"""
+		Return the edge path of the input transcript ID.
+
+		Parameters:
+			tid (str): Transcript ID
+		"""
 		return self.t_df.loc[tid].path
+
+	def get_loc_path_from_tid(self, tid):
+		"""
+		Return the location path of the input transcript ID.
+
+		Parameters:
+			tid (str): Transcript ID
+		"""
+		return self.t_df.loc[tid].loc_path
 
 	# get the gene id from the gene name
 	def get_gid_from_gname(self, gname):
