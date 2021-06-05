@@ -7,7 +7,6 @@ import math
 import pandas as pd
 import anndata
 
-
 ###########################################################################
 ###################### Utilities in graph.py ##############################
 ###########################################################################
@@ -16,11 +15,30 @@ class TestGraph(object):
     # done
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
     # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
-    # check_gene, check_transcript, order_edge_df, is_empty, has_novelty
+    # check_gene, check_transcript, order_edge_df, is_empty, has_novelty,
+    # has_abundance
 
     # todo
-    # , has_abundance,
+    # get_strand_from_tid, get_strand_from_gid, get_path_from_tid,
+    # get get_gid_from_gname, get_gid_from_tid, get_gene_min_max
+    # get_transcript_min_max
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # tests get_strand_from_gid - no antisense
+    def test_get_strand_from_gid_1(self):
+        sg = make_gene_sg()
+        assert sg.get_strand_from_gid(2) == '-'
+
+    # tests get_strand_from_gid - yes antisense
+    def test_get_strand_from_gid_2(self):
+        sg = make_gene_sg()
+        assert sg.get_strand_from_gid(1) == '+'
+
+    # tests get_strand_from_tid
+    def test_get_strand_from_tid(self):
+        sg = make_gene_sg()
+        assert sg.get_strand_from_tid(0) == '-'
+        assert sg.get_strand_from_tid(1) == '+'
 
     # test has_abundance - SwanGraph does have abundance
     def test_has_abundance_1(self):
@@ -65,9 +83,6 @@ class TestGraph(object):
     def test_has_novelty_2(self):
         sg = swan.SwanGraph()
         assert sg.has_novelty() == False
-
-
-
 
     # test order_edge_df
     def order_edge_df(self):
@@ -686,3 +701,38 @@ def check_dfs(loc_df, ctrl_loc_df,
     print('control')
     print(ctrl_t_df)
     assert (t_df == ctrl_t_df).all(axis=0).all()
+
+# two genes, one on minus strand and one on plus strand
+def make_gene_sg():
+    sg = swan.SwanGraph()
+    data = [[0, 0, 0],
+            [1, 1, 1],
+            [2, 2, 2],
+            [3, 3, 3],
+            [4, 4, 4]]
+    cols = ['vertex_id', 'chrom', 'coord']
+    sg.loc_df = pd.DataFrame(data=data, columns=cols)
+    sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+    sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
+
+    data = [[0, 2, 1, '-'],
+            [1, 1, 0, '-'],
+            [2, 0, 1, '+'],
+            [3, 1, 2, '+'],
+            [4, 3, 4, '-'],
+            [5, 2, 4, '-']]
+    cols = ['edge_id', 'v1', 'v2', 'strand']
+    sg.edge_df = pd.DataFrame(data=data, columns=cols)
+    sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+    sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+
+    data = [[0, 1, '1', [0, 1], [2,1,0], 'Antisense'],
+            [1, 1, '1', [2,3], [0,1,2], 'Known'],
+            [2, 2, '2', [4], [3,4], 'NIC'],
+            [3, 2, '2', [4], [2,4], 'Known']]
+    cols = ['tid', 'gid', 'gname', 'path', 'loc_path', 'novelty']
+    sg.t_df = pd.DataFrame(data=data, columns=cols)
+    sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+    sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')
+
+    return sg

@@ -390,14 +390,28 @@ class Graph:
 	#
 	# 	return self.tpm
 
-	# gets strandedness of transcript from transcript id
 	def get_strand_from_tid(self, tid):
-		return self.loc_df.loc[self.t_df.loc[tid, 'path'][0], 'strand']
+		"""
+		Return the strandedness of the input transcript ID.
 
-	# gets strandedness of transcript from gene id
+		Parameters:
+			tid (str): Transcript ID
+		"""
+		return self.edge_df.loc[self.t_df.loc[tid, 'path'][0], 'strand']
+
 	def get_strand_from_gid(self, gid):
-		vertex = self.t_df.loc[self.t_df.gid == gid].path.tolist()[0][0]
-		return self.loc_df.loc[vertex, 'strand']
+		"""
+		Return the strandedness of the input gene ID.
+
+		Parameters:
+			gid (str): Gene ID
+		"""
+		# don't use antisense entries
+		if self.has_novelty():
+			vertex = self.t_df.loc[(self.t_df.gid == gid)&(self.t_df.novelty != 'Antisense')].path.tolist()[0][0]
+		else:
+			vertex = self.t_df.loc[(self.t_df.gid == gid)].path.tolist()[0][0]
+		return self.edge_df.loc[vertex, 'strand']
 
 	# get the path from the transcript id
 	def get_path_from_tid(self, tid):
