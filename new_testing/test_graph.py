@@ -238,6 +238,20 @@ class TestGraph(object):
         ctrl_id_map = {2: 0, 1: 1, 0: 2}
         assert id_map == ctrl_id_map
 
+    # test get_ordered_id_map - rev_strand=True
+    def test_get_ordered_id_map_1(self):
+        sg = swan.SwanGraph()
+
+        # loc
+        data = [[0, 'chr1', 60],
+                [1, 'chr1', 500],
+                [2, 'chr1', 20]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        id_map = sg.get_ordered_id_map(rev_strand=True)
+        ctrl_id_map = {1: 0, 0: 1, 2: 2}
+        assert id_map == ctrl_id_map
+
     # test dicts_to_dfs
     def test_dicts_to_dfs(self):
         sg = swan.SwanGraph()
@@ -577,23 +591,23 @@ class TestGraph(object):
         ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
 
         # edge_df
-        data = [[0, 0, 1],
-                [1, 1, 2],
-                [2, 2, 3],
-                [3, 0, 3],
-                [4, 4, 5],
-                [5, 5, 6],
-                [6, 1, 4]]
-        cols = ['edge_id', 'v1', 'v2']
+        data = [[0, 0, 1, '+'],
+                [1, 1, 2, '+'],
+                [2, 2, 3, '+'],
+                [3, 0, 3, '+'],
+                [4, 4, 5, '+'],
+                [5, 5, 6, '+'],
+                [6, 1, 4, '+']]
+        cols = ['edge_id', 'v1', 'v2', 'strand']
         sg.edge_df = pd.DataFrame(data=data, columns=cols)
         sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
         sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
 
-        data = [[0, 0, 1],
-                [1, 1, 2],
-                [2, 2, 3],
-                [3, 0, 3]]
-        cols = ['edge_id', 'v1', 'v2']
+        data = [[0, 0, 1, '+'],
+                [1, 1, 2, '+'],
+                [2, 2, 3, '+'],
+                [3, 0, 3, '+']]
+        cols = ['edge_id', 'v1', 'v2', 'strand']
         ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
         ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
@@ -609,6 +623,84 @@ class TestGraph(object):
 
         data = [[0, 1, [0,1,2], [0,1,2,3]],
                 [1, 1, [3], [0,3]]]
+        cols = ['tid', 'gid', 'path', 'loc_path']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        sg_subset = sg.subset_on_gene(1)
+
+        check_dfs(sg_subset.loc_df, ctrl_loc_df,
+                  sg_subset.edge_df, ctrl_edge_df,
+                  sg_subset.t_df, ctrl_t_df)
+
+    # tests subset_on_gene_3 - minus strand
+    def test_subset_on_gene_3(self):
+        sg = swan.SwanGraph()
+
+        # loc_df
+        data = [[0, 1, 0],
+                [1, 1, 1],
+                [2, 1, 2],
+                [3, 1, 3],
+                [4, 1, 4],
+                [5, 1, 5],
+                [6, 1, 6]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
+        sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
+
+        # data = [[3 (0), 1, 0],
+        #         [2 (1), 1, 1],
+        #         [1 (2), 1, 2],
+        #         [0 (3), 1, 3]]
+        data = [[3, 1, 0],
+                [2, 1, 1],
+                [1, 1, 2],
+                [0, 1, 3]]
+        cols = ['vertex_id', 'chrom', 'coord']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        # edge_df
+        data = [[0, 0, 1, '-'],
+                [1, 1, 2, '-'],
+                [2, 2, 3, '-'],
+                [3, 0, 3, '-'],
+                [4, 4, 5, '-'],
+                [5, 5, 6, '-'],
+                [6, 1, 4, '-']]
+        cols = ['edge_id', 'v1', 'v2', 'strand']
+        sg.edge_df = pd.DataFrame(data=data, columns=cols)
+        sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
+        sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
+
+        # data = [[0, 3 (0), 2 (1), '-'],
+        #         [1, 2 (1), 1 (2), '-'],
+        #         [2, 1 (2), 0 (3), '-'],
+        #         [3, 3 (0), 0 (3), '-']]
+        data = [[0, 3, 2, '-'],
+                [1, 2, 1, '-'],
+                [2, 1, 0, '-'],
+                [3, 3, 0, '-']]
+        cols = ['edge_id', 'v1', 'v2', 'strand']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # t_df
+        data = [[0, 1, [0,1,2], [0,1,2,3]],
+                [1, 1, [3], [0,3]],
+                [2, 2, [4,5], [1,4,5,6]]]
+        cols = ['tid', 'gid', 'path', 'loc_path']
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+        sg.t_df = swan.create_dupe_index(sg.t_df, 'tid')
+        sg.t_df = swan.set_dupe_index(sg.t_df, 'tid')
+
+        data = [[0, 1, [0,1,2], [3,2,1,0]],
+                [1, 1, [3], [3,0]]]
         cols = ['tid', 'gid', 'path', 'loc_path']
         ctrl_t_df = pd.DataFrame(data=data, columns=cols)
         ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
@@ -654,14 +746,14 @@ class TestGraph(object):
         ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
 
         # edge_df
-        data = [[0, 0, 1],
-                [1, 0, 1],
-                [2, 2, 3],
-                [3, 0, 3],
-                [4, 4, 5],
-                [5, 5, 6],
-                [6, 1, 4]]
-        cols = ['edge_id', 'v1', 'v2']
+        data = [[0, 0, 1, '+'],
+                [1, 0, 1, '+'],
+                [2, 2, 3, '+'],
+                [3, 0, 3, '+'],
+                [4, 4, 5, '+'],
+                [5, 5, 6, '+'],
+                [6, 1, 4, '+']]
+        cols = ['edge_id', 'v1', 'v2', 'strand']
         sg.edge_df = pd.DataFrame(data=data, columns=cols)
         sg.edge_df = swan.create_dupe_index(sg.edge_df, 'edge_id')
         sg.edge_df = swan.set_dupe_index(sg.edge_df, 'edge_id')
@@ -673,10 +765,10 @@ class TestGraph(object):
         #         [4, 1(4), 2(5)],
         #         [5, 2(5), 3(6)],
         #         [6, 0(1), 1(4)]]
-        data = [[4, 1, 2],
-                [5, 2, 3],
-                [6, 0, 1]]
-        cols = ['edge_id', 'v1', 'v2']
+        data = [[4, 1, 2, '+'],
+                [5, 2, 3, '+'],
+                [6, 0, 1, '+']]
+        cols = ['edge_id', 'v1', 'v2', 'strand']
         ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
         ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')

@@ -153,10 +153,14 @@ class Graph:
 		self.get_loc_path()
 
 	# get a dictionary mapping vertex id to ordered new vertex id
-	def get_ordered_id_map(self):
+	def get_ordered_id_map(self, rev_strand=False):
 		"""
 		Get a dictionary to convert old vertex IDs to new vertex IDs, with
 		locs ordered by genomic location (chr, coord).
+
+		Parameters:
+			rev_strand (bool): Whether we're doing this ordering for a fwd or
+				rev strand (comes into play with subset_on_gene)
 
 		Returns:
 			id_map (dict): Dictionary of {old_vertex_id: new_vertex_id}
@@ -164,9 +168,14 @@ class Graph:
 
 		# sort each of the dfs by chrom, coord either ascending
 		# or descending based on strand
-		self.loc_df.sort_values(['chrom', 'coord'],
-								 ascending=[True, True],
-								 inplace=True)
+		if rev_strand:
+			self.loc_df.sort_values(['chrom', 'coord'],
+									 ascending=[True, False],
+									 inplace=True)
+		else:
+			self.loc_df.sort_values(['chrom', 'coord'],
+									 ascending=[True, True],
+									 inplace=True)
 
 		# dictionary mapping vertex_id to new_id
 		self.loc_df['new_id'] = [i for i in range(len(self.loc_df.index))]
@@ -506,6 +515,9 @@ class Graph:
 		# make sure this gid is even in the Graph
 		self.check_gene(gid)
 
+		# get the strand
+		strand = self.get_strand_from_gid(gid)
+
 		# subset t_df first, it's the easiest
 		t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
 		t_df['path'] = self.t_df.loc[self.t_df.gid == gid].apply(
@@ -535,7 +547,11 @@ class Graph:
 		subset_sg.datasets = self.datasets
 
 		# renumber locs
-		subset_sg.update_ids()
+		if strand == '-':
+			id_map = subset_sg.get_ordered_id_map(rev_strand=True)
+			subset_sg.update_ids(id_map)
+		else:
+			subset_sg.update_ids()
 
 		# finally create the graph
 		subset_sg.create_graph_from_dfs()

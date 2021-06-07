@@ -14,7 +14,9 @@ class TestSGAnalysis(object):
 # tests find_ir_genes, find_es_genes
 
 # TODO - add update_ids() call before running both find_ir/es_genes to make sure
-# the subgraph shit works
+# the subgraph shit works -
+# TODO - check to make sure this works with + AND - strands because the
+# loc_df locations no longer have strand associated with them from get_ordered_id_map!!!!
 
     # tests find_es_genes - requires edges to be in order
     def test_find_es_genes(self):
