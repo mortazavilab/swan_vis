@@ -10,40 +10,58 @@ from swan_vis.utils import *
 from swan_vis.graph import *
 import time
 
+# TODO
+# * make path = get_path_from_tid calls into loc_path = get_path_from_tid
+# * add customizable colors
+
 class PlottedGraph(Graph):
 
 	def __init__(self):
 		self.indicate_dataset = False
 		self.indicate_novel = False
-		self.browser = False 
+		self.browser = False
 		self.gid = None
 		self.tid = None
 		self.dataset_cols = []
 
-		# plotting colors
-		gray = '#DCDCDC'
-		yellow = '#F0E442'
-		light_blue = '#56B4E9'
-		orange = '#E69F00'
-		pink = '#CC79A7'
-		green = '#009E73'
+		# # plotting colors
+		# gray = '#DCDCDC'
+		# yellow = '#F0E442'
+		# light_blue = '#56B4E9'
+		# orange = '#E69F00'
+		# pink = '#CC79A7'
+		# green = '#009E73'
+		#
+		# gray_light_blue = '#c1ddec'
+		# gray_yellow = '#f8f6db'
+		# gray_orange = '#ebdec3'
+		# gray_pink = '#efdae5'
+		# gray_green = '#cdf5ea'
 
-		gray_light_blue = '#c1ddec'
-		gray_yellow = '#f8f6db'
-		gray_orange = '#ebdec3'
-		gray_pink = '#efdae5'
-		gray_green = '#cdf5ea'
+		# gray = '#DCDCDC'
+		internal = '#F0E442'
+		tss = '#56B4E9'
+		tes = '#E69F00'
+		intron = '#CC79A7'
+		exon = '#009E73'
 
-		self.color_dict = {'intron': {'normal': pink, 'gray': gray_pink},
-					  'exon': {'normal': green, 'gray': gray_green},
-					  'TSS': {'normal': light_blue, 'gray': gray_light_blue},
-					  'TES': {'normal': orange, 'gray': gray_orange},
-					  'internal': {'normal': yellow, 'gray': gray_yellow}}
+		# TODO - automatically desaturate colors?
+		tss_gray = '#c1ddec'
+		internal_gray = '#f8f6db'
+		tes_gray = '#ebdec3'
+		intron_gray = '#efdae5'
+		exon_gray = '#cdf5ea'
 
-	# initialize what needs to be from a previous pg 
+		self.color_dict = {'intron': {'normal': intron, 'gray': intron_gray},
+					  'exon': {'normal': exon, 'gray': exon_gray},
+					  'TSS': {'normal': tss, 'gray': tss_gray},
+					  'TES': {'normal': tes, 'gray': tes_gray},
+					  'internal': {'normal': internal, 'gray': internal_gray}}
+
+	# initialize what needs to be from a previous pg
 	# or otherwise
 	def init_plot_settings(self, sg,
-						   gid=None, 
+						   gid=None,
 						   tid=None,
 						   indicate_dataset=False,
 						   indicate_novel=False,
@@ -58,9 +76,9 @@ class PlottedGraph(Graph):
 		old_dataset_cols = self.dataset_cols
 
 		# init some stuff
-		self.indicate_dataset = indicate_dataset 
+		self.indicate_dataset = indicate_dataset
 		self.indicate_novel = indicate_novel
-		self.gid = gid 
+		self.gid = gid
 		self.tid = tid
 		self.browser = browser
 		self.dataset_cols = sg.get_dataset_cols()
@@ -80,7 +98,7 @@ class PlottedGraph(Graph):
 
 		# plotting the same transcript
 		elif old_tid == self.tid and self.tid != None:
-			if not browser: 
+			if not browser:
 				if old_indicate_dataset != self.indicate_dataset \
 				or old_indicate_novel != self.indicate_novel:
 					self.calc_node_edge_styles()
@@ -96,7 +114,8 @@ class PlottedGraph(Graph):
 			or old_browser != self.browser:
 				self.new_gene(sg)
 			else:
-				self.path = self.get_path_from_tid(self.tid)
+				self.edge_path = self.get_path_from_tid(self.tid)
+				self.loc_path = self.test_get_loc_path_from_tid(self.tid)
 			if not self.browser:
 				self.calc_node_edge_styles()
 				self.get_ordered_edges()
@@ -111,7 +130,7 @@ class PlottedGraph(Graph):
 		or old_indicate_novel != self.indicate_novel:
 			self.calc_node_edge_styles()
 
-		# # if we are going from browser to swan graph 
+		# # if we are going from browser to swan graph
 		# # with the same gene or transcript
 		# elif old_browser != self.browser \
 		# and not self.browser:
@@ -128,7 +147,7 @@ class PlottedGraph(Graph):
 
 	# update pg to contain information for plotting a new gene
 	def new_gene(self, sg):
-		sg = subset_on_gene(sg, self.gid)
+		sg = sg.subset_on_gene(self.gid)
 		self.loc_df = sg.loc_df
 		self.edge_df = sg.edge_df
 		self.t_df = sg.t_df
@@ -138,7 +157,8 @@ class PlottedGraph(Graph):
 		self.strand = self.get_strand_from_gid(self.gid)
 
 		if self.tid:
-			self.path = self.get_path_from_tid(self.tid)
+			self.edge_path = self.get_path_from_tid(self.tid)
+			self.loc_path = self.get_loc_path_from_tid(self.tid)
 
 		if not self.browser:
 			self.ordered_nodes = self.get_ordered_nodes()
@@ -155,8 +175,8 @@ class PlottedGraph(Graph):
 	###############################################################################
 	################### Getting plotting settings for nodes/edges #################
 	###############################################################################
-		
-	# calculates the positions and sizes of edges/nodes based on the 
+
+	# calculates the positions and sizes of edges/nodes based on the
 	# number of nodes in the graph
 	def calc_pos_sizes(self):
 
@@ -165,14 +185,14 @@ class PlottedGraph(Graph):
 
 		y_coord = 0
 		x_coords = np.linspace(-1, 1, len(ordered_nodes))
-		for x_coord, n in zip(x_coords, ordered_nodes): 
+		for x_coord, n in zip(x_coords, ordered_nodes):
 			pos[n] = [x_coord, y_coord]
 
 		x = len(ordered_nodes)
 
 		# area-related sizes need to be non-linearly scaled
 		# calculated by fitting power series curve to handpicked sizes
-		node_size = 19248*(x**-1.14) 
+		node_size = 19248*(x**-1.14)
 		label_size = 43.9*(x**-0.484)
 		line_width = 2
 
@@ -181,7 +201,7 @@ class PlottedGraph(Graph):
 		if edge_width < 1:
 			edge_width = 1
 
-		# assign fields to plotted graph object 
+		# assign fields to plotted graph object
 		self.pos = pos
 		self.node_size = node_size
 		self.label_size = label_size
@@ -199,7 +219,7 @@ class PlottedGraph(Graph):
 	def is_novel_or_in_dataset(self, x):
 		if self.indicate_novel and is_novel(x):
 			if self.graph_type == 'transcript_path' \
-			and x.vertex_id in self.path:
+			and x.vertex_id in self.loc_path:
 				return 'k', self.line_width
 			elif self.graph_type == 'summary':
 				return 'k', self.line_width
@@ -207,7 +227,7 @@ class PlottedGraph(Graph):
 				return "#999999", self.line_width
 		elif self.indicate_dataset and in_dataset(self.indicate_dataset, x):
 			if self.graph_type == 'transcript_path' \
-			and x.vertex_id in self.path:
+			and x.vertex_id in self.loc_path:
 				return 'k', self.line_width
 			elif self.graph_type == 'summary':
 				return 'k', self.line_width
@@ -215,25 +235,25 @@ class PlottedGraph(Graph):
 				return "#999999", self.line_width
 		return None, None
 
-	# get the node color 
+	# get the node color
 	def get_node_color(self, x):
 
 		# transcript path through summary graph
 		if self.graph_type == 'transcript_path':
 
-			# vertices in the path should be colored by their roles in 
+			# vertices in the path should be colored by their roles in
 			# the plotted transcript
-			if x.vertex_id == self.path[0]:
+			if x.vertex_id == self.loc_path[0]:
 				x['color'] = self.color_dict['TSS']['normal']
-			elif x.vertex_id == self.path[-1]:
+			elif x.vertex_id == self.loc_path[-1]:
 				x['color'] = self.color_dict['TES']['normal']
-			elif x.vertex_id in self.path:
+			elif x.vertex_id in self.loc_path:
 				x['color'] = self.color_dict['internal']['normal']
-			
+
 			# vertices not in the path should be less colored
 			# and colored according to their "most unique"
 			# role in the current gene ie
-			# internal < TSS < TES			
+			# internal < TSS < TES
 			else:
 				if x.internal: color = self.color_dict['internal']['gray']
 				if x.TSS: color = self.color_dict['TSS']['gray']
@@ -243,10 +263,10 @@ class PlottedGraph(Graph):
 		# gene summary graph
 		else:
 
-			# vertices in the summary graph should be colored 
-			# according to their "most unique" 
+			# vertices in the summary graph should be colored
+			# according to their "most unique"
 			# role in the gene ie
-			# internal < TSS < TES	
+			# internal < TSS < TES
 			if x.internal: color = self.color_dict['internal']['normal']
 			if x.TSS: color = self.color_dict['TSS']['normal']
 			if x.TES: color = self.color_dict['TES']['normal']
@@ -300,13 +320,13 @@ class PlottedGraph(Graph):
 
 	# get the color of the edge
 	def get_edge_color(self, x):
-		# firstly, if we're given a path, 
+		# firstly, if we're given a path,
 		# only color the edges that are in the path
 		color_dict = self.color_dict
 		if self.tid:
-			path_edges = [(self.path[i],self.path[i+1])
-						   for i in range(len(self.path)-1)]
-			if x.edge_id in path_edges:
+			# path_edges = [(self.path[i],self.path[i+1])
+			# 			   for i in range(len(self.path)-1)]
+			if x.edge_id in self.edge_path:
 				color = color_dict[x.edge_type]['normal']
 			else:
 				color = color_dict[x.edge_type]['gray']
@@ -358,7 +378,7 @@ class PlottedGraph(Graph):
 		# plotting stuff
 		plt.figure(1, figsize=(14,2.8), frameon=False)
 		plt.xlim(-1.05, 1.05)
-		plt.ylim(-1.05, 1.05) 
+		plt.ylim(-1.05, 1.05)
 
 		# plot edges, nodes, and labels
 		self.plot_edges()
@@ -378,7 +398,7 @@ class PlottedGraph(Graph):
 	# plots edges from edge_df
 	def plot_edges(self):
 		for _, entry in self.edge_df.iterrows():
-			edge = entry.edge_id
+			edge = (entry.v1, entry.v2)
 			nx.draw_networkx_edges(self.G, self.pos,
 				edgelist=[edge],
 				width=self.edge_width,
@@ -416,7 +436,8 @@ class PlottedGraph(Graph):
 		x_max = int(g_max+(6/(g_max-g_min)))
 
 		strand = self.strand
-		path = self.path
+		loc_path = self.loc_path
+		edge_path = self.edge_path
 
 		# plotting init
 		plt.figure(1, figsize=(14,2.8), frameon=False)
@@ -429,8 +450,8 @@ class PlottedGraph(Graph):
 		# plot each exon as a rectangle
 		y_coord = -0.1
 		height = 0.2
-		exons = [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])][::2]
-		introns = [(v1,v2) for v1,v2 in zip(path[:-1],path[1:])][1::2]
+		exons = [(v1,v2) for v1,v2 in zip(loc_path[:-1],loc_path[1:])][::2]
+		introns = [(v1,v2) for v1,v2 in zip(loc_path[:-1],loc_path[1:])][1::2]
 		for v1,v2 in exons:
 			x_coord = self.loc_df.loc[v1, 'coord']
 			width = self.loc_df.loc[v2, 'coord'] - x_coord
@@ -479,7 +500,7 @@ class PlottedGraph(Graph):
 			if len(exons) == 2 and not tick_coords:
 				tick_coords = [(loc_df.loc[exons[0][1],'coord']+loc_df.loc[exons[1][0],'coord'])/2]
 
-			return tick_coords 
+			return tick_coords
 
 		# get coordinates for evenly-spaced ticks indicating strandedness
 		# ala genome browser
@@ -493,7 +514,7 @@ class PlottedGraph(Graph):
 
 		# get plot limits
 		g_min = self.g_min
-		g_max = self.g_max 
+		g_max = self.g_max
 
 		plt.figure(1, figsize=(14,1), frameon=False)
 		plt.xlim(g_min, g_max)
@@ -516,7 +537,7 @@ class PlottedGraph(Graph):
 		scale_len /= 10
 
 		# are we going to indicate this in bp or kb?
-		if scale_len < 1000: 
+		if scale_len < 1000:
 			scale_unit = 'bp'
 			text_scale = scale_len
 		elif scale_len < 10**6:
@@ -557,24 +578,27 @@ class PlottedGraph(Graph):
 		txt = '{} {}'.format(text_scale, scale_unit)
 		ax.text(x_coord, y_coord, txt, fontsize=30)
 
-	# gets nodes ordered by genomic position 
+	# gets nodes ordered by genomic position
 	def get_ordered_nodes(self):
 		loc_ids = self.loc_df.vertex_id.tolist()
 		coords = self.loc_df.coord.tolist()
 		ordered_nodes = [i[0] for i in sorted(zip(loc_ids, coords),
 			key=lambda x: x[1])]
 
-		# check if forward or reverse strand 
+		# check if forward or reverse strand
 		if self.strand == '-':
+			print('hewwo? wevewse stwand?')
 			ordered_nodes.reverse()
+
+		print(ordered_nodes)
 		return ordered_nodes
 
 	# orders edges by those present in the transcript and those not present in the transcript
 	def get_ordered_edges(self):
-		path_edges = [(self.path[i],self.path[i+1])
-			   for i in range(len(self.path)-1)]
+		# path_edges = [(self.path[i],self.path[i+1])
+		# 	   for i in range(len(self.path)-1)]
 		self.edge_df['in_transcript'] = self.edge_df.apply(lambda x:
-			1 if x.edge_id in path_edges else 0, axis=1)
+			1 if x.edge_id in self.edge_path else 0, axis=1)
 		self.edge_df.sort_values(by='in_transcript', inplace=True)
 		self.edge_df.drop('in_transcript', axis=1, inplace=True)
 
@@ -594,6 +618,3 @@ def in_dataset(dataset_name, x):
 def is_novel(x):
 	if x.annotation: return False
 	return True
-
-
-
