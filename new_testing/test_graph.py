@@ -16,13 +16,48 @@ class TestGraph(object):
     # test get_ordered_id_map, dfs_to_dicts, dicts_to_dfs, update_loc_df_ids,
     # update_edge_df_ids, , create_graph_from_dfs, subset_on_gene, check_datsets,
     # check_gene, check_transcript, order_edge_df, is_empty, has_novelty,
-    # has_abundance, get_strand_from_gid, get_strand_from_tid
+    # get_path_from_tid, get_loc_path_from_tid
+    # has_abundance, get_strand_from_gid, get_strand_from_tid, get_gid_from_gname
+    # get_gid_from_tid, get_gene_min_max, get_transcript_min_max
+    #
 
     # todo
-    # get_path_from_tid,
-    # get get_gid_from_gname, get_gid_from_tid, get_gene_min_max
-    # get_transcript_min_max
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # test get_gene_min_max
+    def test_get_gene_min_max(self):
+        sg = make_gene_sg()
+        assert sg.get_gene_min_max(1) == (0,2)
+        assert sg.get_gene_min_max(2) == (2,4)
+
+    # test get_transcript_min_max
+    def test_get_transcript_min_max(self):
+        sg = make_gene_sg()
+        assert sg.get_transcript_min_max(0) == (0,2)
+        assert sg.get_transcript_min_max(1) == (0,2)
+        assert sg.get_transcript_min_max(2) == (3,4)
+        assert sg.get_transcript_min_max(3) == (2,4)
+
+    # test get_gid_from_tid
+    def test_get_gid_from_tid(self):
+        sg = make_gene_sg()
+        assert sg.get_gid_from_tid(0) == 1
+        assert sg.get_gid_from_tid(1) == 1
+        assert sg.get_gid_from_tid(2) == 2
+        assert sg.get_gid_from_tid(3) == 2
+
+    # test get_gid_from_gname - gnames are in the swangraph
+    def test_get_gid_from_gname_1(self):
+        sg = make_gene_sg()
+        assert sg.get_gid_from_gname('1') == 1
+        assert sg.get_gid_from_gname('2') == 2
+
+    # test get_git_from_gname - gnames are not in swangraph
+    def test_get_gid_from_gname_2(self):
+        sg = make_gene_sg()
+        sg.t_df.drop('gname', axis=1, inplace=True)
+        assert sg.get_gid_from_gname('3') == '3'
+
 
     # test get_path_from_tid
     def test_get_path_from_tid(self):

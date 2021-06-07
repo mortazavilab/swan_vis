@@ -433,6 +433,13 @@ class Graph:
 
 	# get the gene id from the gene name
 	def get_gid_from_gname(self, gname):
+		"""
+		If found, return the gene ID corresponding to the input gene name.
+		Otherwise just return the input gene name.
+
+		Parameters:
+			gname (str): Gene name
+		"""
 		try:
 			gid = self.t_df.loc[self.t_df.gname == gname, 'gid'].tolist()[0]
 		except:
@@ -441,13 +448,24 @@ class Graph:
 
 	# get the gene id from the transcript id
 	def get_gid_from_tid(self, tid):
+		"""
+		Return the gene ID associated with the input transcript ID.
+
+		Parameters:
+			tid (str): Transcript ID
+		"""
 		return self.t_df.loc[tid, 'gid']
 
-	# returns the min and max coordinates of an input gene
 	def get_gene_min_max(self, gid):
+		"""
+		Get the minimum and maximum genomic coordinates of an input gene.
+
+		Parameters:
+			gid (str): Gene ID to obtain min/max coords for
+		"""
 
 		# get all starts and stops from gene and their coordinates
-		paths = self.t_df.loc[self.t_df.gid == gid].path.tolist()
+		paths = self.t_df.loc[self.t_df.gid == gid].loc_path.tolist()
 		starts = np.unique([path[0] for path in paths]).tolist()
 		stops = np.unique([path[-1] for path in paths]).tolist()
 		coords = self.loc_df.loc[starts+stops, 'coord']
@@ -456,8 +474,14 @@ class Graph:
 
 	# returns the min and max coordinates of an input transcript
 	def get_transcript_min_max(self, tid):
+		"""
+		Get the minimum and maximum genomic coordinates of an input transcript.
 
-		path = self.t_df.loc[tid, 'path']
+		Parameters:
+			tid (str): Transcript ID to obtain min/max coords for
+		"""
+
+		path = self.t_df.loc[tid, 'loc_path']
 		ends = [path[0], path[-1]]
 		end_coords = self.loc_df.loc[ends, 'coord']
 
