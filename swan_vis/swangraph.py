@@ -272,9 +272,6 @@ class SwanGraph(Graph):
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 
-		# # add the location path as well
-		# self.get_loc_path()
-
 		if verbose:
 			if annotation:
 				data = 'annotation'

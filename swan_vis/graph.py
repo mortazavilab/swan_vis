@@ -229,7 +229,7 @@ class Graph:
 					pbar.update(1000)
 					pbar.set_description('Reindexing edges')
 
-			edge_df[edge_id] = {}
+			edge_df[edge_id] = item
 			edge_df[edge_id]['v1'] = id_map[item['v1']]
 			edge_df[edge_id]['v2'] = id_map[item['v2']]
 

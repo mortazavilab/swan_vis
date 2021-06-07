@@ -47,11 +47,14 @@ class TestCreateDFs(object):
     # tests add_edge_coords
     def test_add_edge_coords(self):
         sg = swan.SwanGraph()
-        sg.add_transcriptome('files/test_full.gtf')
+        sg = add_transcriptome_no_reorder_gtf(sg, 'files/test_full.gtf')
+        # sg.add_transcriptome('files/test_full.gtf')
         cols = ['edge_id', 'v1', 'v2', 'strand', 'edge_type',
                 'v1_coord', 'v2_coord']
 
+        # print(sg.edge_df.head())
         edge_df = sg.add_edge_coords()
+        print(edge_df.head())
         edge_df = edge_df[cols]
 
         ctrl_edge_df = pd.read_csv('files/test_add_edge_coords_result.tsv', sep='\t')
@@ -85,6 +88,9 @@ class TestCreateDFs(object):
         cols = ['vertex_id', 'chrom', 'coord']
         data = [[0, 1, 2], [1, 1, 3], [2, 3, 50]]
         sg.loc_df = pd.DataFrame(data=data, columns=cols)
+        cols = ['tid']
+        data = [0]
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
         locs, n = sg.get_current_locs()
 
         ctrl_locs = {(1,2):0, (1,3):1, (3,50):2}
@@ -111,6 +117,10 @@ class TestCreateDFs(object):
         data = [[0, 0, 1, '+', 'exon'],
                 [1, 1, 2, '+', 'intron']]
         sg.edge_df = pd.DataFrame(data=data, columns=cols)
+
+        cols = ['tid']
+        data = [0]
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
 
         edges, n = sg.get_current_edges()
         ctrl = {(1,2,3,'+','exon'): {'edge_id': 0,
@@ -158,6 +168,10 @@ class TestCreateDFs(object):
         columns = ['vertex_id', 'chrom', 'coord']
         sg.loc_df = pd.DataFrame(data=data, columns=columns)
 
+        cols = ['tid']
+        data = [0]
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
+
         locs = sg.create_loc_dict(exons)
 
         ctrl_locs = {('chr1', 1):0,
@@ -175,6 +189,10 @@ class TestCreateDFs(object):
             ('chr2', 65): 12
              }
 
+        print('test')
+        print(locs)
+        print('control')
+        print(ctrl_locs)
         assert(ctrl_locs == locs)
 
     # tests create_transcript_edge_dict empty swangraph
@@ -307,6 +325,9 @@ class TestCreateDFs(object):
                 [3, 'chr2', 80]]
         columns = ['vertex_id', 'chrom', 'coord']
         sg.loc_df = pd.DataFrame(data=data, columns=columns)
+        cols = ['tid']
+        data = [0]
+        sg.t_df = pd.DataFrame(data=data, columns=cols)
         locs = sg.create_loc_dict(exons)
 
         data = [[0, 0, 1, '+', 'exon'],
@@ -425,11 +446,11 @@ class TestCreateDFs(object):
         assert(edges == ctrl_edges)
 
     # # tests create_transcript_edge_dict where transcripts already
-    # # exist in the swangraph
-    # def test_create_transcript_edge_dict_edge_t_sg(self):
-    #     pass
-    #     # TODO
-
+#     # # exist in the swangraph
+#     # def test_create_transcript_edge_dict_edge_t_sg(self):
+#     #     pass
+#     #     # TODO
+#
     # tests create_dfs with an empty sg
     # also ensures that empty dict -> df -> dict conversion doesn't screw up
     def test_create_dfs_empty_sg(self):
@@ -683,13 +704,16 @@ class TestCreateDFs(object):
 
         check_dfs(loc_df, ctrl_loc_df, edge_df, ctrl_edge_df, t_df, ctrl_t_df)
 
-###########################################################################
-############### Related higher-level dataset addition #####################
-###########################################################################
+# ###########################################################################
+# ############### Related higher-level dataset addition #####################
+# ###########################################################################
 class TestDataset(object):
 
-    # tests add_dataset, add_transcriptome, add_annotation, label_annotated,
-    # get_loc_types,
+    # tests: get_loc_types, label_annotated
+
+    # TODO
+    #  add_dataset, add_transcriptome, add_annotation tests with the
+    # update_ids results also tested!!!! ie coords and paths!
 
     # test get_loc_types
     def test_get_loc_types(self):
@@ -748,9 +772,6 @@ class TestDataset(object):
         ctrl_locs = [0,1,2,3,4]
         locs = sg.loc_df.loc[sg.loc_df.annotation == True, 'vertex_id'].tolist()
         assert set(ctrl_locs) == set(locs)
-
-    # test
-
 
     # add to empty sg, don't add isms
     def test_add_transcriptome(self):
@@ -942,6 +963,13 @@ def check_dfs(loc_df, ctrl_loc_df,
     print('control')
     print(ctrl_t_df)
     assert (t_df == ctrl_t_df).all(axis=0).all()
+
+
+def add_transcriptome_no_reorder_gtf(sg, gtf):
+    t_df, exon_df, from_talon = swan.parse_gtf(gtf, False)
+    sg.loc_df, sg.edge_df, sg.t_df = sg.create_dfs(t_df, exon_df, from_talon)
+    return sg
+
 
 def get_test_transcript_exon_dicts():
 
