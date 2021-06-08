@@ -2136,10 +2136,10 @@ class SwanGraph(Graph):
 
 		# if indicate_dataset or indicate_novel are chosen, make sure
 		# the dataset or annotation data exists in the SwanGraph
-		if indicate_novel and 'annotation' not in self.get_dataset_cols():
+		if indicate_novel and not self.annotation:
 			raise Exception('Annotation data not present in graph. Use '
 							'add_annotation before using indicate_novel')
-		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
+		if indicate_dataset and indicate_dataset not in self.datasets:
 			raise Exception('Dataset {} not present in the graph. '
 							''.format(indicate_dataset))
 

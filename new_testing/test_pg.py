@@ -12,9 +12,163 @@ import anndata
 ###########################################################################
 class TestGeneSummary(object):
 
-    # done: test_new_gene, calc_pos_sizes
+    # done: test_new_gene, calc_pos_sizes, calc_edge_curves
 
-    # todo: calc_edge_curves
+    # todo calc_node_edge_styles
+
+    # test  - indicate_dataset
+    def test_calc_node_edge_styles_2(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+
+        sg.datasets = ['dataset_1', 'dataset_2']
+        sg.t_df['dataset_1'] = [False, False, False, False, True]
+        sg.t_df['dataset_2'] = [True, True, True, True, True]
+
+        sg.edge_df['dataset_1'] = False
+        sg.edge_df['dataset_2'] = True
+        edges = [5,11,12]
+        sg.edge_df.loc[edges, 'dataset_1'] = True
+
+        sg.loc_df['dataset_1'] = False
+        sg.loc_df['dataset_2'] = True
+        locs = [12,11,8,7]
+        sg.loc_df.loc[locs, 'dataset_1'] = True
+
+        sg.plot_graph('test2_gid', display=False, indicate_dataset='dataset_1')
+
+        # edge_df
+        sg.pg.edge_df.drop(['dataset_1', 'dataset_2', 'curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon', 'dashed'],
+                [14, '-', 'intron', 3, 5, 'intron', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon', None],
+                [11, '-', 'intron', 1, 4, 'intron', 'dashed'],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', 'dashed']]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        sg.pg.loc_df.drop(['dataset_1', 'dataset_2'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', 'node_outline', 2],
+                [1, 'chr2', 80, True, False, False, 'internal', 'node_outline', 2],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', 'node_outline', 2],
+                [5, 'chr2', 50, True, False, True, 'TES', 'node_outline', 2],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
+
+
+    # test calc_node_edge_styles - indicate_novel
+    def test_calc_node_edge_styles_3(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+
+        sg.annotation = True
+        sg.t_df['annotation'] = [True, True, True, True, False]
+
+        sg.edge_df['annotation'] = True
+        edges = [5,11,12]
+        sg.edge_df.loc[edges, 'annotation'] = False
+
+        sg.loc_df['annotation'] = True
+        locs = [12,11,8,7]
+        sg.loc_df.loc[locs, 'annotation'] = False
+
+        sg.plot_graph('test2_gid', display=False, indicate_novel=True)
+
+        # edge_df
+        sg.pg.edge_df.drop(['annotation', 'curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon', 'dashed'],
+                [14, '-', 'intron', 3, 5, 'intron', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon', None],
+                [11, '-', 'intron', 1, 4, 'intron', 'dashed'],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', 'dashed']]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', 'node_outline', 2],
+                [1, 'chr2', 80, True, False, False, 'internal', 'node_outline', 2],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', 'node_outline', 2],
+                [5, 'chr2', 50, True, False, True, 'TES', 'node_outline', 2],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
+
+    # test calc_node_edge_styles - vanilla transcript path
+
+    # test calc_node_edge_styles - indicate_dataset transcript_path
+
+    # test calc_node_edge_styles - indicate_novel transcript_path
+
+    # test calc_node_edge_styles - transcript_path where role in transcript
+    #     is different ie transcripts [1,2,3], [0,1,2,3] 1 needs to be colored int
+    # sth with this guy? [5, 'chr2', 50, True, False, True, 'TES'],
+
+    # test calc_node_edge_styles - vanilla
+    def test_calc_node_edge_styles_1(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.plot_graph('test2_gid', display=False)
+
+        # edge_df
+        sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon', None],
+                [14, '-', 'intron', 3, 5, 'intron', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon', None],
+                [11, '-', 'intron', 1, 4, 'intron', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'TES'],
+                [6, 'chr2', 45, False, False, True, 'TES']]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test calc_edge_curves - >= 20 node_size
     def test_calc_edge_curves_2(self):
@@ -77,7 +231,6 @@ class TestGeneSummary(object):
             assert x > curr_x
             curr_x = x
 
-        assert 'pos' in sg.pg.loc_df.columns
         assert sg.pg.node_size
         assert sg.pg.label_size
         assert sg.pg.rad_scale == 0.32
@@ -167,10 +320,11 @@ def check_dfs(loc_df, ctrl_loc_df,
     print('control')
     print(ctrl_loc_df)
     print(ctrl_loc_df == loc_df)
-    assert (loc_df == ctrl_loc_df).all(axis=0).all()
+    # assert (loc_df == ctrl_loc_df).all(axis=0).all()
+    assert loc_df.equals(ctrl_loc_df)
 
     print('test')
     print(edge_df)
     print('control')
     print(ctrl_edge_df)
-    assert (edge_df == ctrl_edge_df).all(axis=0).all()
+    assert edge_df.equals(ctrl_edge_df)

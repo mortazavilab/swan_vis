@@ -60,7 +60,10 @@ class PlottedGraph(Graph):
 						   'TSS': tss, 'TSS_gray': tss_gray,
 						   'TES': tes, 'TES_gray': tes_gray,
 						   'exon': exon, 'exon_gray': exon_gray,
-						   'intron': intron, 'intron_gray': intron_gray}
+						   'intron': intron, 'intron_gray': intron_gray,
+						   'node_outline': 'k',
+						   'node_outline_gray': '#999999',
+						   None: None}
 
 	# initialize what needs to be from a previous pg
 	# or otherwise
@@ -70,8 +73,16 @@ class PlottedGraph(Graph):
 						   indicate_dataset=False,
 						   indicate_novel=False,
 						   browser=False):
+		#
+   		# # previous plotting parameters
+   		# old_indicate_dataset = self.indicate_dataset
+   		# old_indicate_novel = self.indicate_novel
+   		# old_gid = self.gid
+   		# old_tid = self.tid
+   		# old_browser = self.browser
+   		# old_dataset_cols = self.dataset_cols
 
-		# init some stuff
+		# new plotting parameters
 		self.indicate_dataset = indicate_dataset
 		self.indicate_novel = indicate_novel
 		self.gid = gid
@@ -79,14 +90,21 @@ class PlottedGraph(Graph):
 		self.browser = browser
 		self.dataset_cols = sg.datasets
 
+		# determine graph_type
+		if browser:
+			self.graph_type = 'browser'
+		else:
+			if tid:
+				self.graph_type = 'transcript_path'
+			else:
+				self.graph_type = 'summary'
+
 		# gene summary
-		if gid:
-			self.new_gene(sg)
+		# if gid and gid != old_gid:
 
-
-
-
-
+		self.new_gene(sg, gid)
+		self.new_swangraph()
+		self.calc_node_edge_styles()
 
 		# # save some old stuff
 		# old_indicate_dataset = self.indicate_dataset
@@ -166,17 +184,20 @@ class PlottedGraph(Graph):
 		# 	self.new_gene(sg)
 		# 	self.calc_node_edge_styles()
 
-	# find positions and sizes of edges and nodes for a swan plot
 	def new_swangraph(self):
-
+		"""
+		Determine how the Swan plot for this gene is laid out.
+		"""
 		self.calc_pos_sizes()
 		self.calc_edge_curves()
-
 
 	# update pg to contain information for plotting a new gene
 	# includes subsetting the parent swangraph by gene and calculating
 	# the node and edge positions and sizes
 	def new_gene(self, sg, gid):
+		"""
+		Update PlottedGraph with information from a new gene.
+		"""
 		sg = sg.subset_on_gene(gid)
 		self.loc_df = sg.loc_df
 		self.edge_df = sg.edge_df
@@ -209,6 +230,10 @@ class PlottedGraph(Graph):
 	# calculates the positions and sizes of edges/nodes based on the
 	# number of nodes in the graph
 	def calc_pos_sizes(self):
+		"""
+		Determine node position, size, label size, edgewidth (node).
+		Determine edge width. Based on the number of nodes in the gene.
+		"""
 
 		pos = defaultdict()
 		pos_list = []
@@ -234,7 +259,6 @@ class PlottedGraph(Graph):
 			edge_width = 1
 
 		# assign fields to plotted graph object
-		self.loc_df['pos'] = pos_list
 		self.pos = pos
 		self.node_size = node_size
 		self.label_size = label_size
@@ -253,19 +277,19 @@ class PlottedGraph(Graph):
 		if self.indicate_novel and is_novel(x):
 			if self.graph_type == 'transcript_path' \
 			and x.vertex_id in self.loc_path:
-				return 'k', self.line_width
+				return 'node_outline', self.line_width
 			elif self.graph_type == 'summary':
-				return 'k', self.line_width
+				return 'node_outline', self.line_width
 			else:
-				return "#999999", self.line_width
+				return 'node_outline_gray', self.line_width
 		elif self.indicate_dataset and in_dataset(self.indicate_dataset, x):
 			if self.graph_type == 'transcript_path' \
 			and x.vertex_id in self.loc_path:
-				return 'k', self.line_width
+				return 'node_outline', self.line_width
 			elif self.graph_type == 'summary':
-				return 'k', self.line_width
+				return 'node_outline', self.line_width
 			else:
-				return "#999999", self.line_width
+				return 'node_outline_gray', self.line_width
 		return None, None
 
 	# get the node color
@@ -317,8 +341,12 @@ class PlottedGraph(Graph):
 
 		return x
 
-	# get edge curve settings
 	def calc_edge_curves(self):
+		"""
+		Add edge curve style to edge_df in the curve column. Sequential edges
+		in small genes (< 20 nodes) will be straight.
+		"""
+
 		edge_dict = {'pos': 'arc3,rad=',
 					 'neg': 'arc3,rad=-',
 					 'straight': None}
@@ -379,7 +407,6 @@ class PlottedGraph(Graph):
 	def get_edge_linestyle(self, x):
 		style = None
 		# dashed if novel or unique to dataset
-		# if is_novel(self.indicate_novel, x) or unique_to_dataset(self.indicate_dataset, x, dataset_cols):
 		if self.indicate_novel:
 			if is_novel(x):
 				style = 'dashed'
@@ -448,7 +475,7 @@ class PlottedGraph(Graph):
 				nodelist=[node],
 				node_color=self.color_dict[entry.color],
 				node_size=self.node_size,
-				edgecolors=entry.edgecolor,
+				edgecolors=self.color_dict[entry.edgecolor],
 				linewidths=entry.linewidth)
 
 	###############################################################################
