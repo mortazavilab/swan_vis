@@ -1008,28 +1008,6 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-	def get_loc_types(self):
-		"""
-		Determine what role (TSS, TES, internal) each unique genomic location
-		plays in the transcripts it is used in. Assigns each location in loc_df
-		a boolean label for the TSS, TES, and internal columns based on its use.
-		"""
-
-		self.loc_df['internal'] = False
-		self.loc_df['TSS'] = False
-		self.loc_df['TES'] = False
-
-		# get lists of locations that are used as TSS, TES
-		paths = self.t_df.loc_path.tolist()
-		internal = list(set([n for path in paths for n in path[1:-1]]))
-		tss = [path[0] for path in paths]
-		tes = [path[-1] for path in paths]
-
-		# set node types in t_df
-		self.loc_df.loc[internal, 'internal'] = True
-		self.loc_df.loc[tss, 'TSS'] = True
-		self.loc_df.loc[tes, 'TES'] = True
-
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
 	##########################################################################

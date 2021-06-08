@@ -312,7 +312,7 @@ class Graph:
 
 		# edge_df
 		self.edge_df = pd.DataFrame.from_dict(self.edge_df, orient='index')
-		self.loc_df.index.names = ['edge_id']
+		self.edge_df.index.names = ['edge_id']
 
 		# t_df
 		self.t_df = pd.DataFrame.from_dict(self.t_df, orient='index')
@@ -500,7 +500,28 @@ class Graph:
 ################################## Extras #################################
 ##########################################################################
 
-	# subset a graph based on a gene
+	def get_loc_types(self):
+		"""
+		Determine what role (TSS, TES, internal) each unique genomic location
+		plays in the transcripts it is used in. Assigns each location in loc_df
+		a boolean label for the TSS, TES, and internal columns based on its use.
+		"""
+
+		self.loc_df['internal'] = False
+		self.loc_df['TSS'] = False
+		self.loc_df['TES'] = False
+
+		# get lists of locations that are used as TSS, TES
+		paths = self.t_df.loc_path.tolist()
+		internal = list(set([n for path in paths for n in path[1:-1]]))
+		tss = [path[0] for path in paths]
+		tes = [path[-1] for path in paths]
+
+		# set node types in t_df
+		self.loc_df.loc[internal, 'internal'] = True
+		self.loc_df.loc[tss, 'TSS'] = True
+		self.loc_df.loc[tes, 'TES'] = True
+
 	def subset_on_gene(self, gid):
 		"""
 		Subset the swan Graph on a given gene and return the subset graph.
@@ -552,6 +573,8 @@ class Graph:
 			subset_sg.update_ids(id_map)
 		else:
 			subset_sg.update_ids()
+
+		subset_sg.get_loc_types()
 
 		# finally create the graph
 		subset_sg.create_graph_from_dfs()

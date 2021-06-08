@@ -18,11 +18,38 @@ class TestGraph(object):
     # check_gene, check_transcript, order_edge_df, is_empty, has_novelty,
     # get_path_from_tid, get_loc_path_from_tid
     # has_abundance, get_strand_from_gid, get_strand_from_tid, get_gid_from_gname
-    # get_gid_from_tid, get_gene_min_max, get_transcript_min_max
+    # get_gid_from_tid, get_gene_min_max, get_transcript_min_max, get_loc_types
     #
 
     # todo
     # subset_on_gene - ADD SUBSET FOR ABUNDANCE INFO
+
+    # test get_loc_types
+    def test_get_loc_types(self):
+        sg = swan.SwanGraph()
+        data = [[0, [0,1], [0,1,2]],
+                [1, [2,3], [3,4,5]],
+                 [2, [4,5], [6,7,8]]]
+        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path', 'loc_path'])
+
+        data = [[0,0,1], [1,1,2], [2,3,4], [3,4,5],
+                [4,6,7], [5,7,8]]
+        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
+
+        data = [0,1,2,3,4,5,6,7,8]
+        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
+
+        sg.get_loc_types()
+
+        ctrl_tss = [0,3,6]
+        tss = sg.loc_df.loc[sg.loc_df.TSS == True, 'vertex_id'].tolist()
+        assert set(ctrl_tss) == set(tss)
+        ctrl_int = [1,4,7]
+        int = sg.loc_df.loc[sg.loc_df.internal == True, 'vertex_id'].tolist()
+        assert set(ctrl_int) == set(int)
+        ctrl_tes = [2,5,8]
+        tes = sg.loc_df.loc[sg.loc_df.TES == True, 'vertex_id'].tolist()
+        assert set(ctrl_tes) == set(ctrl_tes)
 
     # test get_gene_min_max
     def test_get_gene_min_max(self):
@@ -581,11 +608,13 @@ class TestGraph(object):
         sg.loc_df = swan.create_dupe_index(sg.loc_df, 'vertex_id')
         sg.loc_df = swan.set_dupe_index(sg.loc_df, 'vertex_id')
 
-        data = [[0, 1, 0],
-                [1, 1, 1],
-                [2, 1, 2],
-                [3, 1, 3]]
-        cols = ['vertex_id', 'chrom', 'coord']
+        data = [[0, 1, [0,1,2], [0,1,2,3]],
+                [1, 1, [3], [0,3]]]
+        data = [[0, 1, 0, True, False, False],
+                [1, 1, 1, False, True, False],
+                [2, 1, 2, False, True, False],
+                [3, 1, 3, False, False, True]]
+        cols = ['vertex_id', 'chrom', 'coord', 'TSS', 'internal', 'TES']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
         ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
         ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
@@ -655,11 +684,13 @@ class TestGraph(object):
         #         [2 (1), 1, 1],
         #         [1 (2), 1, 2],
         #         [0 (3), 1, 3]]
-        data = [[3, 1, 0],
-                [2, 1, 1],
-                [1, 1, 2],
-                [0, 1, 3]]
-        cols = ['vertex_id', 'chrom', 'coord']
+        # data = [[0, 1, [0,1,2], [3,2,1,0]],
+        #         [1, 1, [3], [3,0]]]
+        data = [[3, 1, 0, True, False, False],
+                [2, 1, 1, False, True, False],
+                [1, 1, 2, False, True, False],
+                [0, 1, 3, False, False, True]]
+        cols = ['vertex_id', 'chrom', 'coord', 'TSS', 'internal', 'TES']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
         ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
         ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')

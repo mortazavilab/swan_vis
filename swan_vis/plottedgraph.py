@@ -587,10 +587,8 @@ class PlottedGraph(Graph):
 
 		# check if forward or reverse strand
 		if self.strand == '-':
-			print('hewwo? wevewse stwand?')
 			ordered_nodes.reverse()
 
-		print(ordered_nodes)
 		return ordered_nodes
 
 	# orders edges by those present in the transcript and those not present in the transcript

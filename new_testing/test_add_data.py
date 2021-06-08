@@ -709,39 +709,11 @@ class TestCreateDFs(object):
 # ###########################################################################
 class TestDataset(object):
 
-    # tests: get_loc_types, label_annotated
+    # tests:, label_annotated
 
     # TODO
     #  add_dataset, add_transcriptome, add_annotation tests with the
     # update_ids results also tested!!!! ie coords and paths!
-
-    # test get_loc_types
-    def test_get_loc_types(self):
-        sg = swan.SwanGraph()
-        data = [[0, [0,1], [0,1,2]],
-                [1, [2,3], [3,4,5]],
-                 [2, [4,5], [6,7,8]]]
-        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path', 'loc_path'])
-
-        data = [[0,0,1], [1,1,2], [2,3,4], [3,4,5],
-                [4,6,7], [5,7,8]]
-        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
-
-        data = [0,1,2,3,4,5,6,7,8]
-        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
-
-        sg.get_loc_types()
-
-        ctrl_tss = [0,3,6]
-        tss = sg.loc_df.loc[sg.loc_df.TSS == True, 'vertex_id'].tolist()
-        assert set(ctrl_tss) == set(tss)
-        ctrl_int = [1,4,7]
-        int = sg.loc_df.loc[sg.loc_df.internal == True, 'vertex_id'].tolist()
-        assert set(ctrl_int) == set(int)
-        ctrl_tes = [2,5,8]
-        tes = sg.loc_df.loc[sg.loc_df.TES == True, 'vertex_id'].tolist()
-        assert set(ctrl_tes) == set(ctrl_tes)
-
 
     # label annotated transcripts
     def test_label_annotated(self):
