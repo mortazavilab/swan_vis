@@ -1,0 +1,10 @@
+edge_id	v1_old	v2_old	strand	edge_type	v1	v2	color	line
+9	7	6	-	exon	5	6	exon	None
+8	8	7	-	intron	4	5	intron	None
+12	8	7	-	exon	4	5	exon	None
+14	9	7	-	intron	3	5	intron	None
+7	10	8	-	exon	2	4	exon	None
+13	10	9	-	exon	2	3	exon	None
+11	11	8	-	intron	1	4	intron	None
+6	11	10	-	intron	1	2	intron	None
+5	12	11	-	exon	0	1	exon	None

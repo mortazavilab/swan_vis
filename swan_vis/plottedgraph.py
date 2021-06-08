@@ -57,6 +57,11 @@ class PlottedGraph(Graph):
 					  'TSS': {'normal': tss, 'gray': tss_gray},
 					  'TES': {'normal': tes, 'gray': tes_gray},
 					  'internal': {'normal': internal, 'gray': internal_gray}}
+		self.color_dict = {'internal': internal, 'internal_gray': internal_gray,
+						   'TSS': tss, 'TSS_gray': tss_gray,
+						   'TES': tes, 'TES_gray': tes_gray,
+						   'exon': exon, 'exon_gray': exon_gray,
+						   'intron': intron, 'intron_gray': intron_gray}
 
 	# initialize what needs to be from a previous pg
 	# or otherwise
@@ -244,20 +249,20 @@ class PlottedGraph(Graph):
 			# vertices in the path should be colored by their roles in
 			# the plotted transcript
 			if x.vertex_id == self.loc_path[0]:
-				x['color'] = self.color_dict['TSS']['normal']
+				x['color'] = 'TSS'
 			elif x.vertex_id == self.loc_path[-1]:
-				x['color'] = self.color_dict['TES']['normal']
+				x['color'] = 'TES'
 			elif x.vertex_id in self.loc_path:
-				x['color'] = self.color_dict['internal']['normal']
+				x['color'] = 'internal'
 
 			# vertices not in the path should be less colored
 			# and colored according to their "most unique"
 			# role in the current gene ie
 			# internal < TSS < TES
 			else:
-				if x.internal: color = self.color_dict['internal']['gray']
-				if x.TSS: color = self.color_dict['TSS']['gray']
-				if x.TES: color = self.color_dict['TES']['gray']
+				if x.internal: color = 'internal_gray'
+				if x.TSS: color = 'TSS_gray'
+				if x.TES: color = 'TES_gray'
 				x['color'] = color
 
 		# gene summary graph
@@ -267,9 +272,9 @@ class PlottedGraph(Graph):
 			# according to their "most unique"
 			# role in the gene ie
 			# internal < TSS < TES
-			if x.internal: color = self.color_dict['internal']['normal']
-			if x.TSS: color = self.color_dict['TSS']['normal']
-			if x.TES: color = self.color_dict['TES']['normal']
+			if x.internal: color = 'internal'
+			if x.TSS: color = 'TSS'
+			if x.TES: color = 'TES'
 			x['color'] = color
 
 		# if the node needs to be outlined due to indicate_dataset
@@ -322,17 +327,17 @@ class PlottedGraph(Graph):
 	def get_edge_color(self, x):
 		# firstly, if we're given a path,
 		# only color the edges that are in the path
-		color_dict = self.color_dict
+		# color_dict = self.color_dict
 		if self.tid:
 			# path_edges = [(self.path[i],self.path[i+1])
 			# 			   for i in range(len(self.path)-1)]
 			if x.edge_id in self.edge_path:
-				color = color_dict[x.edge_type]['normal']
+				color = x.edge_type
 			else:
-				color = color_dict[x.edge_type]['gray']
+				color = x.edge_type+'_gray'
 		# otherwise just color them all
 		else:
-			color = color_dict[x.edge_type]['normal']
+			color = x.edge_type
 		return color
 
 	# get the styles of the edges (dashed or not)
@@ -402,7 +407,7 @@ class PlottedGraph(Graph):
 			nx.draw_networkx_edges(self.G, self.pos,
 				edgelist=[edge],
 				width=self.edge_width,
-				edge_color=entry.color,
+				edge_color=self.color_dict[entry.color],
 				connectionstyle=entry.curve,
 				style=entry.line)
 
@@ -412,7 +417,7 @@ class PlottedGraph(Graph):
 			node = entry.vertex_id
 			nx.draw_networkx_nodes(self.G, self.pos,
 				nodelist=[node],
-				node_color=entry.color,
+				node_color=self.color_dict[entry.color],
 				node_size=self.node_size,
 				edgecolors=entry.edgecolor,
 				linewidths=entry.linewidth)
