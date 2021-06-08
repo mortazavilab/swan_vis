@@ -353,17 +353,17 @@ class Graph:
 	############################# Accessing data ############################
 	##########################################################################
 
-	# gets the names of the dataset columns in the graph
-	def get_dataset_cols(self, include_annotation=True):
-		if include_annotation:
-			return self.datasets
-		elif not include_annotation:
-			if 'annotation' not in self.datasets:
-				return self.datasets
-			else:
-				datasets = copy.deepcopy(self.datasets)
-				datasets.remove('annotation')
-				return datasets
+	# # gets the names of the dataset columns in the graph
+	# def get_dataset_cols(self, include_annotation=True):
+	# 	if include_annotation:
+	# 		return self.datasets
+	# 	elif not include_annotation:
+	# 		if 'annotation' not in self.datasets:
+	# 			return self.datasets
+	# 		else:
+	# 			datasets = copy.deepcopy(self.datasets)
+	# 			datasets.remove('annotation')
+	# 			return datasets
 
 	# # gets the names of the counts columns in the graph
 	# # returns None if no counts have been added

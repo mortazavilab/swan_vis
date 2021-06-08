@@ -1670,7 +1670,7 @@ class SwanGraph(Graph):
 				   indicate_dataset=False,
 				   indicate_novel=False,
 				   prefix=None,
-				   display=False):
+				   display=True):
 		"""
 		Plots a gene summary SwanGraph for an input gene.
 		Does not automatically save the figure by default!
@@ -1690,7 +1690,7 @@ class SwanGraph(Graph):
 				the plotted figure
 				Default: None, won't automatically save
 			display (bool): Display the plot during runtime
-				Default: False
+				Default: True
 		"""
 
 		if gid not in self.t_df.gid.tolist():
