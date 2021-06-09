@@ -96,13 +96,16 @@ class PlottedGraph(Graph):
 		else:
 			if tid:
 				self.graph_type = 'transcript_path'
+				print('hewwo')
+				self.new_transcript(sg, self.tid)
 			else:
 				self.graph_type = 'summary'
+				self.new_gene(sg, self.gid)
+
 
 		# gene summary
 		# if gid and gid != old_gid:
 
-		self.new_gene(sg, gid)
 		self.new_swangraph()
 		self.calc_node_edge_styles()
 
@@ -190,6 +193,15 @@ class PlottedGraph(Graph):
 		"""
 		self.calc_pos_sizes()
 		self.calc_edge_curves()
+
+	def new_transcript(self, sg, tid):
+		"""
+		Get the transcript edge and location path.
+		"""
+		self.gid = sg.get_gid_from_tid(tid)
+		self.new_gene(sg, self.gid)
+		self.edge_path = self.get_path_from_tid(self.tid)
+		self.loc_path = self.get_loc_path_from_tid(self.tid)
 
 	# update pg to contain information for plotting a new gene
 	# includes subsetting the parent swangraph by gene and calculating

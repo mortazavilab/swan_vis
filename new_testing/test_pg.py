@@ -70,7 +70,6 @@ class TestGeneSummary(object):
 
         check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
-
     # test calc_node_edge_styles - indicate_novel
     def test_calc_node_edge_styles_3(self):
         sg = swan.SwanGraph()
@@ -123,6 +122,43 @@ class TestGeneSummary(object):
         check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test calc_node_edge_styles - vanilla transcript path
+    def test_calc_node_edge_styles_4(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.plot_transcript_path('test2', display=True)
+
+        # edge_df
+        sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon_gray', None],
+                [14, '-', 'intron', 3, 5, 'intron_gray', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon_gray', None],
+                [11, '-', 'intron', 1, 4, 'intron_gray', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'internal', None, None],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test calc_node_edge_styles - indicate_dataset transcript_path
 
