@@ -96,7 +96,6 @@ class PlottedGraph(Graph):
 		else:
 			if tid:
 				self.graph_type = 'transcript_path'
-				print('hewwo')
 				self.new_transcript(sg, self.tid)
 			else:
 				self.graph_type = 'summary'
