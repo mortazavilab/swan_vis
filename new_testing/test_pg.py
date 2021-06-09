@@ -12,12 +12,197 @@ import anndata
 ###########################################################################
 class TestGeneSummary(object):
 
-    # done: test_new_gene, calc_pos_sizes, calc_edge_curves
+    # done: test_new_gene, calc_pos_sizes, calc_edge_curves, plot_graph,
+    # plot_transcript_path
 
-    # todo calc_node_edge_styles
+    # test init_plot_settings - going from plotting gene summary to
+    # gene summary (same gene)
+
+    # test init_plot_settings - going from plotting gene summary to
+    # gene summary (different gene)
+
+    # test init_plot_settings - going from plotting transcript path
+    # to transcript path (same gene)
+
+    # test init_plot_settings - going from plotting transcript path
+    # to transcript path (different gene)
+
+    # test init_plot_settings - going from plotting transcript path
+    # to gene summary (same gene)
+    def test_init_4(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.plot_transcript_path('test2', display=False)
+        sg.plot_graph('test2_gid', display=False)
+
+        sg.plot_transcript_path('test2', display=False)
+
+        # edge_df
+        sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon_gray', None],
+                [14, '-', 'intron', 3, 5, 'intron_gray', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon_gray', None],
+                [11, '-', 'intron', 1, 4, 'intron_gray', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'internal', None, None],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
+
+    # test init_plot_settings - going from plotting transcript path
+    # to gene summary (different gene)
+    def test_init_3(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.plot_transcript_path('test1', display=False)
+        sg.plot_graph('test2_gid', display=False)
+
+        sg.plot_transcript_path('test2', display=False)
+
+        # edge_df
+        sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon_gray', None],
+                [14, '-', 'intron', 3, 5, 'intron_gray', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon_gray', None],
+                [11, '-', 'intron', 1, 4, 'intron_gray', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'internal', None, None],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
+
+    # test init_plot_settings - going from plotting gene summary to
+    # transcript path (same gene)
+    def test_init_1(self):
+
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+
+        sg.plot_graph('test2_gid', display=False)
+
+        sg.plot_transcript_path('test2', display=False)
+
+        # edge_df
+        sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon_gray', None],
+                [14, '-', 'intron', 3, 5, 'intron_gray', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon_gray', None],
+                [11, '-', 'intron', 1, 4, 'intron_gray', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'internal', None, None],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
+
+    # test init_plot_settings - going from plotting gene summary to
+    # transcript path (different gene)
+    def test_init_2(self):
+
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+
+        sg.plot_graph('test4_gid', display=False)
+
+        sg.plot_transcript_path('test2', display=False)
+
+        # edge_df
+        sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon_gray', None],
+                [14, '-', 'intron', 3, 5, 'intron_gray', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon_gray', None],
+                [11, '-', 'intron', 1, 4, 'intron_gray', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'internal', None, None],
+                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test  - indicate_dataset
-    def test_calc_node_edge_styles_2(self):
+    def test_summary_1(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
 
@@ -71,7 +256,7 @@ class TestGeneSummary(object):
         check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test calc_node_edge_styles - indicate_novel
-    def test_calc_node_edge_styles_3(self):
+    def def_summary_2(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
 
@@ -125,7 +310,7 @@ class TestGeneSummary(object):
     #     transcript_path where role in transcript
     #     is different ie transcripts [1,2,3], [0,1,2,3] 1 needs to be colored int
     #     sth with this guy? [5, 'chr2', 50, True, False, True, 'TES'],
-    def test_calc_node_edge_styles_4(self):
+    def test_path_1(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
         sg.plot_transcript_path('test2', display=False)
@@ -164,7 +349,7 @@ class TestGeneSummary(object):
         check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test calc_node_edge_styles - indicate_dataset transcript_path
-    def test_calc_node_edge_styles_5(self):
+    def test_path_2(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
 
@@ -218,7 +403,7 @@ class TestGeneSummary(object):
         check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
     # test calc_node_edge_styles - indicate_novel transcript_path
-    def test_calc_node_edge_styles_6(self):
+    def test_path_3(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
 
@@ -270,7 +455,7 @@ class TestGeneSummary(object):
 
 
     # test calc_node_edge_styles - vanilla
-    def test_calc_node_edge_styles_1(self):
+    def test_summary_1(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
         sg.plot_graph('test2_gid', display=False)
@@ -396,6 +581,7 @@ class TestGeneSummary(object):
         ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
 
         # edge_df
+        sg.pg.edge_df.drop(['curve'], axis=1, inplace=True)
         data = [[9, '-', 'exon', 5, 6],
                 [8, '-', 'intron', 4, 5],
                 [12, '-', 'exon', 4, 5],
@@ -415,28 +601,6 @@ class TestGeneSummary(object):
         assert sg.pg.g_min == 45
         assert sg.pg.g_max == 100
         assert sg.pg.strand == '-'
-
-    # # test minus strand gene summary
-    # def test_gene_summary_1(self):
-    #     sg = swan.SwanGraph()
-    #     sg.add_transcriptome('files/test_full.gtf')
-    #     sg.plot_graph('test2_gid')
-    #     sg.pg.edge_df.drop(['curve', 'line'], axis=1, inplace=True)
-    #
-    #     ctrl_edge_df = pd.read_csv('files/plot_minus_gene_summary_edge_df.tsv', sep='\t')
-    #     ctrl_edge_df.drop(['v1_old', 'v2_old', 'line'], axis=1, inplace=True)
-    #     ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
-    #     ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
-    #
-    #     ctrl_loc_df = pd.read_csv('files/plot_minus_gene_summary_loc_df.tsv', sep='\t')
-    #     ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
-    #     ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
-    #     ctrl_loc_df['edge_color'] = None
-    #     ctrl_loc_df['linewidth'] = None
-    #     ctrl_loc_df.drop(['edgecolor', 'linewidth'], axis=1, inplace=True)
-    #     sg.pg.loc_df.drop(['edgecolor', 'linewidth'], axis=1, inplace=True)
-    #
-    #     check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 
 def check_dfs(loc_df, ctrl_loc_df,
               edge_df, ctrl_edge_df):
