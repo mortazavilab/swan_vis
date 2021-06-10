@@ -14,6 +14,56 @@ class TestDataset(object):
     # TODO
     #  add_dataset, add_transcriptome, add_annotation
 
+    # tests add_transcriptome - added after adding an annotation
+    def test_add_transcriptome_2(self):
+        sg = swan.SwanGraph()
+        sg.add_annotation('files/test_full_annotation.gtf')
+        sg.add_transcriptome('files/test_full.gtf')
+
+        # t_df
+        sg.t_df = sg.t_df[['tid', 'annotation']]
+        data = [['test1', True],
+                ['test2', True],
+                ['test3', False],
+                ['test4', True],
+                ['test5', True],
+                ['test6', True]]
+        cols = ['tid', 'annotation']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        # first order to make them comparable
+        # sort all values by their IDs
+        sg.t_df.sort_index(inplace=True)
+        ctrl_t_df.sort_index(inplace=True)
+
+        # and order columns the same way
+        ctrl_t_df = ctrl_t_df[sg.t_df.columns]
+
+        print('test')
+        print(sg.t_df)
+        print('control')
+        print(ctrl_t_df)
+        assert (sg.t_df == ctrl_t_df).all(axis=0).all()
+
+        # loc_df - new location at chr2, 65
+        print('test')
+        print(sg.loc_df)
+        ind = (sg.loc_df.chrom=='chr2')&(sg.loc_df.coord==65)
+        temp = sg.loc_df.loc[ind, 'annotation'].to_frame()
+        for i, entry in temp.iterrows():
+            assert entry.annotation == False
+
+        temp = sg.loc_df.loc[~ind]
+        for i, entry in temp.iterrows():
+            assert entry.annotation == True
+
+    # tests add_transcriptome - vanilla
+    def test_add_transcriptome_1(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+
     # tests add_annotation - transcriptome already in SG
     def test_add_annotation_2(self):
         sg = swan.SwanGraph()
