@@ -23,8 +23,49 @@ class TestPlotting(object):
     # init_plot_settings test do not check for indicate_novel / indicate settigns
     # init_plot_settings tests do not check for new dataset addition
 
+    # test init_plot_settings - https://github.com/mortazavilab/swan_vis/issues/8
+    # gene summary -> transcript path (same gene) -> gene summary (same gene)
+    def test_init_9(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.plot_graph('test2_gid', display=False)
+        sg.plot_transcript_path('test5', display=False)
+        sg.plot_graph('test2_gid', display=False)
+
+        # edge_df
+        sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
+        data = [[9, '-', 'exon', 5, 6, 'exon', None],
+                [8, '-', 'intron', 4, 5, 'intron', None],
+                [12, '-', 'exon', 4, 5, 'exon', None],
+                [14, '-', 'intron', 3, 5, 'intron', None],
+                [7, '-', 'exon', 2, 4, 'exon', None],
+                [13, '-', 'exon', 2, 3, 'exon', None],
+                [11, '-', 'intron', 1, 4, 'intron', None],
+                [6, '-', 'intron', 1, 2, 'intron', None],
+                [5, '-', 'exon', 0, 1, 'exon', None]]
+        cols = ['edge_id', 'strand', 'edge_type', 'v1', 'v2', 'color', 'line']
+        ctrl_edge_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_edge_df = swan.create_dupe_index(ctrl_edge_df, 'edge_id')
+        ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
+
+        # loc_df
+        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+                [1, 'chr2', 80, True, False, False, 'internal', None, None],
+                [2, 'chr2', 75, True, False, False, 'internal', None, None],
+                [3, 'chr2', 65, True, False, False, 'internal', None, None],
+                [4, 'chr2', 60, True, False, False, 'internal', None, None],
+                [5, 'chr2', 50, True, False, True, 'TES'],
+                [6, 'chr2', 45, False, False, True, 'TES']]
+        cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
+                'color', 'edgecolor', 'linewidth']
+        ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
+
     # test init_plot_settings - going from plotting gene summary to
-    # gene summary (same gene)
+    # gene summary (same gene), also tests working from gene name
     def test_init_8(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
