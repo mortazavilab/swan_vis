@@ -7,6 +7,308 @@ import math
 import pandas as pd
 
 ###########################################################################
+############### Related to high-level dataset addition ####################
+###########################################################################
+class TestDataset(object):
+
+    # TODO
+    #  add_dataset, add_transcriptome, add_annotation
+
+    # tests add_annotation - transcriptome already in SG
+    def test_add_annotation_2(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_annotation('files/test_full_annotation.gtf')
+
+        # t_df
+        sg.t_df = sg.t_df[['tid', 'annotation']]
+        data = [['test1', True],
+                ['test2', True],
+                ['test3', False],
+                ['test4', True],
+                ['test5', True],
+                ['test6', True]]
+        cols = ['tid', 'annotation']
+        ctrl_t_df = pd.DataFrame(data=data, columns=cols)
+        ctrl_t_df = swan.create_dupe_index(ctrl_t_df, 'tid')
+        ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
+
+        # first order to make them comparable
+        # sort all values by their IDs
+        sg.t_df.sort_index(inplace=True)
+        ctrl_t_df.sort_index(inplace=True)
+
+        # and order columns the same way
+        ctrl_t_df = ctrl_t_df[sg.t_df.columns]
+
+        print('test')
+        print(sg.t_df)
+        print('control')
+        print(ctrl_t_df)
+        assert (sg.t_df == ctrl_t_df).all(axis=0).all()
+
+        # loc_df - new location at chr2, 65
+        print('test')
+        print(sg.loc_df)
+        ind = (sg.loc_df.chrom=='chr2')&(sg.loc_df.coord==65)
+        temp = sg.loc_df.loc[ind, 'annotation'].to_frame()
+        for i, entry in temp.iterrows():
+            assert entry.annotation == False
+
+        temp = sg.loc_df.loc[~ind]
+        for i, entry in temp.iterrows():
+            assert entry.annotation == True
+
+    # tests add_annotation - vanilla
+    def test_add_annotation_1(self):
+        sg = swan.SwanGraph()
+        sg.add_annotation('files/test_full_annotation.gtf')
+
+        # # loc_df
+        # data = [['chr1', 1, 0, True],
+        #         ['chr1', 20, 1, True],
+        #         ['chr1', 25, 2, True],
+        #         ['chr1', 30, 3, True],
+        #         ['chr1', 35, 4, True],
+        #         ['chr1', 40, 5, True],
+        #         ['chr2', 45, 6, True],
+        #         ['chr2', 50, 7, True],
+        #         ['chr2', 60, 8, True],
+        #         ['chr2', 75, 10, True],
+        #         ['chr2', 80, 11, True],
+        #         ['chr2', 100, 12, True],
+        #         ['chr2', 110, 13, True]]
+        # cols = ['chrom', 'coord', 'vertex_id', 'annotation']
+        # ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
+        # ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
+        # ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+        #
+        # print('test')
+        # print(sg.loc_df)
+        # print('ctrl')
+        # print(ctrl_loc_df)
+        #
+        # print(sg.edge_df)
+        # assert 1 == 0
+        # # edge_df
+        # data = [[0, 1, '+', 'exon', 0, True],
+        #         [1, 2],
+        #         [2, 3],
+        #         [3, 4],
+        #         [4, 5],
+        #         [5, 6],
+        #         [6, 7],
+        #
+        #
+        # ]
+        # cols = ['v1', 'v2', 'strand', 'edge_type', 'annotation']
+        #
+        # # t_df
+        # data = [['test1', 'test1_tname', 'test1_gid', 'test1_gname', [0,1,2,3,4]], [0,1,2,3,4,5], True],
+        #         ['test2', 'test2_tname', 'test2_gid', 'test2_gname', [5,6,7,8,9], [12,11,10,8,7,6], True],
+        #         ['test4', 'test4_tname', 'test4_gid', 'test4_gname', [10], [6,7], True],
+        #         ['test5', 'test5_tname', 'test2_gid', 'test2_gname', [5,11,12], [12,11,8,7], True],
+        #         ['test6', 'test6_tname', 'test2_gid', 'test2_gname', [,6,7,8,9], [13,11,10,8,7,6], True]]
+        # cols = ['tid', 'tname', 'gid', 'gname', 'path', 'loc_path', 'annotation']
+        #
+        assert sg.annotation == True
+        assert 'annotation' in sg.t_df.columns
+        assert 'annotation' in sg.edge_df.columns
+        assert 'annotation' in sg.loc_df.columns
+
+        for ind, entry in sg.t_df.iterrows():
+            assert entry.annotation == True
+            assert entry.novelty == 'Known'
+        for ind, entry in sg.edge_df.iterrows():
+            assert entry.annotation == True
+        for ind, entry in sg.loc_df.iterrows():
+            assert entry.annotation == True
+
+    # tests:, label_annotated
+
+    # label annotated transcripts
+    def test_label_annotated(self):
+        sg = swan.SwanGraph()
+        data = [[0, [0,1]],
+                [1, [2,3]],
+                 [2, [4,5]]]
+        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path'])
+
+        data = [[0,0,1], [1,1,2], [2,2,3], [3,3,4],
+                [4,4,5], [5,5,6]]
+        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
+
+        data = [0,1,2,3,4,5,6]
+        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
+
+        tids = [0,1]
+        sg.label_annotated(tids)
+
+        ctrl_tids = [0,1]
+        tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
+        assert set(ctrl_tids) == set(tids)
+
+        ctrl_edges = [0,1,2,3]
+        edges = sg.edge_df.loc[sg.edge_df.annotation == True, 'edge_id'].tolist()
+        assert set(ctrl_edges) == set(edges)
+
+        ctrl_locs = [0,1,2,3,4]
+        locs = sg.loc_df.loc[sg.loc_df.annotation == True, 'vertex_id'].tolist()
+        assert set(ctrl_locs) == set(locs)
+
+    # add to empty sg, don't add isms
+    def test_add_transcriptome(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_novel_talon.gtf', include_isms=False)
+
+        print(sg.t_df)
+        assert "ISM" not in sg.t_df.novelty.unique()
+        # assert 1 == 0
+
+    # tests if correct error is thrown when adding annotation to
+    # sg that already has one
+    def test_add_annotation_already(self):
+        sg = swan.SwanGraph()
+        sg.annotation = True
+        with pytest.raises(Exception) as e:
+            sg.add_annotation('files/Canx.gtf')
+        assert 'Annotation already' in str(e.value)
+
+    # add annotation to empty sg
+    def test_add_annotation_empty_sg(self):
+        sg = swan.SwanGraph()
+        sg.add_annotation('files/test_full.gtf')
+
+        # check annotation columns
+        assert all(sg.t_df.annotation.tolist())
+        assert all(sg.edge_df.annotation.tolist())
+        assert all(sg.loc_df.annotation.tolist())
+
+        # check novelty column in t_df
+        assert len(sg.t_df.loc[sg.t_df.novelty=='Known']) == len(sg.t_df.index)
+
+        # check annotation flag
+        assert sg.annotation == True
+
+    # add annotation to sg with data already in it
+    def test_add_annotation_sg_data(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_novel.gtf')
+        sg.add_annotation('files/test_known.gtf')
+
+        # t_df
+        annot_tids = ['test1', 'test2', 'test4']
+        assert all(sg.t_df.loc[annot_tids, 'annotation'])
+        ctrl_novel_tids = ['test3', 'test5']
+        novel_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
+        assert len(set(ctrl_novel_tids)-set(novel_tids)) == 0
+        assert len(ctrl_novel_tids) == len(novel_tids)
+
+        # make sure the novelty assignment worked
+        annot_tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
+        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Known', 'tid'].tolist()
+        assert set(annot_tids) == set(known_tids)
+
+        annot_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
+        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Undefined', 'tid'].tolist()
+        assert set(annot_tids) == set(known_tids)
+
+        # loc_df
+        ctrl_novel_locs = [('chr2', 65)]
+        temp = sg.loc_df[sg.loc_df.annotation == False]
+        chroms = temp.chrom.tolist()
+        coords = temp.coord.tolist()
+        novel_locs = [(chrom, coord) for chrom, coord in zip(chroms, coords)]
+        print('control')
+        print(ctrl_novel_locs)
+        print('test')
+        print(novel_locs)
+        assert len(set(ctrl_novel_locs)-set(novel_locs)) == 0
+        assert len(novel_locs) == len(ctrl_novel_locs)
+
+        # edge_df
+        edge_df = sg.add_edge_coords()
+        edge_df = edge_df.loc[edge_df.annotation == False]
+        ctrl_novel_edges = [('chr2', 75, 65, '-', 'exon'),
+                            ('chr2', 65, 50, '-', 'intron'),
+                            ('chr2', 80, 60, '-', 'intron'),
+                            ('chr2', 60, 50, '-', 'exon')]
+        chroms = edge_df.chrom.tolist()
+        v1s = edge_df.v1_coord.tolist()
+        v2s = edge_df.v2_coord.tolist()
+        strands = edge_df.strand.tolist()
+        etypes = edge_df.edge_type.tolist()
+        novel_edges = [(chrom,v1,v2,strand,etype) for chrom,v1,v2,strand,etype \
+            in zip(chroms,v1s,v2s,strands,etypes)]
+        print('control')
+        print(ctrl_novel_edges)
+        print('test')
+        print(novel_edges)
+        assert len(set(ctrl_novel_edges)-set(novel_edges)) == 0
+        assert len(ctrl_novel_edges) == len(novel_edges)
+
+    # add annotation to sg with data where data contains dupe transcript
+    def test_add_annotation_sg_data_dupe_tid(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_novel_1.gtf')
+        sg.add_annotation('files/test_known.gtf')
+
+        # check with coord/chr bc of reindexing fuckery not being
+        # remimplemented yet
+
+        # t_df
+        annot_tids = ['test1', 'test2', 'test4']
+        assert all(sg.t_df.loc[annot_tids, 'annotation'])
+        ctrl_novel_tids = ['test3', 'test5']
+        novel_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
+        assert len(set(ctrl_novel_tids)-set(novel_tids)) == 0
+        assert len(ctrl_novel_tids) == len(novel_tids)
+
+        # make sure the novelty assignment worked
+        annot_tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
+        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Known', 'tid'].tolist()
+        assert set(annot_tids) == set(known_tids)
+
+        annot_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
+        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Undefined', 'tid'].tolist()
+        assert set(annot_tids) == set(known_tids)
+
+        # loc_df
+        ctrl_novel_locs = [('chr2', 65)]
+        temp = sg.loc_df[sg.loc_df.annotation == False]
+        chroms = temp.chrom.tolist()
+        coords = temp.coord.tolist()
+        novel_locs = [(chrom, coord) for chrom, coord in zip(chroms, coords)]
+        print('control')
+        print(ctrl_novel_locs)
+        print('test')
+        print(novel_locs)
+        assert len(set(ctrl_novel_locs)-set(novel_locs)) == 0
+        assert len(novel_locs) == len(ctrl_novel_locs)
+
+        # edge_df
+        edge_df = sg.add_edge_coords()
+        edge_df = edge_df.loc[edge_df.annotation == False]
+        ctrl_novel_edges = [('chr2', 75, 65, '-', 'exon'),
+                            ('chr2', 65, 50, '-', 'intron'),
+                            ('chr2', 80, 60, '-', 'intron'),
+                            ('chr2', 60, 50, '-', 'exon')]
+        chroms = edge_df.chrom.tolist()
+        v1s = edge_df.v1_coord.tolist()
+        v2s = edge_df.v2_coord.tolist()
+        strands = edge_df.strand.tolist()
+        etypes = edge_df.edge_type.tolist()
+        novel_edges = [(chrom,v1,v2,strand,etype) for chrom,v1,v2,strand,etype \
+            in zip(chroms,v1s,v2s,strands,etypes)]
+        print('control')
+        print(ctrl_novel_edges)
+        print('test')
+        print(novel_edges)
+        assert len(set(ctrl_novel_edges)-set(novel_edges)) == 0
+        assert len(ctrl_novel_edges) == len(novel_edges)
+
+
+###########################################################################
 ###################### Related to file parsing ############################
 ###########################################################################
 class TestFiles(object):
@@ -703,201 +1005,6 @@ class TestCreateDFs(object):
         ctrl_t_df.loc[ctrl_t_df.tid.isin(new_tids), 'novelty'] = 'Undefined'
 
         check_dfs(loc_df, ctrl_loc_df, edge_df, ctrl_edge_df, t_df, ctrl_t_df)
-
-# ###########################################################################
-# ############### Related higher-level dataset addition #####################
-# ###########################################################################
-class TestDataset(object):
-
-    # tests:, label_annotated
-
-    # TODO
-    #  add_dataset, add_transcriptome, add_annotation tests with the
-    # update_ids results also tested!!!! ie coords and paths!
-
-    # label annotated transcripts
-    def test_label_annotated(self):
-        sg = swan.SwanGraph()
-        data = [[0, [0,1]],
-                [1, [2,3]],
-                 [2, [4,5]]]
-        sg.t_df = pd.DataFrame(data=data, columns=['tid', 'path'])
-
-        data = [[0,0,1], [1,1,2], [2,2,3], [3,3,4],
-                [4,4,5], [5,5,6]]
-        sg.edge_df = pd.DataFrame(data=data, columns=['edge_id', 'v1', 'v2'])
-
-        data = [0,1,2,3,4,5,6]
-        sg.loc_df = pd.DataFrame(data=data, columns=['vertex_id'])
-
-        tids = [0,1]
-        sg.label_annotated(tids)
-
-        ctrl_tids = [0,1]
-        tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
-        assert set(ctrl_tids) == set(tids)
-
-        ctrl_edges = [0,1,2,3]
-        edges = sg.edge_df.loc[sg.edge_df.annotation == True, 'edge_id'].tolist()
-        assert set(ctrl_edges) == set(edges)
-
-        ctrl_locs = [0,1,2,3,4]
-        locs = sg.loc_df.loc[sg.loc_df.annotation == True, 'vertex_id'].tolist()
-        assert set(ctrl_locs) == set(locs)
-
-    # add to empty sg, don't add isms
-    def test_add_transcriptome(self):
-        sg = swan.SwanGraph()
-        sg.add_transcriptome('files/test_novel_talon.gtf', include_isms=False)
-
-        print(sg.t_df)
-        assert "ISM" not in sg.t_df.novelty.unique()
-        # assert 1 == 0
-
-    # tests if correct error is thrown when adding annotation to
-    # sg that already has one
-    def test_add_annotation_already(self):
-        sg = swan.SwanGraph()
-        sg.annotation = True
-        with pytest.raises(Exception) as e:
-            sg.add_annotation('files/Canx.gtf')
-        assert 'Annotation already' in str(e.value)
-
-    # add annotation to empty sg
-    def test_add_annotation_empty_sg(self):
-        sg = swan.SwanGraph()
-        sg.add_annotation('files/test_full.gtf')
-
-        # check annotation columns
-        assert all(sg.t_df.annotation.tolist())
-        assert all(sg.edge_df.annotation.tolist())
-        assert all(sg.loc_df.annotation.tolist())
-
-        # check novelty column in t_df
-        assert len(sg.t_df.loc[sg.t_df.novelty=='Known']) == len(sg.t_df.index)
-
-        # check annotation flag
-        assert sg.annotation == True
-
-    # add annotation to sg with data already in it
-    def test_add_annotation_sg_data(self):
-        sg = swan.SwanGraph()
-        sg.add_transcriptome('files/test_novel.gtf')
-        sg.add_annotation('files/test_known.gtf')
-
-        # check with coord/chr bc of reindexing fuckery not being
-        # remimplemented yet
-
-        # t_df
-        annot_tids = ['test1', 'test2', 'test4']
-        assert all(sg.t_df.loc[annot_tids, 'annotation'])
-        ctrl_novel_tids = ['test3', 'test5']
-        novel_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
-        assert len(set(ctrl_novel_tids)-set(novel_tids)) == 0
-        assert len(ctrl_novel_tids) == len(novel_tids)
-
-        # make sure the novelty assignment worked
-        annot_tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
-        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Known', 'tid'].tolist()
-        assert set(annot_tids) == set(known_tids)
-
-        annot_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
-        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Undefined', 'tid'].tolist()
-        assert set(annot_tids) == set(known_tids)
-
-        # loc_df
-        ctrl_novel_locs = [('chr2', 65)]
-        temp = sg.loc_df[sg.loc_df.annotation == False]
-        chroms = temp.chrom.tolist()
-        coords = temp.coord.tolist()
-        novel_locs = [(chrom, coord) for chrom, coord in zip(chroms, coords)]
-        print('control')
-        print(ctrl_novel_locs)
-        print('test')
-        print(novel_locs)
-        assert len(set(ctrl_novel_locs)-set(novel_locs)) == 0
-        assert len(novel_locs) == len(ctrl_novel_locs)
-
-        # edge_df
-        edge_df = sg.add_edge_coords()
-        edge_df = edge_df.loc[edge_df.annotation == False]
-        ctrl_novel_edges = [('chr2', 75, 65, '-', 'exon'),
-                            ('chr2', 65, 50, '-', 'intron'),
-                            ('chr2', 80, 60, '-', 'intron'),
-                            ('chr2', 60, 50, '-', 'exon')]
-        chroms = edge_df.chrom.tolist()
-        v1s = edge_df.v1_coord.tolist()
-        v2s = edge_df.v2_coord.tolist()
-        strands = edge_df.strand.tolist()
-        etypes = edge_df.edge_type.tolist()
-        novel_edges = [(chrom,v1,v2,strand,etype) for chrom,v1,v2,strand,etype \
-            in zip(chroms,v1s,v2s,strands,etypes)]
-        print('control')
-        print(ctrl_novel_edges)
-        print('test')
-        print(novel_edges)
-        assert len(set(ctrl_novel_edges)-set(novel_edges)) == 0
-        assert len(ctrl_novel_edges) == len(novel_edges)
-
-    # add annotation to sg with data where data contains dupe transcript
-    def test_add_annotation_sg_data_dupe_tid(self):
-        sg = swan.SwanGraph()
-        sg.add_transcriptome('files/test_novel_1.gtf')
-        sg.add_annotation('files/test_known.gtf')
-
-        # check with coord/chr bc of reindexing fuckery not being
-        # remimplemented yet
-
-        # t_df
-        annot_tids = ['test1', 'test2', 'test4']
-        assert all(sg.t_df.loc[annot_tids, 'annotation'])
-        ctrl_novel_tids = ['test3', 'test5']
-        novel_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
-        assert len(set(ctrl_novel_tids)-set(novel_tids)) == 0
-        assert len(ctrl_novel_tids) == len(novel_tids)
-
-        # make sure the novelty assignment worked
-        annot_tids = sg.t_df.loc[sg.t_df.annotation == True, 'tid'].tolist()
-        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Known', 'tid'].tolist()
-        assert set(annot_tids) == set(known_tids)
-
-        annot_tids = sg.t_df.loc[sg.t_df.annotation == False, 'tid'].tolist()
-        known_tids = sg.t_df.loc[sg.t_df.novelty == 'Undefined', 'tid'].tolist()
-        assert set(annot_tids) == set(known_tids)
-
-        # loc_df
-        ctrl_novel_locs = [('chr2', 65)]
-        temp = sg.loc_df[sg.loc_df.annotation == False]
-        chroms = temp.chrom.tolist()
-        coords = temp.coord.tolist()
-        novel_locs = [(chrom, coord) for chrom, coord in zip(chroms, coords)]
-        print('control')
-        print(ctrl_novel_locs)
-        print('test')
-        print(novel_locs)
-        assert len(set(ctrl_novel_locs)-set(novel_locs)) == 0
-        assert len(novel_locs) == len(ctrl_novel_locs)
-
-        # edge_df
-        edge_df = sg.add_edge_coords()
-        edge_df = edge_df.loc[edge_df.annotation == False]
-        ctrl_novel_edges = [('chr2', 75, 65, '-', 'exon'),
-                            ('chr2', 65, 50, '-', 'intron'),
-                            ('chr2', 80, 60, '-', 'intron'),
-                            ('chr2', 60, 50, '-', 'exon')]
-        chroms = edge_df.chrom.tolist()
-        v1s = edge_df.v1_coord.tolist()
-        v2s = edge_df.v2_coord.tolist()
-        strands = edge_df.strand.tolist()
-        etypes = edge_df.edge_type.tolist()
-        novel_edges = [(chrom,v1,v2,strand,etype) for chrom,v1,v2,strand,etype \
-            in zip(chroms,v1s,v2s,strands,etypes)]
-        print('control')
-        print(ctrl_novel_edges)
-        print('test')
-        print(novel_edges)
-        assert len(set(ctrl_novel_edges)-set(novel_edges)) == 0
-        assert len(ctrl_novel_edges) == len(novel_edges)
 
 def check_dfs(loc_df, ctrl_loc_df,
               edge_df, ctrl_edge_df,

@@ -73,13 +73,29 @@ class PlottedGraph(Graph):
                            indicate_dataset=False,
                            indicate_novel=False,
                            browser=False):
+        """
+        Initialize plotting settings from preexisting PlottedGraph. Try not to
+		resubsample the input SwanGraph when unnecessary.
 
-        # # previous plotting parameters
-        # old_indicate_dataset = self.indicate_dataset
-        # old_indicate_novel = self.indicate_novel
+		Parameters:
+			sg (swan SwanGraph): Parent SwanGraph to sample from
+			gid (str): Gene that's being plotted
+				Default: None
+			tid (str): Transcript that's being plotted
+				Default: None
+			indicate_dataset (bool or str): Name of dataset to stylize nodes and
+				edges from as outlined and dashed. If False, then don't do this
+				for any nodes/edges
+				Default: False
+			indicate_novel (bool): Whether or not to stylize novel nodes and
+				edges as outlined and dashed.
+				Default: False
+			browser (bool): Whether to plot the transcript as a browser model
+				Default: False
+        """
+
+        # previous plotting parameters
         old_gid = self.gid
-        # old_tid = self.tid
-        # old_browser = self.browser
         old_datasets = self.datasets
 
         # new plotting parameters
@@ -106,84 +122,6 @@ class PlottedGraph(Graph):
 
         if not browser:
             self.calc_node_edge_styles()
-
-        # # save some old stuff
-        # old_indicate_dataset = self.indicate_dataset
-        # old_indicate_novel = self.indicate_novel
-        # old_gid = self.gid
-        # old_tid = self.tid
-        # old_browser = self.browser
-        # old_dataset_cols = self.dataset_cols
-        #
-        # # init some stuff
-        # self.indicate_dataset = indicate_dataset
-        # self.indicate_novel = indicate_novel
-        # self.gid = gid
-        # self.tid = tid
-        # self.browser = browser
-        # self.dataset_cols = sg.get_dataset_cols()
-        #
-        # # more human-readable graph types
-        # if self.tid:
-        #     self.graph_type = 'transcript_path'
-        # else:
-        #     self.graph_type = 'summary'
-        #
-        # # if we have new datasets
-        # if len(list(set(old_dataset_cols)-set(self.dataset_cols))) != 0:
-        #     self.new_gene(sg)
-        #     if not self.browser:
-        #         self.calc_node_edge_styles()
-        #         self.get_ordered_edges()
-        #
-        # # plotting the same transcript
-        # elif old_tid == self.tid and self.tid != None:
-        #     if not browser:
-        #         if old_indicate_dataset != self.indicate_dataset \
-        #         or old_indicate_novel != self.indicate_novel:
-        #             self.calc_node_edge_styles()
-        #
-        # # plotting a different transcript
-        # elif old_tid != self.tid and self.tid != None:
-        #
-        #     self.gid = sg.get_gid_from_tid(self.tid)
-        #
-        #     # new gene or same gene but different plotting
-        #     # strategy
-        #     if old_gid != self.gid \
-        #     or old_browser != self.browser:
-        #         self.new_gene(sg)
-        #     else:
-        #         self.edge_path = self.get_path_from_tid(self.tid)
-        #         self.loc_path = self.test_get_loc_path_from_tid(self.tid)
-        #     if not self.browser:
-        #         self.calc_node_edge_styles()
-        #         self.get_ordered_edges()
-        #
-        # # plotting a different gene
-        # elif old_gid != self.gid:
-        #     self.new_gene(sg)
-        #     if not self.browser:
-        #         self.calc_node_edge_styles()
-        #
-        # elif old_indicate_dataset != self.indicate_dataset \
-        # or old_indicate_novel != self.indicate_novel:
-        #     self.calc_node_edge_styles()
-
-        # # if we are going from browser to swan graph
-        # # with the same gene or transcript
-        # elif old_browser != self.browser \
-        # and not self.browser:
-        #     print('bop11')
-        #     print('hellow I should be here')
-        #     self.new_gene(sg)
-        #     self.calc_node_edge_styles()
-
-        # elif old_tid == self.tid \
-        # and old_browser != self.browser \
-        # and not self.browser:
-        #     self.new_gene(sg)
-        #     self.calc_node_edge_styles()
 
     def new_swangraph(self):
         """
@@ -223,15 +161,6 @@ class PlottedGraph(Graph):
 
         # get positions and sizes of nodes/edges in this gene
         self.new_swangraph()
-
-        # if self.tid:
-        #     self.edge_path = self.get_path_from_tid(self.tid)
-        #     self.loc_path = self.get_loc_path_from_tid(self.tid)
-        #
-        # if not self.browser:
-        #     self.ordered_nodes = self.get_ordered_nodes()
-        #     self.calc_pos_sizes()
-        #     self.calc_edge_curves()
 
     # settings that can be initialized if we're plotting a new transcript
     # (or a new gene)
@@ -656,13 +585,6 @@ class PlottedGraph(Graph):
         txt = '{} {}'.format(text_scale, scale_unit)
         ax.text(x_coord, y_coord, txt, fontsize=30)
 
-    # # gets nodes ordered by genomic position
-    # def get_ordered_nodes(self):
-    #     loc_ids = self.loc_df.vertex_id.tolist()
-    #     coords = self.loc_df.coord.tolist()
-    #     ordered_nodes = [i[0] for i in sorted(zip(loc_ids, coords),
-    #         key=lambda x: x[1])]
-
         # check if forward or reverse strand
         if self.strand == '-':
             ordered_nodes.reverse()
@@ -671,8 +593,6 @@ class PlottedGraph(Graph):
 
     # orders edges by those present in the transcript and those not present in the transcript
     def get_ordered_edges(self):
-        # path_edges = [(self.path[i],self.path[i+1])
-        #        for i in range(len(self.path)-1)]
         self.edge_df['in_transcript'] = self.edge_df.apply(lambda x:
             1 if x.edge_id in self.edge_path else 0, axis=1)
         self.edge_df.sort_values(by='in_transcript', inplace=True)

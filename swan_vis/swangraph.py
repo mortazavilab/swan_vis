@@ -282,6 +282,9 @@ class SwanGraph(Graph):
 
 
 	def add_abundance(self, counts_file):
+
+		# TODO add T/F columns corresponding to presence/absence in datasets
+		# in t_df, loc_df, and edge_df
 		"""
 		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
 		SwanGraph but not in the counts matrix will be assigned 0 counts.
@@ -2270,8 +2273,6 @@ def _create_gene_report(gid, sg, t_df,
 	# loop through each transcript and add it to the report
 	for tid in report_tids:
 		entry = gid_t_df.loc[tid]
-		## TODO would be faster if I didn't have to compute these names twice....
-		## ie once in plot_each_transcript and once here
 		fname = create_fname(prefix,
 							 indicate_dataset,
 							 indicate_novel,

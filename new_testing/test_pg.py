@@ -8,9 +8,14 @@ import pandas as pd
 import anndata
 
 ###########################################################################
-###################### Utilities in graph.py ##############################
+################# Related to input/error handling #########################
 ###########################################################################
-class TestGeneSummary(object):
+
+
+###########################################################################
+################# Related to plotting Swan Plots ##########################
+###########################################################################
+class TestPlotting(object):
 
     # done: test_new_gene, calc_pos_sizes, calc_edge_curves, plot_graph,
     # plot_transcript_path
