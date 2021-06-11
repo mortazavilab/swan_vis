@@ -48,15 +48,8 @@ class TestAbundance(object):
                     [333333.3333, 333333.3333],
                     [166666.6667, 166666.6667],
                     [0, 0]]
-        ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
-        print('tpm')
-        print('test')
-        print(sg.adata.layers['tpm'])
-        print('control')
-        print(ctrl_tpm)
 
-        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index, data=sg.adata.layers['tpm'])
-        print(df.head())
+        ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
         ctrl_tpm = np.around(ctrl_tpm)
         test_tpm = np.around(sg.adata.layers['tpm'])
         print('tpm')
@@ -66,6 +59,18 @@ class TestAbundance(object):
         print(ctrl_tpm)
         print(np.array_equal(ctrl_tpm, test_tpm))
         assert np.array_equal(ctrl_tpm, test_tpm)
+
+        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333],[0,0]]
+        ctrl_pi = np.transpose(np.array(ctrl_pi)).astype(np.float)
+        ctrl_pi = np.around(ctrl_pi)
+        test_pi = np.around(sg.adata.layers['pi'])
+        print('pi')
+        print('test')
+        print(test_pi)
+        print('ctrl')
+        print(ctrl_pi)
+        assert np.array_equal(ctrl_pi, test_pi)
+
 
 # test lower-level functions
 
