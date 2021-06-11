@@ -12,19 +12,39 @@ from tqdm import tqdm
 
 pd.options.mode.chained_assignment = None
 
-# creates the duplicate index
 def create_dupe_index(df, ind_name):
+	"""
+	Creates a duplicate column in the input DataFrame from the input column name
+
+	Parameters:
+		df (pandas DataFrame): DataFrame to create duplicate column
+		ind_name (str): Name of column to duplicate
+	"""
 	df[ind_name+'_back'] = df[ind_name]
 	return df
 
-# renames old index dupe column in df and resets the index
 def reset_dupe_index(df, ind_name):
+	"""
+	Reset index and rename duplicate index column
+
+	Parameters:
+		df (pandas DataFrame): DataFrame to reset index
+		ind_name (str): Name of column to reset
+	"""
 	df.rename({ind_name: ind_name+'_back'}, inplace=True, axis=1)
 	df.reset_index(inplace=True)
 	return(df)
 
 # set index, rename dupe index in df
 def set_dupe_index(df, ind_name):
+	"""
+	Set duplicated column from create_dupe_index as the index and rename the
+	duplicated column
+
+	Parameters:
+		df (pandas DataFrame): DataFrame to set index
+		ind_name (str): Name of column to set as index
+	"""
 	df.set_index(ind_name, inplace=True)
 	df.rename({ind_name+'_back': ind_name}, inplace=True, axis=1)
 	return(df)

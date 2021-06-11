@@ -1,0 +1,7 @@
+gene_ID	transcript_ID	annot_gene_id	annot_transcript_id	annot_gene_name	annot_transcript_name	n_exons	length	gene_novelty	transcript_novelty	ISM_subtype	dataset1	dataset2
+0	0	test1_gid	test1	test1_gname	test1_tname	0	0	Known	Known	None	5	5
+1	1	test2_gid	test2	test2_gname	test2_tname	0	0	Known	Known	None	10	0
+1	2	test2_gid	test3	test2_gname	test3_tname	0	0	Known	Known	None	0	10
+4	3	test4_gid	test4	test4_gname	test4_tname	0	0	Known	Known	None	10	10
+1	4	test2_gid	test5	test2_gname	test5_tname	0	0	Known	Known	None	5	5
+8	5	test8_gid	test8	test8_gname	test8_tname	0	0	Known	Known	None	4	5
