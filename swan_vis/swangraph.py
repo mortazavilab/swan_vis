@@ -354,7 +354,7 @@ class SwanGraph(Graph):
 
 		# if there is preexisting abundance data in the SwanGraph, concatenate
 		# otherwise, adata is the new transcript level adata
-		if self.has_abundance():
+		if not self.has_abundance():
 
 			# create transcript-level adata object
 			self.adata = anndata.AnnData(var=var, obs=obs, X=X)

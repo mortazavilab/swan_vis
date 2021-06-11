@@ -331,6 +331,9 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 		cond_col = '{}_tpm'.format(c)
 		total_col = '{}_total'.format(c)
 		df[total_col] = df[c].sum()
+		print()
+		print(c)
+		print(df[total_col])
 		df[cond_col] = (df[c]*1000000)/df[total_col]
 		tpm_cols.append(cond_col)
 

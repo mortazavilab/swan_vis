@@ -44,26 +44,26 @@ class Graph:
 	################# Related to checking contents of Graph ##################
 	##########################################################################
 
-	# check that input datasets are in the Graph:
-	def check_datasets(self, datasets):
-		"""
-		Checks that an input dataset or list of datasets are present in
-		the Graph. Raises an exception if the dataset is not found.
-
-		Parameters:
-			datasets (str or list of str): Dataset or list of datasets to
-				check for.
-		"""
-
-		# make sure we have an iterable
-		if type(datasets) != list:
-			datasets = [datasets]
-
-		g_datasets = self.get_dataset_cols()
-		for d in datasets:
-			if d not in g_datasets:
-				raise Exception('Dataset {} not present in graph. '
-								'Datasets in graph are {}'.format(d, g_datasets))
+	# # check that input datasets are in the Graph:
+	# def check_datasets(self, datasets):
+	# 	"""
+	# 	Checks that an input dataset or list of datasets are present in
+	# 	the Graph. Raises an exception if the dataset is not found.
+	#
+	# 	Parameters:
+	# 		datasets (str or list of str): Dataset or list of datasets to
+	# 			check for.
+	# 	"""
+	#
+	# 	# make sure we have an iterable
+	# 	if type(datasets) != list:
+	# 		datasets = [datasets]
+	#
+	# 	g_datasets = self.get_dataset_cols()
+	# 	for d in datasets:
+	# 		if d not in g_datasets:
+	# 			raise Exception('Dataset {} not present in graph. '
+	# 							'Datasets in graph are {}'.format(d, g_datasets))
 
 
 	# # check that input datasets have abundance data in the Graph:
