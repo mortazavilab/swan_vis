@@ -19,6 +19,9 @@ def create_dupe_index(df, ind_name):
 	Parameters:
 		df (pandas DataFrame): DataFrame to create duplicate column
 		ind_name (str): Name of column to duplicate
+
+	Returns:
+		df (pandas DataFrame): DataFrame with new duplicate column
 	"""
 	df[ind_name+'_back'] = df[ind_name]
 	return df
@@ -30,6 +33,9 @@ def reset_dupe_index(df, ind_name):
 	Parameters:
 		df (pandas DataFrame): DataFrame to reset index
 		ind_name (str): Name of column to reset
+
+	Returns:
+		df (pandas DataFrame): DataFrame with reset duplicate index
 	"""
 	df.rename({ind_name: ind_name+'_back'}, inplace=True, axis=1)
 	df.reset_index(inplace=True)
@@ -44,43 +50,25 @@ def set_dupe_index(df, ind_name):
 	Parameters:
 		df (pandas DataFrame): DataFrame to set index
 		ind_name (str): Name of column to set as index
+
+	Returns:
+		df (pandas DataFrame): DataFrame with set duplicate index
 	"""
 	df.set_index(ind_name, inplace=True)
 	df.rename({ind_name+'_back': ind_name}, inplace=True, axis=1)
 	return(df)
 
-# partner function to label_edges
-def set_edge_attrs(x, G, f_df, f_e):
-	attr = {(x.v1, x.v2): {f_e: x[f_df]}}
-	nx.set_edge_attributes(G, attr)
-	return G
 
-# label edges in G based on fields of edge_df
-def label_edges(G, edge_df, f_df, f_e):
-	edge_df.apply(lambda x: set_edge_attrs(x, G, f_df, f_e), axis=1)
-	return G
-
-# parter function to label_nodes
-def set_node_attrs(x, G, f_df, f_n):
-	attr = {x.vertex_id: {f_n: x[f_df]}}
-	nx.set_node_attributes(G, attr)
-	return G
-
-# label nodes in G based on fields of loc_df
-def label_nodes(G, loc_df, f_df, f_n):
-	loc_df.apply(lambda x: set_node_attrs(x, G, f_df, f_n), axis=1)
-	return G
-
-# get value associated with keyword in the 9th column of gtf
-def get_field_value(key, fields):
-	if key not in fields:
-		return None
-	else:
-		return fields.split(key+' "')[1].split()[0].replace('";','')
-
-# creates a dictionary of the last field of a gtf
-# adapted from Dana Wyman
 def get_fields(fields):
+	"""
+	From the last column of a GTF, return a dictionary mapping each value.
+
+	Parameters:
+		fields (str): The last column of a GTF
+
+	Returns:
+		attributes (dict): Dictionary created from fields.
+	"""
 
 	attributes = {}
 
@@ -100,16 +88,27 @@ def get_fields(fields):
 
 	return attributes
 
-# check to see if a file save location is valid
 def check_dir_loc(loc):
+	"""
+	Check if a directory exists. Raise an error if not.
+
+	Parameters:
+		loc (str): Directory name
+	"""
 	if '/' in loc:
 		d = '/'.join(loc.split('/')[:-1])
 		if not os.path.isdir(d):
 			raise Exception('Directory {} is not found. '
 				'Try a different save location'.format(d))
 
-# check to see if a file exists
 def check_file_loc(loc, ftype):
+	"""
+	Check if a file exists. Raises an error if not.
+
+	Parameters:
+	 	loc (str): File name
+		ftype (str): File type
+	"""
 	if not os.path.isfile(loc):
 		raise Exception('{} file not found at {}. '
 			'Check path.'.format(ftype, loc))
@@ -137,8 +136,16 @@ def create_fname(prefix, indicate_dataset,
 		fname += '_report.pdf'
 	return fname
 
-# checks if a file is a gtf or a db
 def gtf_or_db(fname):
+	"""
+	Determine if a file is GTF or TALON DB.
+
+	Parameters:
+		fname (str): File name / location
+
+	Returns:
+		ftype (str): 'gtf' or 'db' depending on results
+	"""
 	ext = fname.split('.')[-1]
 	if ext == 'gtf': return 'gtf'
 	elif ext == 'db': return 'db'
