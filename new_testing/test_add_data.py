@@ -7,6 +7,74 @@ import math
 import pandas as pd
 
 ###########################################################################
+##################### Related to adding metadata ##########################
+###########################################################################
+class TestMetadata(object):
+
+    # test add_metadata - one after the other
+    def test_add_metadata_2(self):
+        pass
+        sg = swan.SwanGraph()
+        # just gencode vM21 chr 11 and tcf3
+        gtf = 'files/chr11_and_Tcf3.gtf'
+        sg.add_annotation(gtf, verbose=True)
+        db = 'files/chr11_and_Tcf3_no_gname.db'
+        sg.add_transcriptome(db)
+        ab = 'files/chr11_and_Tcf3_talon_abundance.tsv'
+        sg.add_abundance(ab)
+        meta = 'files/chr11_and_Tcf3_metadata.tsv'
+        sg.add_metadata(meta)
+        meta = 'files/chr11_and_Tcf3_metadata_2.tsv'
+        sg.add_metadata(meta)
+
+        test = sg.adata.obs
+        data = [['D12', '1', 'K562', 'G0'],
+                ['PB65_B017', '2', 'GM12878', 'M'],
+                ['PB65_B018', '2', 'GM12878', 'S']]
+        cols = ['dataset', 'cluster', 'sample', 'cell_state']
+        ctrl = pd.DataFrame(data=data, columns=cols)
+        ctrl.index = ctrl.dataset
+        ctrl = ctrl[test.columns]
+        ctrl.sort_index(inplace=True)
+        test.sort_index(inplace=True)
+
+        print('test')
+        print(test)
+        print('control')
+        print(ctrl)
+        assert test.equals(ctrl)
+
+    # test add_metadata - vanilla
+    def test_add_metadata(self):
+        sg = swan.SwanGraph()
+        # just gencode vM21 chr 11 and tcf3
+        gtf = 'files/chr11_and_Tcf3.gtf'
+        sg.add_annotation(gtf, verbose=True)
+        db = 'files/chr11_and_Tcf3_no_gname.db'
+        sg.add_transcriptome(db)
+        ab = 'files/chr11_and_Tcf3_talon_abundance.tsv'
+        sg.add_abundance(ab)
+        meta = 'files/chr11_and_Tcf3_metadata.tsv'
+        sg.add_metadata(meta)
+
+        test = sg.adata.obs
+        data = [['D12', '1', 'K562'],
+                ['PB65_B017', '2', 'GM12878'],
+                ['PB65_B018', '2', 'GM12878']]
+        cols = ['dataset', 'cluster', 'sample']
+        ctrl = pd.DataFrame(data=data, columns=cols)
+        ctrl.index = ctrl.dataset
+        ctrl = ctrl[test.columns]
+        ctrl.sort_index(inplace=True)
+        test.sort_index(inplace=True)
+
+        print('test')
+        print(test)
+        print('control')
+        print(ctrl)
+        assert test.equals(ctrl)
+
+###########################################################################
 ############### Related to high-level dataset addition ####################
 ###########################################################################
 class TestDataset(object):

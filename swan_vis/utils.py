@@ -8,6 +8,7 @@ import os
 import copy
 from collections import defaultdict
 from tqdm import tqdm
+from swan_vis.talon_utils import *
 
 
 pd.options.mode.chained_assignment = None
@@ -341,7 +342,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 def calc_tpm(adata, t_df, obs_col='dataset'):
 	"""
 	Calculate the TPM per condition given by `obs_col`.
-	Default column to use is `self.adata.obs` index column, `dataset`.
+	Default column to use is `adata.obs` index column, `dataset`.
 
 	Parameters:
 		adata (anndata AnnData): Annotated data object from the SwanGraph
@@ -391,6 +392,147 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 ##########################################################################
 ####################### Related to file parsing ##########################
 ##########################################################################
+
+def parse_db(database, pass_list, verbose):
+	"""
+	Get the unique transcripts and exons that are present in a TALON DB
+	transcriptome.
+
+	Parameters:
+		database (str): Path to database file
+		pass_list (str): Path to TALON pass list files
+		verbose (bool): Display progress
+	"""
+
+	# make sure files exist
+	if pass_list:
+		check_file_loc(pass_list, 'pass list')
+
+	# annot = check_annot_validity(annot, database)
+
+	pass_list = handle_filtering(database, True, pass_list)
+
+	# create separate gene and transcript pass_lists
+	gene_pass_list = []
+	transcript_pass_list = []
+	for key,group in itertools.groupby(pass_list,operator.itemgetter(0)):
+		gene_pass_list.append(key)
+		for id_tuple in list(group):
+			transcript_pass_list.append(id_tuple[1])
+
+	# get gene, transcript, and exon annotations
+	gene_annotations = get_annotations(database, "gene",
+									   pass_list = gene_pass_list)
+	transcript_annotations = get_annotations(database, "transcript",
+											 pass_list = transcript_pass_list)
+	exon_annotations = get_annotations(database, "exon")
+
+	# get transcript data from the database
+	gene_2_transcripts = get_gene_2_transcripts(database,
+						 transcript_pass_list)
+
+	# get exon location info from database
+	exon_ID_2_location = fetch_exon_locations(database)
+
+	transcripts = {}
+	exons = {}
+
+	if verbose:
+		n_transcripts = len(transcript_pass_list)
+		pbar = tqdm(total=n_transcripts)
+		pbar.set_description('Processing transcripts')
+
+	# loop through genes, transcripts, and exons
+	for gene_ID, transcript_tuples in gene_2_transcripts.items():
+		curr_annot = gene_annotations[gene_ID]
+		gene_annotation_dict = {}
+		for annot in curr_annot:
+			attribute = annot[3]
+			value = annot[4]
+			gene_annotation_dict[attribute] = value
+
+		# check if there's a gene name field and add one if not
+		if 'gene_name' not in gene_annotation_dict:
+			gene_annotation_dict['gene_name'] = gene_annotation_dict['gene_id']
+
+		# get transcript entries
+		for transcript_entry in transcript_tuples:
+			transcript_ID = transcript_entry["transcript_ID"]
+
+			curr_transcript_annot = transcript_annotations[transcript_ID]
+
+			transcript_annotation_dict = {}
+			for annot in curr_transcript_annot:
+				attribute = annot[3]
+				value = annot[4]
+				transcript_annotation_dict[attribute] = value
+
+
+			if 'transcript_name' not in transcript_annotation_dict:
+				transcript_annotation_dict['transcript_name'] = transcript_annotation_dict['transcript_id']
+			tid = transcript_annotation_dict['transcript_id']
+			tname = transcript_annotation_dict['transcript_name']
+			gid = gene_annotation_dict['gene_id']
+			gname = gene_annotation_dict['gene_name']
+			strand = transcript_entry['strand']
+			novelty = get_transcript_novelties(transcript_annotation_dict)
+
+			# add transcript to dictionary
+			entry = {'gid': gid,
+					 'gname': gname,
+					 'tid': tid,
+					 'tname': tname,
+					 'strand': strand,
+					 'novelty': novelty,
+					 'exons': []}
+			transcript = {tid: entry}
+			transcripts.update(transcript)
+
+			if verbose:
+				pbar.update(1)
+
+			if transcript_entry["n_exons"] != 1:
+				transcript_edges = [str(transcript_entry["start_exon"])] + \
+								   str(transcript_entry["jn_path"]).split(",")+ \
+								   [str(transcript_entry["end_exon"])]
+			else:
+				transcript_edges = [transcript_entry["start_exon"]]
+
+			# get exon entries
+			for exon_ID in transcript_edges[::2]:
+				exon_ID = int(exon_ID)
+				curr_exon_annot = exon_annotations[exon_ID]
+
+				exon_annotation_dict = {}
+				for annot in curr_exon_annot:
+					attribute = annot[3]
+					value = annot[4]
+					exon_annotation_dict[attribute] = value
+
+				e_tuple = exon_ID_2_location[exon_ID]
+				chrom = e_tuple[0]
+				start = e_tuple[1]
+				stop = e_tuple[2]
+				strand = e_tuple[3]
+				start, stop = find_edge_start_stop(start, stop, strand)
+				eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
+
+				# add novel exon to dictionary
+				if eid not in exons:
+					edge = {eid: {'eid': eid,
+								  'chrom': chrom,
+								  'v1': start,
+								  'v2': stop,
+								  'strand': strand}}
+					exons.update(edge)
+
+				# add this exon to the transcript's list of exons
+				if tid in transcripts:
+					transcripts[tid]['exons'].append(eid)
+
+	t_df = pd.DataFrame(transcripts).transpose()
+	exon_df = pd.DataFrame(exons).transpose()
+	return t_df, exon_df
 
 def parse_gtf(gtf_file, verbose):
 	"""

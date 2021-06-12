@@ -17,6 +17,113 @@ import pandas as pd
 # test different combinations of add_abundance
 class TestAbundance(object):
 
+    # add abundance - talon format
+    def test_add_abundance_3(self):
+        sg = swan.SwanGraph()
+        sg.add_annotation('files/test_full_annotation.gtf')
+        sg.add_transcriptome('files/test_full.gtf')
+
+        sg.add_abundance('files/test_ab_talon_1.tsv')
+
+        assert set(sg.datasets) == set(['dataset1', 'dataset2'])
+
+        print(sg.t_df.index)
+        print(sg.adata.var.index)
+        assert sg.t_df.index.tolist() == sg.adata.var.index.tolist()
+
+        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5],[0,0]])).astype(np.float)
+        print('test')
+        print(sg.adata.X)
+        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index, data=sg.adata.layers['counts'])
+        print(df.head())
+        print('control')
+        print(ctrl_X)
+        assert np.array_equal(sg.adata.X, ctrl_X)
+
+        ctrl_tpm = [[166666.6667, 166666.6667],
+                    [333333.3333, 0],
+                    [0, 333333.3333],
+                    [333333.3333, 333333.3333],
+                    [166666.6667, 166666.6667],
+                    [0, 0]]
+
+        ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
+        ctrl_tpm = np.around(ctrl_tpm)
+        test_tpm = np.around(sg.adata.layers['tpm'])
+        print('tpm')
+        print('test')
+        print(test_tpm)
+        print('control')
+        print(ctrl_tpm)
+        print(np.array_equal(ctrl_tpm, test_tpm))
+        assert np.array_equal(ctrl_tpm, test_tpm)
+
+        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333],[0,0]]
+        ctrl_pi = np.transpose(np.array(ctrl_pi)).astype(np.float)
+        ctrl_pi = np.around(ctrl_pi)
+        test_pi = np.around(sg.adata.layers['pi'])
+        print('pi')
+        print('test')
+        print(test_pi)
+        print('ctrl')
+        print(ctrl_pi)
+        assert np.array_equal(ctrl_pi, test_pi)
+
+
+    # add abundance - one after another
+    def test_add_abundance_2(self):
+        sg = swan.SwanGraph()
+        sg.add_annotation('files/test_full_annotation.gtf')
+        sg.add_transcriptome('files/test_full.gtf')
+
+        sg.add_abundance('files/test_ab_dataset1.tsv')
+        sg.add_abundance('files/test_ab_dataset2.tsv')
+
+        assert set(sg.datasets) == set(['dataset1', 'dataset2'])
+
+        print(sg.t_df.index)
+        print(sg.adata.var.index)
+        assert sg.t_df.index.tolist() == sg.adata.var.index.tolist()
+
+        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5],[0,0]])).astype(np.float)
+        print('test')
+        print(sg.adata.X)
+        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index, data=sg.adata.layers['counts'])
+        print(df.head())
+        print('control')
+        print(ctrl_X)
+        assert np.array_equal(sg.adata.X, ctrl_X)
+
+        ctrl_tpm = [[166666.6667, 166666.6667],
+                    [333333.3333, 0],
+                    [0, 333333.3333],
+                    [333333.3333, 333333.3333],
+                    [166666.6667, 166666.6667],
+                    [0, 0]]
+
+        ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
+        ctrl_tpm = np.around(ctrl_tpm)
+        test_tpm = np.around(sg.adata.layers['tpm'])
+        print('tpm')
+        print('test')
+        print(test_tpm)
+        print('control')
+        print(ctrl_tpm)
+        print(np.array_equal(ctrl_tpm, test_tpm))
+        assert np.array_equal(ctrl_tpm, test_tpm)
+
+        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333],[0,0]]
+        ctrl_pi = np.transpose(np.array(ctrl_pi)).astype(np.float)
+        ctrl_pi = np.around(ctrl_pi)
+        test_pi = np.around(sg.adata.layers['pi'])
+        print('pi')
+        print('test')
+        print(test_pi)
+        print('ctrl')
+        print(ctrl_pi)
+        assert np.array_equal(ctrl_pi, test_pi)
+
+
     # add abundance - vanilla
     def test_add_abundance_1(self):
         sg = swan.SwanGraph()
@@ -31,8 +138,6 @@ class TestAbundance(object):
         print(sg.adata.var.index)
         assert sg.t_df.index.tolist() == sg.adata.var.index.tolist()
 
-
-        # assert 1 == 0
         ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5],[0,0]])).astype(np.float)
         print('test')
         print(sg.adata.X)
