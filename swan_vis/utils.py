@@ -193,6 +193,19 @@ def validate_gtf(fname):
 # depending on the strand, determine the start and stop
 # coords of an intron or exon
 def find_edge_start_stop(v1, v2, strand):
+	"""
+	Depending on the input strandedness, determine the start and stop
+	coordinates of an edge
+
+	Parameters:
+		v1 (int): Coordinate of edge vertex
+		v2 (int): Coordinate of edge vertex
+		strand (str): Strand of edge
+
+	Returns:
+		start (int): Start coordinate of edge
+		stop (int): Stop coordinate of edge
+	"""
 	if strand == '-':
 		start = max([v1, v2])
 		stop = min([v1, v2])
@@ -201,8 +214,17 @@ def find_edge_start_stop(v1, v2, strand):
 		stop = max([v1, v2])
 	return start, stop
 
-# reorder exon ids from create_dfs_gtf
 def reorder_exons(exon_ids):
+	"""
+	Reorder exons if they were out of order.
+
+	Parameters:
+		exon_ids (list of str): List of exons 'chrom_coord1_coord2_strand_exon'
+
+	Returns:
+		exons (list of str): List of same exon IDs ordered based on strand
+			and genomic location
+	"""
 	strand = exon_ids[0].split('_')[-2]
 	coords = [int(i.split('_')[-4]) for i in exon_ids]
 	exons = sorted(zip(exon_ids, coords), key=lambda x: x[1])
@@ -210,17 +232,6 @@ def reorder_exons(exon_ids):
 	if strand == '-':
 		exons.reverse()
 	return exons
-
-# # reorder the locations in a transcript's path based on
-# # chromosomal coordinate
-# def reorder_locs(path, strand, locs):
-# 	coords = [locs[i] for i in path]
-# 	path_coords = sorted(zip(path, coords), key=lambda x: x[1])
-# 	path = [i[0] for i in path_coords]
-# 	coords = [i[1][1] for i in path_coords]
-# 	if strand == '-':
-# 		path.reverse()
-# 	return path
 
 ##########################################################################
 ############### Related to calculating abundance values ##################
@@ -358,9 +369,6 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 		cond_col = '{}_tpm'.format(c)
 		total_col = '{}_total'.format(c)
 		df[total_col] = df[c].sum()
-		print()
-		print(c)
-		print(df[total_col])
 		df[cond_col] = (df[c]*1000000)/df[total_col]
 		tpm_cols.append(cond_col)
 
@@ -660,6 +668,19 @@ def get_transcript_novelties(fields):
 
 # reformat talon abundance file for the generic format expected by swan
 def reformat_talon_abundance(fname, ofile=None):
+	"""
+	Reformat TALON abundance file into the format expected by add_abundance.
+	Removes all columns but the annot_transcript_id column and counts columns.
+
+	Parameters:
+		fname (str): Name / path to TALON abundance file
+		ofile (str): Filename to save output to, if any.
+			Default: None
+
+	Returns:
+		df (pandas DataFrame): DataFrame of abundance values indexed by
+			transcript ID
+	"""
 	check_file_loc(fname, 'TALON abundance')
 
 	df = pd.read_csv(fname, sep='\t')

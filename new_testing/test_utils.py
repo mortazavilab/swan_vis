@@ -12,6 +12,49 @@ import anndata
 ###########################################################################
 class TestUtils(object):
 
+    # test reformat_talon_abundance
+    def test_reformat_talon_abundance(self):
+        test = swan.reformat_talon_abundance('files/test_ab_talon_1.tsv')
+        data = [['test1', 5, 5],
+                ['test2', 10, 0],
+                ['test3', 0, 10],
+                ['test4', 10, 10],
+                ['test5', 5, 5],
+                ['test8', 4, 5]]
+        cols = ['annot_transcript_id', 'dataset1', 'dataset2']
+        ctrl = pd.DataFrame(data=data, columns=cols)
+        assert test.equals(ctrl)
+
+    # test reorder_exons - rev
+    def test_reorder_exons_2(self):
+        test_exons = ['chr2_100_80_-_exon', 'chr2_50_45_-_exon',
+                     'chr2_75_60_-_exon']
+        test_exons = swan.reorder_exons(test_exons)
+        ctrl_exons = ['chr2_100_80_-_exon', 'chr2_75_60_-_exon',
+                      'chr2_50_45_-_exon']
+        assert test_exons == ctrl_exons
+
+    # test reorder_exons - fwd
+    def test_reorder_exons_1(self):
+        test_exons = ['chr1_1_20_+_exon', 'chr1_35_40_+_exon',
+                     'chr1_25_30_+_exon']
+        test_exons = swan.reorder_exons(test_exons)
+        ctrl_exons = ['chr1_1_20_+_exon', 'chr1_25_30_+_exon',
+                      'chr1_35_40_+_exon']
+
+
+    # test find_edge_start_stop - minus strand
+    def test_find_edge_start_stop_2(self):
+        start, stop = swan.find_edge_start_stop(1,2, '-')
+        assert 1 == stop
+        assert 2 == start
+
+    # test find_edge_start_stop - plus strand
+    def test_find_edge_start_stop_1(self):
+        start, stop = swan.find_edge_start_stop(1,2, '+')
+        assert 1 == start
+        assert 2 == stop
+
     # test gtf_or_db - neither
     def test_gtf_or_db_2(self):
         fname = 'test/test.txt'
