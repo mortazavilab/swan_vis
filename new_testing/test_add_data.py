@@ -450,7 +450,7 @@ class TestFiles(object):
         print(t_df == ctrl_t_df)
         assert (t_df == ctrl_t_df).all(axis=0).all()
 
-    # tests TALON DB parsing - yes pass_list
+    # tests TALON DB parsing - no pass_list
     def test_parse_db_1(self):
         db_file = 'files/test_full.db'
         pass_list = 'files/test_full_pass_list.csv'
@@ -459,6 +459,52 @@ class TestFiles(object):
         ctrl_t_df, ctrl_e_df = get_test_transcript_exon_dicts()
         for key, item in ctrl_t_df.items():
             item['exons'] = swan.reorder_exons(item['exons'])
+
+        ctrl_t_df = pd.DataFrame(ctrl_t_df).transpose()
+        ctrl_e_df = pd.DataFrame(ctrl_e_df).transpose()
+
+        # sort all values by their IDs
+        edge_df.sort_index(inplace=True)
+        t_df.sort_index(inplace=True)
+        ctrl_e_df.sort_index(inplace=True)
+        ctrl_t_df.sort_index(inplace=True)
+
+        # and order columns the same way
+        ctrl_e_df = ctrl_e_df[edge_df.columns]
+        ctrl_t_df = ctrl_t_df[t_df.columns]
+
+        assert 'novelty' in t_df.columns
+
+        print('test')
+        print(edge_df)
+        print('control')
+        print(ctrl_e_df)
+        print(edge_df == ctrl_e_df)
+        assert (edge_df == ctrl_e_df).all(axis=0).all()
+
+        print('test')
+        print(t_df)
+        print(t_df.exons)
+        print('control')
+        print(ctrl_t_df)
+        print(ctrl_t_df.exons)
+        print(t_df == ctrl_t_df)
+        assert (t_df == ctrl_t_df).all(axis=0).all()
+
+
+    # tests TALON DB parsing - yes pass_list
+    def test_parse_db_2(self):
+        db_file = 'files/test_full.db'
+        pass_list = 'files/test_full_pass_list.csv'
+        t_df, edge_df = swan.parse_db(db_file, pass_list, False, False)
+
+        ctrl_t_df, ctrl_e_df = get_test_transcript_exon_dicts()
+        for key, item in ctrl_t_df.items():
+            item['exons'] = swan.reorder_exons(item['exons'])
+
+        # delete entries that weren't on pass list
+        del ctrl_e_df['chr2_45_50_+_exon']
+        del ctrl_t_df['test4']
 
         ctrl_t_df = pd.DataFrame(ctrl_t_df).transpose()
         ctrl_e_df = pd.DataFrame(ctrl_e_df).transpose()
