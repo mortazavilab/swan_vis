@@ -393,7 +393,7 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 ####################### Related to file parsing ##########################
 ##########################################################################
 
-def parse_db(database, pass_list, verbose):
+def parse_db(database, pass_list, observed, verbose):
 	"""
 	Get the unique transcripts and exons that are present in a TALON DB
 	transcriptome.
@@ -401,7 +401,18 @@ def parse_db(database, pass_list, verbose):
 	Parameters:
 		database (str): Path to database file
 		pass_list (str): Path to TALON pass list files
+		observed (bool): Whether or not to only use observed transcripts
 		verbose (bool): Display progress
+
+	Returns:
+		t_df (pandas DataFrame): DataFrame of transcripts in TALON db. Index
+			is transcript ids. Columns are gene id, gene name,
+			transcript id (same as key), transcript name, strand, and exons
+			belonging to the transcript.
+		exon_df (pandas DataFrame): DataFrame of exons in TALON db. Index is exon ids
+			which consist of chromosome_v1_v2_strand_exon. Columns are edge id
+			(same as key), chromosome, v1, v2, strand, and edge type
+			(all exon in this case) of each exon.
 	"""
 
 	# make sure files exist
@@ -410,7 +421,8 @@ def parse_db(database, pass_list, verbose):
 
 	# annot = check_annot_validity(annot, database)
 
-	pass_list = handle_filtering(database, True, pass_list)
+	pass_list = handle_filtering(database, observed, pass_list)
+	print(pass_list)
 
 	# create separate gene and transcript pass_lists
 	gene_pass_list = []
@@ -544,14 +556,14 @@ def parse_gtf(gtf_file, verbose):
 		verbose (bool): Display progress
 
 	Returns:
-		transcripts (dict of dict): Dictionary of transcripts in GTF. Keys are
-			transcript ids. Items are a dictionary of gene id, gene name,
+		t_df (pandas DataFrame): DataFrame of transcripts in GTF. Index
+			is transcript ids. Columns are gene id, gene name,
 			transcript id (same as key), transcript name, strand, and exons
 			belonging to the transcript.
-		exons (dict of dict): Dictionary of exons in GTF. Keys are exon ids
-			which consist of chromosome_v1_v2_strand_exon. Items are a
-			dictionary of edge id (same as key), chromosome, v1, v2, strand,
-			and edge type (all exon in this case) of each exon.
+		exon_df (pandas DataFrame): DataFrame of exons in GTF. Index is exon ids
+			which consist of chromosome_v1_v2_strand_exon. Columns are edge id
+			(same as key), chromosome, v1, v2, strand, and edge type
+			(all exon in this case) of each exon.
 		from_talon (bool): Whether or not the GTF was determined to be
 			from TALON
 	"""

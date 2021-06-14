@@ -232,7 +232,8 @@ class SwanGraph(Graph):
 			t_df, exon_df, from_talon = parse_gtf(fname, verbose)
 		elif ftype == 'db':
 			check_file_loc(fname, 'TALON DB')
-			t_df, exon_df = parse_db(fname, pass_list, verbose)
+			observed = True
+			t_df, exon_df = parse_db(fname, pass_list, observed, verbose)
 			from_talon = True
 
 		# keep track of transcripts from GTF if we're adding annotation

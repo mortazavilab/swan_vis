@@ -64,14 +64,15 @@ def handle_filtering(database, observed, pass_list_file):
 	conn.row_factory = sqlite3.Row
 	cursor = conn.cursor()
 
-	# # Get list of datasets to use in run
+	# Get list of datasets to use in run
 	# if dataset != None:
 	# 	datasets = parse_datasets(dataset, cursor)
 	# elif observed == True:
-	# 	datasets = fetch_all_datasets(cursor)
-	# else:
-	# 	datasets = None
-	datasets = fetch_all_datasets(cursor)
+	if observed: 
+		datasets = fetch_all_datasets(cursor)
+	else:
+		datasets = None
+	# datasets = fetch_all_datasets(cursor)
 
 	# Get initial transcript pass_list
 	if pass_list_file != None:
