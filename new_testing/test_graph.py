@@ -224,28 +224,28 @@ class TestGraph(object):
             sg.check_gene(3)
         assert 'Gene 3 not' in str(e.value)
 
-    # test check_datasets - dataset is in SwanGraph, non-list dataset
-    def test_check_datasets_1(self):
-        sg = swan.SwanGraph()
-        sg.datasets = 'test1'
-        query = 'test1'
-        sg.check_datasets(query)
-
-    # test check_datasets - datasets are in SwanGraph, list datasets
-    def test_check_datasets_2(self):
-        sg = swan.SwanGraph()
-        sg.datasets = ['test1', 'test2']
-        query = ['test1', 'test2']
-        sg.check_datasets(query)
-
-    # test check_datasets - dataset is not in the SwanGraph
-    def test_check_datasets_3(self):
-        sg = swan.SwanGraph()
-        sg.datasets = ['test1', 'test2']
-        query = 'test3'
-        with pytest.raises(Exception) as e:
-            sg.check_datasets(query)
-        assert 'Dataset test3 not' in str(e.value)
+    # # test check_datasets - dataset is in SwanGraph, non-list dataset
+    # def test_check_datasets_1(self):
+    #     sg = swan.SwanGraph()
+    #     sg.datasets = 'test1'
+    #     query = 'test1'
+    #     sg.check_datasets(query)
+    #
+    # # test check_datasets - datasets are in SwanGraph, list datasets
+    # def test_check_datasets_2(self):
+    #     sg = swan.SwanGraph()
+    #     sg.datasets = ['test1', 'test2']
+    #     query = ['test1', 'test2']
+    #     sg.check_datasets(query)
+    #
+    # # test check_datasets - dataset is not in the SwanGraph
+    # def test_check_datasets_3(self):
+    #     sg = swan.SwanGraph()
+    #     sg.datasets = ['test1', 'test2']
+    #     query = 'test3'
+    #     with pytest.raises(Exception) as e:
+    #         sg.check_datasets(query)
+    #     assert 'Dataset test3 not' in str(e.value)
 
 
 
@@ -820,6 +820,7 @@ class TestGraph(object):
         ctrl_t_df = swan.set_dupe_index(ctrl_t_df, 'tid')
 
         sg_subset = sg.subset_on_gene(2)
+        sg_subset.loc_df.drop(['TSS', 'TES', 'internal'], axis=1, inplace=True)
 
         check_dfs(sg_subset.loc_df, ctrl_loc_df,
                   sg_subset.edge_df, ctrl_edge_df,
