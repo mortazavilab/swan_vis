@@ -706,6 +706,7 @@ def get_die_gene_table(gene_df, conditions, rc):
 		gene_df (None): Returns None if the gene was deemed untestable.
 	"""
 
+	id_col = 'tid'
 	gene_df.sort_values(by='total_counts', ascending=False, inplace=True)
 
 	# limit to just isoforms with > 0 expression in at least one condition
@@ -724,6 +725,7 @@ def get_die_gene_table(gene_df, conditions, rc):
 
 		temp = gene_df.iloc[10:].sum()
 		temp[id_col] = 'all_other'
+		temp['gid'] = gene_df.gid.unique().tolist()[0]
 		temp.index.name = None
 		temp = pd.DataFrame(temp).transpose()
 
