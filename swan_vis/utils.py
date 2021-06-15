@@ -249,7 +249,7 @@ def calc_total_counts(adata, obs_col='dataset'):
 			Default: 'dataset'
 
 	Returns:
-		df (pandas DataFrame): Pandas datafrom where rows are the different
+		df (pandas DataFrame): Pandas DataFrame where rows are the different
 			conditions from `obs_col` and the columns are transcript ids in the
 			SwanGraph, and values represent the cumulative counts per isoform
 			per condition.

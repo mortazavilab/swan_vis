@@ -181,4 +181,160 @@ class TestAbundance(object):
 
 # todo - calc_tpm, calc_pi
 class TestLowLevel(object):
-    pass
+
+    # test calc_pi - use a different obs_col
+    def test_calc_pi_2(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_abundance('files/test_ab_1.tsv')
+        sg.adata.obs['cluster'] = 'c1'
+        test_df, test_sums = swan.calc_pi(sg.adata, sg.t_df, obs_col='cluster')
+        test_df = test_df.transpose()
+        test_df[['c1']] = test_df[['c1']].round()
+
+        data = [['test1', 100],['test2',33.333],
+                    ['test3', 33.333],['test4',100],
+                    ['test5',33.33]]
+        cols = ['tid', 'c1']
+        df = pd.DataFrame(data=data, columns=cols)
+        df.set_index('tid', inplace=True)
+        df.index.name = None
+        df[['c1']] = df[['c1']].round()
+
+        print('test')
+        print(test_df)
+        print('control')
+        print(df)
+        print(test_df == df)
+        assert (test_df == df).all(axis=0).all()
+
+    # test calc_pi - use dataset
+    def test_calc_pi_1(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_abundance('files/test_ab_1.tsv')
+        test_df, test_sums = swan.calc_pi(sg.adata, sg.t_df, obs_col='dataset')
+        test_df = test_df.transpose()
+        test_df[['dataset1', 'dataset2']] = test_df[['dataset1', 'dataset2']].round()
+
+        data = [['test1', 100,100],['test2',66.6666667,0],
+                    ['test3', 0,66.6666667],['test4',100,100],
+                    ['test5',33.3333333,33.3333333]]
+        cols = ['tid', 'dataset1', 'dataset2']
+        df = pd.DataFrame(data=data, columns=cols)
+        df.set_index('tid', inplace=True)
+        df.index.name = None
+        df[['dataset1', 'dataset2']] = df[['dataset1', 'dataset2']].round()
+
+        print('test')
+        print(test_df)
+        print('control')
+        print(df)
+        print(test_df == df)
+        assert (test_df == df).all(axis=0).all()
+
+        # don't test test_sums cause that's the direct output from
+        # calc_total_counts
+
+    # test calc_tpm - use different obs_col
+    def test_calc_tpm_2(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_abundance('files/test_ab_1.tsv')
+        sg.adata.obs['cluster'] = ['c1', 'c1']
+        test_df = swan.calc_tpm(sg.adata, sg.t_df, obs_col='cluster')
+        test_df = test_df.transpose()
+        test_df[['c1']] = test_df[['c1']].round()
+
+        data = [['test1', 166666.6667],
+               ['test2', 166666.6667],
+               ['test3', 166666.6667],
+               ['test4',333333.3333],
+               ['test5', 166666.6667]]
+        cols = ['tid', 'c1']
+        df = pd.DataFrame(data=data, columns=cols)
+        df[['c1']] = df[['c1']].round()
+        df.set_index('tid', inplace=True)
+        df.index.name = None
+        # df = df.transpose()
+
+        print('test')
+        print(test_df)
+        print('control')
+        print(df)
+        print(test_df == df)
+        assert (test_df == df).all(axis=0).all()
+
+    # test calc_tpm - use dataset col
+    def test_calc_tpm_1(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_abundance('files/test_ab_1.tsv')
+        test_df = swan.calc_tpm(sg.adata, sg.t_df, obs_col='dataset')
+        test_df = test_df.transpose()
+        test_df[['dataset1', 'dataset2']] = test_df[['dataset1', 'dataset2']].round()
+
+        data = [['test1', 166666.6667, 166666.6667],
+               ['test2', 333333.3333, 0],
+               ['test3', 0, 333333.3333],
+               ['test4',333333.3333, 333333.3333],
+               ['test5', 166666.6667, 166666.6667]]
+        cols = ['tid', 'dataset1', 'dataset2']
+        df = pd.DataFrame(data=data, columns=cols)
+        df[['dataset1', 'dataset2']] = df[['dataset1', 'dataset2']].round()
+        df.set_index('tid', inplace=True)
+        df.index.name = None
+        # df = df.transpose()
+
+        print('test')
+        print(test_df)
+        print('control')
+        print(df)
+        print(test_df == df)
+        assert (test_df == df).all(axis=0).all()
+
+    # test calc_total_counts - use additional metadata col
+    def test_calc_total_counts_2(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_abundance('files/test_ab_1.tsv')
+        sg.adata.obs['cluster'] = ['c1', 'c1']
+
+        test_df = swan.calc_total_counts(sg.adata, obs_col='cluster')
+
+        data = [['test1', 10], ['test2', 10],
+                ['test3', 10], ['test4', 20], ['test5', 10]]
+        cols = ['tid', 'c1']
+        df = pd.DataFrame(data=data, columns=cols)
+        df.set_index('tid', inplace=True)
+        df.index.name = None
+        df = df.transpose()
+
+        print('test')
+        print(test_df)
+        print('control')
+        print(df)
+        print(test_df == df)
+        assert (test_df == df).all(axis=0).all()
+
+    # test calc_total_counts - use dataset col
+    def test_calc_total_counts_1(self):
+        sg = swan.SwanGraph()
+        sg.add_transcriptome('files/test_full.gtf')
+        sg.add_abundance('files/test_ab_1.tsv')
+        test_df = swan.calc_total_counts(sg.adata)
+
+        data = [['test1', 5, 5], ['test2', 10, 0],
+                ['test3', 0, 10], ['test4', 10, 10], ['test5', 5, 5]]
+        cols = ['tid', 'dataset1', 'dataset2']
+        df = pd.DataFrame(data=data, columns=cols)
+        df.set_index('tid', inplace=True)
+        df.index.name = None
+        df = df.transpose()
+
+        print('test')
+        print(test_df)
+        print('control')
+        print(df)
+        print(test_df == df)
+        assert (test_df == df).all(axis=0).all()
