@@ -11,6 +11,36 @@ import pandas as pd
 ###########################################################################
 class TestMetadata(object):
 
+    # test add_metadata - one after the other with dupe cols
+    # yes overwrite
+    def test_add_metadata_4(self):
+        sg = swan.SwanGraph()
+        db = 'files/chr11_and_Tcf3_no_gname.db'
+        sg.add_transcriptome(db)
+        ab = 'files/chr11_and_Tcf3_talon_abundance.tsv'
+        sg.add_abundance(ab)
+        meta = 'files/chr11_and_Tcf3_metadata.tsv'
+        sg.add_metadata(meta)
+        meta = 'files/chr11_and_Tcf3_metadata_dupecols.tsv'
+        sg.add_metadata(meta, overwrite=True)
+
+        assert {'3','4'} == set(sg.adata.obs.cluster.tolist())
+
+    # test add_metadata - one after the other with dupe cols
+    # don'e overwrite
+    def test_add_metadata_3(self):
+        sg = swan.SwanGraph()
+        db = 'files/chr11_and_Tcf3_no_gname.db'
+        sg.add_transcriptome(db)
+        ab = 'files/chr11_and_Tcf3_talon_abundance.tsv'
+        sg.add_abundance(ab)
+        meta = 'files/chr11_and_Tcf3_metadata.tsv'
+        sg.add_metadata(meta)
+        meta = 'files/chr11_and_Tcf3_metadata_dupecols.tsv'
+        sg.add_metadata(meta, overwrite=False)
+
+        assert {'2', '1'} == set(sg.adata.obs.cluster.tolist())
+
     # test add_metadata - one after the other
     def test_add_metadata_2(self):
         pass
@@ -48,8 +78,8 @@ class TestMetadata(object):
     def test_add_metadata(self):
         sg = swan.SwanGraph()
         # just gencode vM21 chr 11 and tcf3
-        gtf = 'files/chr11_and_Tcf3.gtf'
-        sg.add_annotation(gtf, verbose=True)
+        # gtf = 'files/chr11_and_Tcf3.gtf'
+        # sg.add_annotation(gtf, verbose=True)
         db = 'files/chr11_and_Tcf3_no_gname.db'
         sg.add_transcriptome(db)
         ab = 'files/chr11_and_Tcf3_talon_abundance.tsv'
