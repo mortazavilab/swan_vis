@@ -11,7 +11,7 @@ import pandas as pd
 ###########################################################################
 class TestSGAnalysis(object):
 
-# tests find_ir_genes, find_es_genes, get_die_genes
+# tests find_ir_genes, find_es_genes, get_die_genes, get_die_gene_table, test_gene
 
 # TODO - add update_ids() call before running both find_ir/es_genes to make sure
 # the subgraph shit works -

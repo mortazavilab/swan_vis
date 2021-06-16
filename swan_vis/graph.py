@@ -19,6 +19,8 @@ class Graph:
 			Names of datasets in the Graph
 		annotation (bool):
 			Whether an annotation transcriptome has been added.
+		abundance (bool):
+			Whether abundance data has been added to the SwanGraph
 		loc_df (pandas DataFrame):
 			DataFrame of all unique observed genomic
 			coordinates in the transcriptome
@@ -32,13 +34,20 @@ class Graph:
 
 		self.datasets = []
 		self.annotation = False
+		self.abundance = False
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'vertex_id'])
 		self.edge_df = pd.DataFrame(columns=['v1', 'v2', 'strand',
 											 'edge_type', 'edge_id'])
-		self.adata = anndata.AnnData()
 		self.t_df = pd.DataFrame(columns=['tname',
 			'gid', 'gname', 'path', 'tid'])
+
+		# adata objects for transcripts, edges, locations, tss, and tes
+		self.adata = anndata.AnnData()
+		self.edge_adata = anndata.AnnData()
+		# self.loc_adata = anndata.AnnData()
+		self.tss_adata = anndata.AnnData()
+		self.tes_adata = anndata.AnnData()
 
 	##########################################################################
 	################# Related to checking contents of Graph ##################
@@ -344,10 +353,7 @@ class Graph:
 		"""
 		Checks if any abundance data has been added to the Graph.
 		"""
-		if len(self.adata.obs.index) == 0:
-			return False
-		else:
-			return True
+		return self.abundance
 
 	##########################################################################
 	############################# Accessing data ############################

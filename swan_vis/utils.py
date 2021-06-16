@@ -234,6 +234,24 @@ def reorder_exons(exon_ids):
 		exons.reverse()
 	return exons
 
+def pivot_path_list(t_df, path_col):
+	"""
+	From the transcript dataframe, return a DataFrame with transcript id and
+	edge/location ID for each edge/location in the path of that transcript.
+
+	Parameters:
+		t_df (pandas DataFrame): Transcript datafram from SwanGraph
+		path_col (str): Which path to pull from. Choose from 'path' or 'loc_path'
+	"""
+	df = pd.DataFrame([[tid, x] for tid, path in zip(t_df.index, t_df[path_col]) \
+		for x in path])
+	if path_col == 'path':
+		df.columns = ['tid', 'edge_id']
+	elif path_col == 'loc_path':
+		df.columns = ['tid', 'vertex_id']
+	df.set_index('tid', inplace=True)
+	return df
+
 ##########################################################################
 ############### Related to calculating abundance values ##################
 ##########################################################################
@@ -339,15 +357,15 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 
 	return df, sums
 
-def calc_tpm(adata, t_df, obs_col='dataset'):
+def calc_tpm(adata, sg_df, obs_col='dataset'):
 	"""
 	Calculate the TPM per condition given by `obs_col`.
 	Default column to use is `adata.obs` index column, `dataset`.
 
 	Parameters:
 		adata (anndata AnnData): Annotated data object from the SwanGraph
-		t_df (pandas DataFrame): Pandas Dataframe that has index to
-			gene id mapping
+		sg_df (pandas DataFrame): Pandas DataFrame from SwanGraph that will
+			be used to order the rows of resultant TPM DataFrame
 		obs_col (str): Column name from adata.obs table to group on.
 			Default: 'dataset'
 
@@ -364,6 +382,10 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 	df = calc_total_counts(adata, obs_col=obs_col)
 	df = df.transpose()
 
+	# we use ints to index edges and locs
+	if id_col == 'vertex_id' or id_col == 'edge_id':
+		df.index = df.index.astype('int')
+
 	# calculate tpm per isoform per condition
 	tpm_cols = []
 	for c in conditions:
@@ -374,7 +396,7 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 		tpm_cols.append(cond_col)
 
 	# formatting
-	df.index.name = 'tid'
+	df.index.name = id_col
 	df = df[tpm_cols]
 	for col in tpm_cols:
 		new_col = col[:-4]
@@ -385,7 +407,9 @@ def calc_tpm(adata, t_df, obs_col='dataset'):
 	df = df.transpose()
 
 	# reorder in adata.var / t_df order
-	df = df[t_df[id_col].tolist()]
+	print(df.columns.tolist())
+	print(sg_df[id_col].tolist())
+	df = df[sg_df[id_col].tolist()]
 
 	return df
 
@@ -422,7 +446,6 @@ def parse_db(database, pass_list, observed, verbose):
 	# annot = check_annot_validity(annot, database)
 
 	pass_list = handle_filtering(database, observed, pass_list)
-	print(pass_list)
 
 	# create separate gene and transcript pass_lists
 	gene_pass_list = []

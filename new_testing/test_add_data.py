@@ -82,6 +82,7 @@ class TestMetadata(object):
         # sg.add_annotation(gtf, verbose=True)
         db = 'files/chr11_and_Tcf3_no_gname.db'
         sg.add_transcriptome(db)
+        # print(sg.t_df)
         ab = 'files/chr11_and_Tcf3_talon_abundance.tsv'
         sg.add_abundance(ab)
         meta = 'files/chr11_and_Tcf3_metadata.tsv'

@@ -115,17 +115,14 @@ class TestGraph(object):
     # test has_abundance - SwanGraph does have abundance
     def test_has_abundance_1(self):
         sg = swan.SwanGraph()
-        obs = ['sample1']
-        var = ['gene1']
-        X = np.array([[0]])
-        sg.adata = anndata.AnnData(var=var, obs=obs, X=X)
+        sg.abundance = True
 
         assert sg.has_abundance() == True
 
     # test has_abundance - SwanGraph does not have abundance
     def test_has_abundance_2(self):
         sg = swan.SwanGraph()
-        print(len(sg.adata.obs.index))
+        sg.abundance = False
         assert sg.has_abundance() == False
 
     # test is_empty - SwanGraph is not empty
