@@ -464,18 +464,74 @@ class SwanGraph(Graph):
 	##########################################################################
 	############# Obtaining abundance of edges, locs, and ends ###############
 	##########################################################################
+	def create_end_adata(self, kind):
+		"""
+		Create a tss / tes-level adata object. Enables calculating tss / tes
+		usage across samples.
+
+		Parameters:
+			kind (str): Choose from 'tss' or 'tes'
+		"""
+
+		end_exp_df = get_ends(self.t_df, kind)
+
+		# get a mergeable transcript expression df
+		tid = self.adata.var.index.tolist()
+		obs = self.adata.obs.index.tolist()
+		data = self.adata.layers['counts'].transpose()
+		t_exp_df = pd.DataFrame(columns=obs, data=data, index=tid)
+		t_exp_df = t_exp_df.merge(self.t_df)
+
+		# merge counts per transcript with end expression
+		end_exp_df = end_exp_df.merge(t_exp_df, how='left',
+			left_index=True, right_index=True)
+
+		# sort based on vertex id
+		end_exp_df.sort_index(inplace=True, ascending=True)
+
+		# obs, var, and X tables for new data
+		var = end_exp_df.index.to_frame()
+		X = end_exp_df.transpose().values
+		obs = self.adata.obs
+
+		if kind == 'tss':
+
+			# create end-level adata object
+			self.tss_adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+			# add counts and tpm as layers
+			self.tss_adata.layers['counts'] = self.tss_adata.X
+			self.tss_adata.layers['tpm'] = calc_tpm(self.tss_adata, self.t_df).to_numpy()
+			self.tss_adata.layers['pi'] = calc_pi(self.tss_adata, self.t_df)[0].to_numpy()
+
+			if self.has_abundance():
+
+				# some cleanup for unstructured data
+				self.edge_adata.uns = self.tss_adata.uns
+
+		# elif kind == 'tes':
+
+		# # create end-level adata object
+		# self.edge_adata = anndata.AnnData(var=var, obs=obs, X=X)
+		#
+		# # add counts and tpm as layers
+		# self.edge_adata.layers['counts'] = self.edge_adata.X
+		# self.edge_adata.layers['tpm'] = calc_tpm(self.edge_adata, self.edge_df).to_numpy()
+		# self.edge_adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+		#
+		# if self.has_abundance():
+		#
+		# 	# some cleanup for unstructured data
+		# 	self.edge_adata.uns = self.edge_adata.uns
+
 	def create_edge_adata(self):
 		"""
 		Create an edge-level adata object. Enables calculating edge usage across
-		samples
+		samples.
 		"""
 
 		# get table what edges are in each transcript
 		edge_exp_df = pivot_path_list(self.t_df, 'path')
-
-		# TODO - add rows for edges in edge_df that aren't in edge_exp_df (ISM)
-		# alternatively - restrict edges and locs after calling pivot_path_list
-		# in edge_df and loc_df
 
 		# get a mergeable transcript expression df
 		tid = self.adata.var.index.tolist()
@@ -493,7 +549,6 @@ class SwanGraph(Graph):
 		# order based on order of edges in self.edge_df
 		edge_exp_df = edge_exp_df.merge(self.edge_df[['v1', 'v2']],
 			how='left', left_index=True, right_index=True)
-		edge_exp_df.fillna(0, inplace=True)
 		edge_exp_df.sort_values(by=['v1', 'v2'], inplace=True)
 		edge_exp_df.drop(['v1', 'v2'], axis=1, inplace=True)
 
@@ -502,8 +557,6 @@ class SwanGraph(Graph):
 		X = edge_exp_df.transpose().values
 		obs = self.adata.obs
 
-		# if not self.has_abundance():
-
 		# create edge-level adata object
 		self.edge_adata = anndata.AnnData(var=var, obs=obs, X=X)
 
@@ -511,27 +564,11 @@ class SwanGraph(Graph):
 		self.edge_adata.layers['counts'] = self.edge_adata.X
 		self.edge_adata.layers['tpm'] = calc_tpm(self.edge_adata, self.edge_df).to_numpy()
 			# self.edge_adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
-		# else:
-			# # concatenate the raw, tpm, and pi data
-			# X = np.concatenate((self.edge_adata.layers['counts'], X), axis=0)
-			#
-			# # # concatenate obs
-			# # obs = pd.concat([self.edge_adata.obs, obs], axis=0)
-			#
-			# # construct a new adata from the concatenated objects
-			# adata = anndata.AnnData(var=var, obs=obs, X=X)
-			# adata.layers['counts'] = X
-			#
+
 		if self.has_abundance():
+
 			# some cleanup for unstructured data
 			self.edge_adata.uns = self.edge_adata.uns
-
-			# # set anndata to new guy
-			# self.edge_adata = adata
-			#
-			# # recalculate pi and tpm
-			# self.edge_adata.layers['tpm'] = calc_tpm(self.edge_adata, self.edge_df).to_numpy()
-			# # self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
@@ -1318,6 +1355,9 @@ class SwanGraph(Graph):
 				p-values, as well as change in percent isoform usage (dpi) for
 				all tested genes.
 		"""
+		# check if obs_col is even there
+		if obs_col not in self.adata.obs.columns.tolist():
+			raise Exception('Metadata column {} not found'.format(obs_col))
 
 		# check if there are more than 2 unique values in obs_col
 		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
@@ -1522,9 +1562,34 @@ class SwanGraph(Graph):
 
 		print('Graph from {} loaded'.format(fname))
 
+
+
 	##########################################################################
 	############################ Plotting utilities ##########################
 	##########################################################################
+
+	def set_metadata_colors(self, obs_col, cmap):
+		"""
+		Set plotting colors for datasets based on a column in the metadata
+		table.
+
+		Parameters:
+			obs_col (str): Name of metadata column to set colors for
+			cmap (dict): Dictionary of metadata value : color
+		"""
+
+		# check if obs_col is even there
+		if obs_col not in self.adata.obs.columns.tolist():
+			raise Exception('Metadata column {} not found'.format(obs_col))
+
+		# TODO check if all values in cmap are in the obs_col
+
+		# map values in order specific to
+		obs_order = list(self.adata.obs_names)
+		sample_order = self.adata.obs.loc[obs_order, 'sample']
+		sample_order = sample_order.unique().tolist()
+		sample_colors = [cmap[s] for s in sample_order]
+		self.adata.uns['{}_colors'.format(obs_col)] = sample_colors
 
 	def plot_graph(self, gid,
 				   indicate_dataset=False,

@@ -151,6 +151,16 @@ class TestSGAnalysis(object):
         pval, gene_dpi = swan.test_gene(df, conditions)
         assert gene_dpi == ctrl_gene_dpi
 
+    # test get_die_genes - obs col doesn't exist
+    def test_get_die_genes_5(self):
+        sg = get_die_test_sg()
+        obs_col = 'dataset'
+        obs_conditions = ['PB65_B017', 'PB65_B018']
+        id_col = 'tid'
+        with pytest.raises(Exception) as e:
+            test = sg.get_die_genes(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
+        assert 'Metadata column' in str(e.value)
+
     # tests get_die_genes - b/w  dataset conditions
     def test_get_die_genes_4(self):
         sg = get_die_test_sg()

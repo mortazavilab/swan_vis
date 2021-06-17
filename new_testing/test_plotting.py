@@ -13,6 +13,29 @@ import anndata
 
 
 ###########################################################################
+############################## Colors  ###################################
+###########################################################################
+class TestColors(object):
+
+    # tests set_metadata_colors
+
+    # test set_metadata_colors - vanilla
+    def test_set_metadata_colors_1(self):
+        sg = get_die_test_sg()
+        cmap = {'GM12878': 'red', 'K562': 'blue'}
+        test = sg.set_metadata_colors('sample', cmap)
+        assert sg.adata.uns.sample_colors == ['red', 'blue']
+
+    # test set_metadata_colors - obs_col does not exist
+    def test_set_metadata_colors_1(self):
+        sg = get_die_test_sg()
+        cmap = {1: 'red', 2: 'blue'}
+        with pytest.raises(Exception) as e:
+            test = sg.set_metadata_colors('stage', cmap)
+        assert 'Metadata column' in str(e.value)
+
+
+###########################################################################
 ################# Related to plotting Swan Plots ##########################
 ###########################################################################
 class TestPlotting(object):
@@ -822,3 +845,15 @@ def check_dfs(loc_df, ctrl_loc_df,
     print('control')
     print(ctrl_edge_df)
     assert edge_df.equals(ctrl_edge_df)
+
+def get_die_test_sg():
+    sg = swan.SwanGraph()
+    db = 'files/chr11_and_Tcf3_no_gname.db'
+    sg.add_transcriptome(db, include_isms=True)
+    ab = 'files/chr11_and_Tcf3_talon_abundance_PB65.tsv'
+    sg.add_abundance(ab)
+    ab = 'files/chr11_and_Tcf3_talon_abundance_D12.tsv'
+    sg.add_abundance(ab)
+    meta = 'files/chr11_and_Tcf3_metadata.tsv'
+    sg.add_metadata(meta)
+    return sg

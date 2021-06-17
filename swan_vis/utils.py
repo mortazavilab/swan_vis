@@ -234,6 +234,24 @@ def reorder_exons(exon_ids):
 		exons.reverse()
 	return exons
 
+def get_ends(t_df, kind):
+	"""
+	From the transcript dataframe, return one with transcript id and tss / tes.
+
+	Parameters:
+		kind (str): Choose 'tss' or 'tes'
+	"""
+	if kind == 'tss':
+		ind = 1
+	elif kind == 'tes':
+		ind = -1
+
+	df = pd.DataFrame([[tid, path[ind]] for tid, path in \
+		zip(t_df.index, t_df.loc_path)])
+	df.columns = ['tid', 'vertex_id']
+	df.set_index('tid', inplace=True)
+	return df
+
 def pivot_path_list(t_df, path_col):
 	"""
 	From the transcript dataframe, return a DataFrame with transcript id and
@@ -311,6 +329,10 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	conditions = adata.obs[obs_col].unique().tolist()
 	df = calc_total_counts(adata, obs_col=obs_col)
 	df = df.transpose()
+	# we use ints to index edges and locs
+	if id_col == 'vertex_id' or id_col == 'edge_id':
+		df.index = df.index.astype('int')
+
 	sums = df.copy(deep=True)
 	sums = sums[conditions]
 	sums = sums.transpose()
@@ -353,7 +375,8 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	# df.index.name = obs_col # maybe put this back in ?
 
 	# reorder in adata.var / t_df order
-	df = df[t_df[id_col].tolist()]
+	if id_col != 'tss_id' and id_col != 'tes_id':
+		df = df[t_df[id_col].tolist()]
 
 	return df, sums
 
@@ -407,9 +430,8 @@ def calc_tpm(adata, sg_df, obs_col='dataset'):
 	df = df.transpose()
 
 	# reorder in adata.var / t_df order
-	print(df.columns.tolist())
-	print(sg_df[id_col].tolist())
-	df = df[sg_df[id_col].tolist()]
+	if id_col != 'tss_id' and id_col != 'tes_id':
+		df = df[sg_df[id_col].tolist()]
 
 	return df
 
