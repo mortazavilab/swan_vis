@@ -27,9 +27,7 @@ class Report(FPDF):
 			self.report_type = report_type
 
 		# booleans of what's in the report
-		self.heatmap = heatmap
-		self.dpi = dpi
-		self.novelty = novelty
+		self.layer = layer
 		self.include_qvals = include_qvals
 
 		# the columns that we'll include

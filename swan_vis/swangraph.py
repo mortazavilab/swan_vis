@@ -926,20 +926,26 @@ class SwanGraph(Graph):
 			ordered_tids = sorted(self.t_df.tid.tolist())
 			self.t_df = self.t_df.loc[ordered_tids]
 
+
 		# order by expression
 		elif order == 'expression':
-			tpm_cols = self.get_tpm_cols()
 
 			# make sure there are counts in the graph at all
-			if tpm_cols:
-				self.t_df['tpm_sum'] = self.t_df[tpm_cols].sum(axis=1)
-				self.t_df.sort_values(by='tpm_sum',
-									  ascending=False,
-									  inplace=True)
-				self.t_df.drop('tpm_sum', axis=1, inplace=True)
-			else:
+			if not self.abundance:
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')
+			else:
+
+				# find max expressed transcripts
+				data = self.adata.layers['tpm'].sum(axis=0)
+				cols = self.adata.var.index.tolist()
+				temp = pd.DataFrame(index=['tpm'], data=[data], columns=cols).transpose()
+				temp.sort_values(by='tpm', ascending=False, inplace=True)
+				ordered_tids = temp.index.tolist()
+
+				# order t_df and adata
+				self.t_df = self.t_df.loc[ordered_tids]
+				self.adata = self.adata[:, ordered_tids]
 
 		# order by coordinate of tss
 		elif order == 'tss':
@@ -1805,13 +1811,10 @@ class SwanGraph(Graph):
 				   gids,
 				   prefix,
 				   datasets='all',
-				   dataset_groups=False,
-				   dataset_group_names=False,
+				   groupby=None,
 				   novelty=False,
-				   heatmap=False,
-				   dpi=False, # TODO this option is named stupidly. change it
+   				   layer='tpm', # choose from tpm, pi
 				   cmap='Spectral_r',
-				   tpm=False,
 				   include_qvals=False,
 				   q=0.05,
 				   include_unexpressed=False,
@@ -1832,14 +1835,9 @@ class SwanGraph(Graph):
 
 			datasets (list of str): Datasets to include in the report
 				Default: Include columns for all datasets
-			dataset_groups (list of list of str): Datasets to average
-				together in the report and display as one column
-				Example: [['group1_1','group1_2'],['group2_1','group2_2']]
-			dataset_group_names (list of str): Names to give each group
-				given by dataset_groups. Must be the same length as
-				dataset_groups
-				Example: ['group1', 'group2']
-				Default: Will assign numbers 1 through length(dataset_group)
+			groupby (str): Column in obs_col to group expression
+				values by
+				Default: None
 
 			novelty (bool): Include a column to dipslay novelty type of
 				each transcript. Requires that a TALON GTF or DB has
@@ -1903,6 +1901,11 @@ class SwanGraph(Graph):
 				Default: 1.
 		"""
 
+		# check if groupby column is present
+		if groupby:
+			if groupby not in self.adata.obs.columns.tolist():
+				raise Exception('Groupby column {} not found'.format(obs_col))
+
 		# check to see if input genes are in the graph
 		if type(gids) != list:
 			gids = [gids]
@@ -1918,26 +1921,11 @@ class SwanGraph(Graph):
 
 		# make sure all input datasets are present in graph
 		if datasets == 'all':
-			datasets = self.get_dataset_cols(include_annotation=False)
+			datasets = self.datasets
 		elif not datasets:
 			datasets = []
 		else:
 			self.check_datasets(datasets)
-
-		# if we have dataset groupings make sure that they are a subset
-		# of the datasets already requested
-		if dataset_groups:
-			if not datasets:
-				raise Exception('Cannot group datasets as none were requested.')
-			else:
-				all_dgs = [j for i in dataset_groups for j in i]
-				self.check_datasets(all_dgs)
-
-				subsumed_datasets = [True if i in datasets else False for i in all_dgs]
-				if False in subsumed_datasets:
-					bad_dataset = all_dgs[subsumed_datasets.index(False)]
-					raise Exception("Grouping dataset {} not present in "
-						"datasets {}.".format(bad_dataset, datasets))
 
 		# if we've asked for novelty first check to make sure it's there
 		if novelty:
@@ -1945,82 +1933,52 @@ class SwanGraph(Graph):
 				raise Exception('No novelty information present in the graph. '
 					'Add it or do not use the "novelty" report option.')
 
-		# check to make sure abundance data is there for the
-		# query columns, if user is asking
-		if dpi or tpm or heatmap:
-			self.check_abundances(datasets)
-
 		# order transcripts by user's preferences
-		if order == 'expression' and not self.get_count_cols():
+		if order == 'expression' and self.abundance == False:
 			order = 'tid'
 		self.order_transcripts(order)
 
-		# subset t_df based on relevant tids and expression requirements
-		t_df = self.t_df[self.t_df.gid.isin(gids)].copy(deep=True)
+		# if we're grouping data, calculate those new numbers
+		if groupby:
+			if layer == 'tpm':
+				t_df = calc_tpm(self.adata, self.t_df, obs_col=groupby).transpose()
+			elif layer == 'pi':
+				t_df, _ = calc_pi(self.adata, self.t_df, obs_col=groupby)
+				t_df = t_df.transpose()
 
-		# make sure de has been run if needed
-		if include_qvals:
-			if not self.check_de('transcript'):
-				raise Exception('Differential transcript expression test needed '
-					'to use include_qvals. Run de_transcript_test.')
-			de_df = self.det_test.copy(deep=True)
-			t_df = reset_dupe_index(t_df, 'tid')
-			t_df['significant'] = False
-			t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
-			t_df['significant'] = t_df.qval <= q
-			t_df = set_dupe_index(t_df, 'tid')
+		# subset t_df based on gene
+		tids = self.t_df.loc[self.t_df.gid.isin(gids)].index.tolist()
+		t_df = t_df.loc[tids].copy(deep=True)
 
-		# if user doesn't care about datasets, just show all transcripts
-		if not datasets:
-			include_unexpressed = True
-
-		# user only wants transcript isoforms that appear in their data
+		# remove unexpressed transcripts if desired
 		if not include_unexpressed:
-			counts_cols = self.get_count_cols(datasets)
-			t_df = t_df[t_df[counts_cols].sum(axis=1)>0]
+			t_df = t_df.loc[t_df.any(axis=1)]
 
-		# if we're grouping things switch up the datasets
-		# and how t_df is formatted
-		if dataset_groups:
+		return t_df
 
-			# no grouped dataset names were given - generate names
-			if not dataset_group_names:
-				print('No group names given. Will just use Group_#.')
-				dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
 
-			# check if we have the right number of group names
-			if len(dataset_groups) != len(dataset_group_names):
-				print('Not enough group names given. Will just use Group_#.')
-				dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
 
-			for i in range(len(dataset_groups)):
-				group = dataset_groups[i]
-				group_name = dataset_group_names[i]
+		# # make sure de has been run if needed
+		# if include_qvals:
+		# 	if not self.check_de('transcript'):
+		# 		raise Exception('Differential transcript expression test needed '
+		# 			'to use include_qvals. Run de_transcript_test.')
+		# 	de_df = self.det_test.copy(deep=True)
+		# 	t_df = reset_dupe_index(t_df, 'tid')
+		# 	t_df['significant'] = False
+		# 	t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
+		# 	t_df['significant'] = t_df.qval <= q
+		# 	t_df = set_dupe_index(t_df, 'tid')
 
-				# true or false
-				if not heatmap and not tpm:
-					t_df[group_name] = t_df[group].any(axis=1)
-				# tpm values
-				else:
-					group_name += '_counts'
-					count_group_cols = self.get_count_cols(group)
-					t_df[group_name] = t_df[count_group_cols].mean(axis=1)
-			datasets = dataset_group_names
-			# report_cols = dataset_group_names
+		# # if user doesn't care about datasets, just show all transcripts
+		# if not datasets:
+		# 	include_unexpressed = True
 
-		# determine report type
-		if heatmap:
-			data_type = 'heatmap'
-		elif tpm:
-			data_type = 'tpm'
-		else:
-			data_type = None
+		# # user only wants transcript isoforms that appear in their data
+		# if not include_unexpressed:
+		# 	counts_cols = self.get_count_cols(datasets)
+		# 	t_df = t_df[t_df[counts_cols].sum(axis=1)>0]
 
-		# determine report type
-		if not browser:
-			report_type = 'swan'
-		else:
-			report_type = 'browser'
 
 		# make sure number of threads is compatible with the system
 		max_cores = multiprocessing.cpu_count()
@@ -2107,99 +2065,92 @@ def _create_gene_report(gid, sg, t_df,
 		save_fig(gid_prefix+'_browser_scale.png')
 
 	# subset on gene
-	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
+	tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+	gid_t_df = t_df.loc[tids].copy(deep=True)
 
-	if heatmap:
+	# plot colorbar for either tpm or pi
+	if layer == 'tpm':
 
-		if not dpi:
-			# take log2(tpm) and gene-normalize
-			count_cols = ['{}_counts'.format(d) for d in datasets]
-			log_cols = ['{}_log_tpm'.format(d) for d in datasets]
-			norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-			gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
-			max_val = max(gid_t_df[log_cols].max().tolist())
-			min_val = min(gid_t_df[log_cols].min().tolist())
-			gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
+		# take log2(tpm) (add pseudocounts)
+		gid_t_df = np.log2(gid_t_df+1)
+		max_val = gid_t_df.max().max()
+		min_val = gid_t_df.min().min()
 
-			# create a colorbar
-			plt.rcParams.update({'font.size': 20})
-			fig, ax = plt.subplots(figsize=(14, 1.5))
-			fig.subplots_adjust(bottom=0.5)
-			fig.patch.set_visible(False)
-			ax.patch.set_visible(False)
+		# create a colorbar
+		plt.rcParams.update({'font.size': 30})
+		fig, ax = plt.subplots(figsize=(14, 1.5))
+		fig.subplots_adjust(bottom=0.5)
+		fig.patch.set_visible(False)
+		ax.patch.set_visible(False)
 
-			try:
-				cmap = plt.get_cmap(cmap)
-			except:
-				raise ValueError('Colormap {} not found'.format(cmap))
+		try:
+			cmap = plt.get_cmap(cmap)
+		except:
+			raise ValueError('Colormap {} not found'.format(cmap))
 
-			norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+		norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
 
-			cb = mpl.colorbar.ColorbarBase(ax,
-											cmap=cmap,
-											norm=norm,
-											orientation='horizontal')
-			cb.set_label('log2(TPM)')
-			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
-			plt.clf()
-			plt.close()
+		cb = mpl.colorbar.ColorbarBase(ax,
+							cmap=cmap,
+							norm=norm,
+							orientation='horizontal')
+		cb.set_label('log2(TPM)')
+		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
+		plt.clf()
+		plt.close()
 
-		# calculate % isoform for each dataset group
-		elif dpi:
-			count_cols = ['{}_counts'.format(d) for d in datasets]
-			dpi_cols = ['{}_dpi'.format(d) for d in datasets]
-			gid_t_df[dpi_cols] = gid_t_df[count_cols].div(gid_t_df[count_cols].sum(axis=0), axis=1)
+	elif layer == 'pi':
 
-			# create a colorbar
-			plt.rcParams.update({'font.size': 20})
-			fig, ax = plt.subplots(figsize=(14, 1.5))
-			fig.subplots_adjust(bottom=0.5)
-			fig.patch.set_visible(False)
-			ax.patch.set_visible(False)
+		# create a colorbar between 0 and 1
+		plt.rcParams.update({'font.size': 30})
+		fig, ax = plt.subplots(figsize=(14, 1.5))
+		fig.subplots_adjust(bottom=0.5)
+		fig.patch.set_visible(False)
+		ax.patch.set_visible(False)
 
-			try:
-				cmap = plt.get_cmap(cmap)
-			except:
-				raise ValueError('Colormap {} not found'.format(cmap))
+		try:
+			cmap = plt.get_cmap(cmap)
+		except:
+			raise ValueError('Colormap {} not found'.format(cmap))
 
-			norm = mpl.colors.Normalize(vmin=0, vmax=1)
+		norm = mpl.colors.Normalize(vmin=0, vmax=1)
 
-			cb = mpl.colorbar.ColorbarBase(ax,
-											cmap=cmap,
-											norm=norm,
-											orientation='horizontal')
-			cb.set_label('Proportion of isoform use')
-			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
-			plt.clf()
-			plt.close()
+		cb = mpl.colorbar.ColorbarBase(ax,
+							cmap=cmap,
+							norm=norm,
+							orientation='horizontal')
+		cb.set_label('Proportion of isoform use (' +'$\pi$'+')')
+		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
+		plt.clf()
+		plt.close()
 
-	# create report
-	print('Generating report for {}'.format(gid))
-	pdf_name = create_fname(prefix,
-				 indicate_dataset,
-				 indicate_novel,
-				 browser,
-				 ftype='report',
-				 gid=gid)
-	report = Report(gid_prefix,
-					report_type,
-					datasets,
-					data_type,
-					novelty=novelty,
-					heatmap=heatmap,
-					dpi=dpi,
-					cmap=cmap,
-					include_qvals=include_qvals)
-	report.add_page()
-
-	# loop through each transcript and add it to the report
-	for tid in report_tids:
-		entry = gid_t_df.loc[tid]
-		fname = create_fname(prefix,
-							 indicate_dataset,
-							 indicate_novel,
-							 browser,
-							 ftype='path',
-							 tid=entry.tid)
-		report.add_transcript(entry, fname)
-	report.write_pdf(pdf_name)
+	# # create report
+	# print('Generating report for {}'.format(gid))
+	# pdf_name = create_fname(prefix,
+	# 			 indicate_dataset,
+	# 			 indicate_novel,
+	# 			 browser,
+	# 			 ftype='report',
+	# 			 gid=gid)
+	# report = Report(gid_prefix,
+	# 				report_type,
+	# 				datasets,
+	# 				data_type,
+	# 				novelty=novelty,
+	# 				heatmap=heatmap,
+	# 				dpi=dpi,
+	# 				cmap=cmap,
+	# 				include_qvals=include_qvals)
+	# report.add_page()
+	#
+	# # loop through each transcript and add it to the report
+	# for tid in report_tids:
+	# 	entry = gid_t_df.loc[tid]
+	# 	fname = create_fname(prefix,
+	# 						 indicate_dataset,
+	# 						 indicate_novel,
+	# 						 browser,
+	# 						 ftype='path',
+	# 						 tid=entry.tid)
+	# 	report.add_transcript(entry, fname)
+	# report.write_pdf(pdf_name)
