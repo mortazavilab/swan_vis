@@ -902,7 +902,7 @@ def reformat_talon_abundance(fname, ofile=None):
 def save_fig(oname):
 	check_dir_loc(oname)
 	plt.axis('off')
-	plt.tight_layout()
-	plt.savefig(oname, format='png', dpi=200)
+	# plt.tight_layout()
+	plt.savefig(oname, format='png', dpi=200, bbox_inches='tight')
 	plt.clf()
 	plt.close()

@@ -9,12 +9,11 @@ class Report(FPDF):
 				 prefix,
 				 report_type,
 				 datasets,
-				 data_type,
 				 novelty=False,
-				 heatmap=False,
-				 dpi=False,
+				 layer='tpm',
 				 cmap='Spectral_r',
-				 include_qvals=False):
+				 include_qvals=False,
+				 display_numbers=False):
 		super().__init__(orientation='L')
 
 		# change margins
@@ -26,19 +25,22 @@ class Report(FPDF):
 		else:
 			self.report_type = report_type
 
-		# booleans of what's in the report
 		self.layer = layer
+
+		# booleans of what's in the report
+		self.novelty = novelty
 		self.include_qvals = include_qvals
+		self.display_numbers = display_numbers
 
 		# the columns that we'll include
 		self.datasets = datasets
-		self.report_cols = self.get_report_cols(data_type)
-		self.n_dataset_cols = len(self.report_cols)
+		# self.report_cols = self.get_report_cols(data_type)
+		self.n_dataset_cols = len(self.datasets)
 
 		# prefix for files that we'll pull from
 		self.prefix = prefix
 
-		# color map in case we're making a heatmap
+		# color map
 		try:
 			self.cmap = plt.get_cmap(cmap)
 		except:
@@ -61,18 +63,18 @@ class Report(FPDF):
 		else:
 			self.w_dataset = 146/self.n_dataset_cols
 
-	# grab the relevant columns associated with the report type
-	def get_report_cols(self, data_type):
-		if not data_type:
-			return self.datasets
-		elif data_type == 'tpm':
-			report_cols = [d+'_tpm' for d in self.datasets]
-		elif data_type == 'heatmap':
-			if self.dpi:
-				report_cols = ['{}_dpi'.format(d) for d in self.datasets]
-			else:
-				report_cols = [d+'_norm_log_tpm' for d in self.datasets]
-		return report_cols
+	# # grab the relevant columns associated with the report type
+	# def get_report_cols(self, data_type):
+	# 	if not data_type:
+	# 		return self.datasets
+	# 	elif data_type == 'tpm':
+	# 		report_cols = [d+'_tpm' for d in self.datasets]
+	# 	elif data_type == 'heatmap':
+	# 		if self.dpi:
+	# 			report_cols = ['{}_dpi'.format(d) for d in self.datasets]
+	# 		else:
+	# 			report_cols = [d+'_norm_log_tpm' for d in self.datasets]
+	# 	return report_cols
 
 	# header - should differ based on whether it's a browser report or
 	# a swan report
@@ -109,19 +111,15 @@ class Report(FPDF):
 	# footer - just add the colorbar if we're using the
 	# heatmap option
 	def footer(self):
-		if self.heatmap:
-			if not self.novelty:
-				self.set_x(77.5)
-			else:
-				self.set_x(90.5)
-			self.image(self.prefix+'_colorbar_scale.png',
-				w=90, h=135/14)
+		if not self.novelty:
+			self.set_x(77.5)
+		else:
+			self.set_x(90.5)
+		self.image(self.prefix+'_colorbar_scale.png',
+			w=90, h=13.57)
 
 	# add a transcript model to the report
-	def add_transcript(self, entry, oname):
-
-		# set tid text
-		tid = entry['tid']
+	def add_transcript(self, entry, oname, tid):
 
 		# entries should not be bolded
 		if self.include_qvals:
@@ -158,34 +156,32 @@ class Report(FPDF):
 				border=True, align='C')
 
 		# dataset columns
-		for col in self.report_cols:
+		for col in self.datasets:
 
-			# heat map coloring
-			if self.heatmap:
-				color = self.cmap(entry[col])
-				r = color[0]*255
-				b = color[1]*255
-				g = color[2]*255
-				self.set_fill_color(r,b,g)
-				border = False
-				fill = True
-				text = ''
-			# TPM
-			elif '_tpm' in col:
+			# color each heatmap cell
+			color = self.cmap(entry[col])
+			r = color[0]*255
+			b = color[1]*255
+			g = color[2]*255
+			self.set_fill_color(r,b,g)
+			border = False
+			fill = True
+
+			if self.display_numbers:
 				text = str(round(entry[col],2))
-				border = True
-				fill = False
-			# presence/absence
+				if (r*0.299 + g*0.587 + b*0.114) > 186:
+					text_r = text_g = text_b = 0
+				else:
+					text_r = text_g = text_b = 255
+				self.set_text_color(text_r, text_g, text_b)
 			else:
-				text = entry[col]
-				if text == True:
-					text = 'Yes'
-				elif text == False:
-					text = 'No'
-				border = True
-				fill = False
+				text = ''
+
 			self.cell(self.w_dataset, self.entry_height, text,
 				border=border, align='C', fill=fill)
+			# reset text color
+			self.set_text_color(0,0,0)
+
 		x = self.get_x()
 		y = self.get_y()
 

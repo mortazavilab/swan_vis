@@ -1820,6 +1820,7 @@ class SwanGraph(Graph):
 				   include_unexpressed=False,
 				   indicate_dataset=False,
 				   indicate_novel=False,
+				   display_numbers=False,
 				   browser=False,
 				   order='expression',
 				   threads=1):
@@ -1904,7 +1905,7 @@ class SwanGraph(Graph):
 		# check if groupby column is present
 		if groupby:
 			if groupby not in self.adata.obs.columns.tolist():
-				raise Exception('Groupby column {} not found'.format(obs_col))
+				raise Exception('Groupby column {} not found'.format(groupby))
 
 		# check to see if input genes are in the graph
 		if type(gids) != list:
@@ -1954,10 +1955,6 @@ class SwanGraph(Graph):
 		if not include_unexpressed:
 			t_df = t_df.loc[t_df.any(axis=1)]
 
-		return t_df
-
-
-
 		# # make sure de has been run if needed
 		# if include_qvals:
 		# 	if not self.check_de('transcript'):
@@ -1970,16 +1967,6 @@ class SwanGraph(Graph):
 		# 	t_df['significant'] = t_df.qval <= q
 		# 	t_df = set_dupe_index(t_df, 'tid')
 
-		# # if user doesn't care about datasets, just show all transcripts
-		# if not datasets:
-		# 	include_unexpressed = True
-
-		# # user only wants transcript isoforms that appear in their data
-		# if not include_unexpressed:
-		# 	counts_cols = self.get_count_cols(datasets)
-		# 	t_df = t_df[t_df[counts_cols].sum(axis=1)>0]
-
-
 		# make sure number of threads is compatible with the system
 		max_cores = multiprocessing.cpu_count()
 		if threads > max_cores:
@@ -1989,17 +1976,20 @@ class SwanGraph(Graph):
 		# takes longer
 		if len(gids) < 10:
 			for gid in gids:
-				_create_gene_report(gid, self, t_df, datasets, data_type,
-					prefix, indicate_dataset, indicate_novel, browser,
-					report_type, novelty, heatmap, dpi, cmap, include_qvals)
-		else:
-			# launch report jobs on different threads
-			with multiprocessing.Pool(threads) as pool:
-				pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
-					repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
-					repeat(indicate_novel), repeat(browser), repeat(report_type),
-					repeat(novelty), repeat(heatmap), repeat(dpi),
-					repeat(cmap), repeat(include_qvals)))
+				_create_gene_report(gid, self, t_df, datasets, prefix, novelty,
+					layer, cmap, include_qvals, indicate_dataset, indicate_novel,
+					display_numbers, browser)
+		# else:
+		# 	# launch report jobs on different threads
+		# 	with multiprocessing.Pool(threads) as pool:
+		# 		pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
+		# 			repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
+		# 			repeat(indicate_novel), repeat(browser), repeat(report_type),
+		# 			repeat(novelty), repeat(heatmap), repeat(dpi),
+		# 			repeat(cmap), repeat(include_qvals)))
+
+		# for testing purposes, return t_df
+		return t_df
 
 	##########################################################################
 	############################# Error handling #############################
@@ -2037,21 +2027,29 @@ class SwanGraph(Graph):
 ##########################################################################
 
 # generate a report for one gene; used for parallelization
-def _create_gene_report(gid, sg, t_df,
-	datasets, data_type,
+def _create_gene_report(gid,
+	sg,
+	t_df,
+	datasets,
 	prefix,
-	indicate_dataset, indicate_novel,
-	browser,
-	report_type, novelty, heatmap,
-	dpi, cmap,
-	include_qvals):
+	novelty,
+	layer,
+	cmap,
+	include_qvals,
+	indicate_dataset,
+	indicate_novel,
+	display_numbers,
+	browser):
 
-	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
+	# subset on gene
+	report_tids = sg.t_df.loc[sg.t_df.gid == gid, 'tid'].tolist()
+	report_tids = list(set(report_tids).intersection(set(t_df.index.tolist())))
+	gid_t_df = t_df.loc[report_tids].copy(deep=True)
 
 	# plot each transcript with these settings
 	print()
 	print('Plotting transcripts for {}'.format(gid))
-	self.plot_each_transcript(report_tids, prefix,
+	sg.plot_each_transcript(report_tids, prefix,
 							  indicate_dataset,
 							  indicate_novel,
 							  browser=browser)
@@ -2060,13 +2058,17 @@ def _create_gene_report(gid, sg, t_df,
 	gid_prefix = prefix+'_{}'.format(gid)
 
 	# if we're plotting tracks, we need a scale as well
+	# also set what type of report this will be, 'swan' or 'browser'
 	if browser:
 		self.pg.plot_browser_scale()
 		save_fig(gid_prefix+'_browser_scale.png')
+		report_type = 'browser'
+	else:
+		report_type = 'swan'
 
-	# subset on gene
-	tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
-	gid_t_df = t_df.loc[tids].copy(deep=True)
+	# # subset on gene
+	# tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+	# gid_t_df = t_df.loc[tids].copy(deep=True)
 
 	# plot colorbar for either tpm or pi
 	if layer == 'tpm':
@@ -2095,7 +2097,8 @@ def _create_gene_report(gid, sg, t_df,
 							norm=norm,
 							orientation='horizontal')
 		cb.set_label('log2(TPM)')
-		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
+		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
+			bbox_inches='tight', dpi=200)
 		plt.clf()
 		plt.close()
 
@@ -2120,37 +2123,41 @@ def _create_gene_report(gid, sg, t_df,
 							norm=norm,
 							orientation='horizontal')
 		cb.set_label('Proportion of isoform use (' +'$\pi$'+')')
-		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
+		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
+			bbox_inches='tight', dpi=200)
 		plt.clf()
 		plt.close()
 
-	# # create report
-	# print('Generating report for {}'.format(gid))
-	# pdf_name = create_fname(prefix,
-	# 			 indicate_dataset,
-	# 			 indicate_novel,
-	# 			 browser,
-	# 			 ftype='report',
-	# 			 gid=gid)
-	# report = Report(gid_prefix,
-	# 				report_type,
-	# 				datasets,
-	# 				data_type,
-	# 				novelty=novelty,
-	# 				heatmap=heatmap,
-	# 				dpi=dpi,
-	# 				cmap=cmap,
-	# 				include_qvals=include_qvals)
-	# report.add_page()
-	#
-	# # loop through each transcript and add it to the report
-	# for tid in report_tids:
-	# 	entry = gid_t_df.loc[tid]
-	# 	fname = create_fname(prefix,
-	# 						 indicate_dataset,
-	# 						 indicate_novel,
-	# 						 browser,
-	# 						 ftype='path',
-	# 						 tid=entry.tid)
-	# 	report.add_transcript(entry, fname)
-	# report.write_pdf(pdf_name)
+	# merge with sg.t_df to get additional columns
+	datasets = t_df.columns
+	cols = ['novelty'] # TODO - qval?
+	gid_t_df = gid_t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
+
+	# create report
+	print('Generating report for {}'.format(gid))
+	pdf_name = create_fname(prefix,
+				 indicate_dataset,
+				 indicate_novel,
+				 browser,
+				 ftype='report',
+				 gid=gid)
+	report = Report(gid_prefix,
+					report_type,
+					datasets=datasets,
+					novelty=novelty,
+					layer=layer,
+					cmap=cmap,
+					include_qvals=include_qvals,
+					display_numbers=display_numbers)
+	report.add_page()
+
+	# loop through each transcript and add it to the report
+	for ind, entry in gid_t_df.iterrows():
+		fname = create_fname(prefix,
+							 indicate_dataset,
+							 indicate_novel,
+							 browser,
+							 ftype='path',
+							 tid=ind)
+		report.add_transcript(entry, fname, ind)
+	report.write_pdf(pdf_name)
