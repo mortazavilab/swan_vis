@@ -167,6 +167,7 @@ class PlottedGraph(Graph):
     def calc_node_edge_styles(self):
         self.calc_node_colors()
         self.calc_edge_colors()
+        self.get_ordered_edges()
         self.calc_edge_linestyles()
 
     ###############################################################################
@@ -585,11 +586,11 @@ class PlottedGraph(Graph):
         txt = '{} {}'.format(text_scale, scale_unit)
         ax.text(x_coord, y_coord, txt, fontsize=30)
 
-        # check if forward or reverse strand
-        if self.strand == '-':
-            ordered_nodes.reverse()
-
-        return ordered_nodes
+        # # check if forward or reverse strand
+        # if self.strand == '-':
+        #     ordered_nodes.reverse()
+        #
+        # return ordered_nodes
 
     # orders edges by those present in the transcript and those not present in the transcript
     def get_ordered_edges(self):

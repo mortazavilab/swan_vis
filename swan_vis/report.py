@@ -12,6 +12,8 @@ class Report(FPDF):
 				 novelty=False,
 				 layer='tpm',
 				 cmap='Spectral_r',
+				 g_min=None,
+				 g_max=None,
 				 include_qvals=False,
 				 display_numbers=False):
 		super().__init__(orientation='L')
@@ -41,6 +43,8 @@ class Report(FPDF):
 		self.prefix = prefix
 
 		# color map
+		self.g_min = g_min
+		self.g_max = g_max
 		try:
 			self.cmap = plt.get_cmap(cmap)
 		except:
@@ -159,7 +163,8 @@ class Report(FPDF):
 		for col in self.datasets:
 
 			# color each heatmap cell
-			color = self.cmap(entry[col])
+			norm_val = (entry[col]-self.g_min)/(self.g_max-self.g_min)
+			color = self.cmap(norm_val)
 			r = color[0]*255
 			b = color[1]*255
 			g = color[2]*255
@@ -169,7 +174,7 @@ class Report(FPDF):
 
 			if self.display_numbers:
 				text = str(round(entry[col],2))
-				if (r*0.299 + g*0.587 + b*0.114) > 186:
+				if (r*0.299 + g*0.587 + b*0.114) > 100:
 					text_r = text_g = text_b = 0
 				else:
 					text_r = text_g = text_b = 255

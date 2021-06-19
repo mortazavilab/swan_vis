@@ -439,7 +439,7 @@ def calc_tpm(adata, sg_df, obs_col='dataset'):
 ####################### Related to file parsing ##########################
 ##########################################################################
 
-def parse_db(database, pass_list, observed, verbose):
+def parse_db(database, pass_list, observed, include_isms, verbose):
 	"""
 	Get the unique transcripts and exons that are present in a TALON DB
 	transcriptome.
@@ -448,6 +448,7 @@ def parse_db(database, pass_list, observed, verbose):
 		database (str): Path to database file
 		pass_list (str): Path to TALON pass list files
 		observed (bool): Whether or not to only use observed transcripts
+		include_isms (bool): Whether to include ISMs or not
 		verbose (bool): Display progress
 
 	Returns:
@@ -591,13 +592,14 @@ def parse_db(database, pass_list, observed, verbose):
 	exon_df = pd.DataFrame(exons).transpose()
 	return t_df, exon_df
 
-def parse_gtf(gtf_file, verbose):
+def parse_gtf(gtf_file, include_isms, verbose):
 	"""
 	Get the unique transcripts and exons that are present in a GTF
 	transcriptome.
 
 	Parameters:
 		gtf_file (str): File path of GTF
+		include_isms (bool): Whether to include ISMs or not
 		verbose (bool): Display progress
 
 	Returns:
@@ -629,6 +631,7 @@ def parse_gtf(gtf_file, verbose):
 	transcripts = {}
 	exons = {}
 	from_talon = False
+	ism_tids = []
 
 	# display progess
 	if verbose:
@@ -697,6 +700,13 @@ def parse_gtf(gtf_file, verbose):
 					novelty = get_transcript_novelties(attributes)
 					entry['novelty'] = novelty
 
+				# do not include ISM transcripts
+				if not include_isms and from_talon:
+					if novelty == 'ISM':
+						ism_tids += [tid]
+				# else:
+					# transcript = {tid: entry}
+					# transcripts.update(transcript)
 				transcript = {tid: entry}
 				transcripts.update(transcript)
 
@@ -715,7 +725,15 @@ def parse_gtf(gtf_file, verbose):
 								  'v2': stop,
 								  'strand': strand,
 								  'edge_type': 'exon'}}
-					exons.update(edge)
+
+					# don't include exons that come from ISM transcripts
+					if not include_isms and from_talon:
+						if transcripts[tid]['novelty'] == 'ISM':
+							pass
+						else:
+							exons.update(edge)
+					else:
+						exons.update(edge)
 
 				# add this exon to the transcript's list of exons
 				if tid in transcripts:
@@ -723,6 +741,11 @@ def parse_gtf(gtf_file, verbose):
 
 	t_df = pd.DataFrame(transcripts).transpose()
 	exon_df = pd.DataFrame(exons).transpose()
+
+	# remove ISMs that we've recorded
+	if not include_isms:
+		t_df = t_df.loc[~t_df.tid.isin(ism_tids)]
+
 	return t_df, exon_df, from_talon
 
 ##########################################################################

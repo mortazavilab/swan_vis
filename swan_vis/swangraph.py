@@ -53,7 +53,7 @@ class SwanGraph(Graph):
 			expression information
 	"""
 
-	def __init__(self, file=None):
+	def __init__(self, sc=False, file=None):
 
 		if not file:
 			super().__init__()
@@ -64,6 +64,11 @@ class SwanGraph(Graph):
 		else:
 			check_file_loc(file, 'SwanGraph')
 			self.load_graph(file)
+
+		if sc:
+			self.sc = True
+		else:
+			self.sc = False
 
 	###########################################################################
 	############## Related to adding datasets and merging #####################
@@ -229,11 +234,12 @@ class SwanGraph(Graph):
 		# get loc_df, edge_df, t_df
 		if ftype == 'gtf':
 			check_file_loc(fname, 'GTF')
-			t_df, exon_df, from_talon = parse_gtf(fname, verbose)
+			t_df, exon_df, from_talon = parse_gtf(fname, include_isms, verbose)
 		elif ftype == 'db':
 			check_file_loc(fname, 'TALON DB')
 			observed = True
-			t_df, exon_df = parse_db(fname, pass_list, observed, verbose)
+			t_df, exon_df = parse_db(fname, pass_list, observed,
+									 include_isms, verbose)
 			from_talon = True
 
 		# keep track of transcripts from GTF if we're adding annotation
@@ -248,13 +254,13 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-		# add location path
-		self.get_loc_path()
-
-		# remove ISM transcripts and locations and edges exclusively from ISM
-		# transcripts
-		if not include_isms:
-			self.remove_isms()
+		# # add location path
+		# self.get_loc_path()
+		#
+		# # remove ISM transcripts and locations and edges exclusively from ISM
+		# # transcripts
+		# if not include_isms:
+		# 	self.remove_isms()
 
 		# label elements from the annotation
 		if annotation:
@@ -388,7 +394,12 @@ class SwanGraph(Graph):
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
 			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
-			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+
+			# TODO - this takes too long to calc with sc data
+			# maybe add a "sc" option that doesn't run this when it's set
+			# also could probably parallelize calc_pi
+			if not self.sc:
+				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 		else:
 			# concatenate the raw, tpm, and pi data
 			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
@@ -408,7 +419,9 @@ class SwanGraph(Graph):
 
 			# recalculate pi and tpm
 			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
-			self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+
+			if not self.sc:
+				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 
 		# add abundance for edges, TSS per gene, and TES per gene
 		self.create_edge_adata()
@@ -578,7 +591,7 @@ class SwanGraph(Graph):
 		"""
 		Get a dictionary of unique locations already in the SwanGraph, along
 		with the number of unique locations. Used to create the dataframes
-		in create_dfs_gtf and create_dfs_db.
+		in create_dfs.
 
 		Returns:
 			locs (dict): Dictionary of unique genomic locations. Keys are
@@ -926,7 +939,6 @@ class SwanGraph(Graph):
 			ordered_tids = sorted(self.t_df.tid.tolist())
 			self.t_df = self.t_df.loc[ordered_tids]
 
-
 		# order by expression
 		elif order == 'expression':
 
@@ -942,9 +954,11 @@ class SwanGraph(Graph):
 				temp = pd.DataFrame(index=['tpm'], data=[data], columns=cols).transpose()
 				temp.sort_values(by='tpm', ascending=False, inplace=True)
 				ordered_tids = temp.index.tolist()
+				# print(temp)
 
 				# order t_df and adata
 				self.t_df = self.t_df.loc[ordered_tids]
+				# print(self.t_df)
 				self.adata = self.adata[:, ordered_tids]
 
 		# order by coordinate of tss
@@ -1375,7 +1389,7 @@ class SwanGraph(Graph):
 			raise ValueError('obs_conditions must have exactly 2 values')
 
 		# use calculated values already in the SwanGraph
-		if obs_col == 'dataset':
+		if obs_col == 'dataset' and not self.sc:
 			df = pd.DataFrame(data=self.adata.layers['pi'],
 								 index=self.adata.obs.index,
 								 columns=self.adata.var.index)
@@ -1553,9 +1567,11 @@ class SwanGraph(Graph):
 		self.loc_df = graph.loc_df
 		self.edge_df = graph.edge_df
 		self.t_df = graph.t_df
+		self.adata = graph.adata
+		self.edge_adata = graph.adata
+
 		self.datasets = graph.datasets
 		self.counts = graph.counts
-		self.tpm = graph.tpm
 		self.pg = graph.pg
 		self.G = graph.G
 
@@ -1939,13 +1955,21 @@ class SwanGraph(Graph):
 			order = 'tid'
 		self.order_transcripts(order)
 
+		# print(self.t_df.loc[self.t_df.gid == 'ENSMUSG00000020167.13'])
+		# print(self.t_df)
+		tids = self.t_df.index.tolist()
+
 		# if we're grouping data, calculate those new numbers
+		# probably limit pi calculations to relevant genes?
 		if groupby:
 			if layer == 'tpm':
 				t_df = calc_tpm(self.adata, self.t_df, obs_col=groupby).transpose()
 			elif layer == 'pi':
 				t_df, _ = calc_pi(self.adata, self.t_df, obs_col=groupby)
 				t_df = t_df.transpose()
+
+		ordered_tids = list(set(tids).intersection(set(t_df.index.tolist())))
+		t_df = t_df.loc[ordered_tids]
 
 		# subset t_df based on gene
 		tids = self.t_df.loc[self.t_df.gid.isin(gids)].index.tolist()
@@ -2060,7 +2084,7 @@ def _create_gene_report(gid,
 	# if we're plotting tracks, we need a scale as well
 	# also set what type of report this will be, 'swan' or 'browser'
 	if browser:
-		self.pg.plot_browser_scale()
+		sg.pg.plot_browser_scale()
 		save_fig(gid_prefix+'_browser_scale.png')
 		report_type = 'browser'
 	else:
@@ -2075,8 +2099,10 @@ def _create_gene_report(gid,
 
 		# take log2(tpm) (add pseudocounts)
 		gid_t_df = np.log2(gid_t_df+1)
-		max_val = gid_t_df.max().max()
-		min_val = gid_t_df.min().min()
+
+		# min and max tpm vals
+		g_max = gid_t_df.max().max()
+		g_min = gid_t_df.min().min()
 
 		# create a colorbar
 		plt.rcParams.update({'font.size': 30})
@@ -2090,7 +2116,7 @@ def _create_gene_report(gid,
 		except:
 			raise ValueError('Colormap {} not found'.format(cmap))
 
-		norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
+		norm = mpl.colors.Normalize(vmin=g_min, vmax=g_max)
 
 		cb = mpl.colorbar.ColorbarBase(ax,
 							cmap=cmap,
@@ -2104,6 +2130,10 @@ def _create_gene_report(gid,
 
 	elif layer == 'pi':
 
+		# min and max pi vals
+		g_max = 100
+		g_min = 0
+
 		# create a colorbar between 0 and 1
 		plt.rcParams.update({'font.size': 30})
 		fig, ax = plt.subplots(figsize=(14, 1.5))
@@ -2116,13 +2146,13 @@ def _create_gene_report(gid,
 		except:
 			raise ValueError('Colormap {} not found'.format(cmap))
 
-		norm = mpl.colors.Normalize(vmin=0, vmax=1)
+		norm = mpl.colors.Normalize(vmin=0, vmax=100)
 
 		cb = mpl.colorbar.ColorbarBase(ax,
 							cmap=cmap,
 							norm=norm,
 							orientation='horizontal')
-		cb.set_label('Proportion of isoform use (' +'$\pi$'+')')
+		cb.set_label('Percent of isoform use (' +'$\pi$'+')')
 		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
 			bbox_inches='tight', dpi=200)
 		plt.clf()
@@ -2147,6 +2177,8 @@ def _create_gene_report(gid,
 					novelty=novelty,
 					layer=layer,
 					cmap=cmap,
+					g_min=g_min,
+					g_max=g_max,
 					include_qvals=include_qvals,
 					display_numbers=display_numbers)
 	report.add_page()

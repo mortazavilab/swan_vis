@@ -465,7 +465,7 @@ class TestFiles(object):
     # tests GTF parsing
     def test_parse_gtf(self):
         gtf_file = 'files/Canx.gtf'
-        t_df, exon_df, from_talon = swan.parse_gtf(gtf_file, False)
+        t_df, exon_df, from_talon = swan.parse_gtf(gtf_file, True, False)
 
         t_df.index.name = 'tid_index'
         t_df = t_df.sort_values(by='tid_index')
@@ -485,7 +485,7 @@ class TestFiles(object):
     def test_parse_db_1(self):
         db_file = 'files/test_full.db'
         pass_list = 'files/test_full_pass_list.csv'
-        t_df, edge_df = swan.parse_db(db_file, None, False, False)
+        t_df, edge_df = swan.parse_db(db_file, None, False, True, False)
 
         ctrl_t_df, ctrl_e_df = get_test_transcript_exon_dicts()
         for key, item in ctrl_t_df.items():
@@ -527,7 +527,7 @@ class TestFiles(object):
     def test_parse_db_2(self):
         db_file = 'files/test_full.db'
         pass_list = 'files/test_full_pass_list.csv'
-        t_df, edge_df = swan.parse_db(db_file, pass_list, False, False)
+        t_df, edge_df = swan.parse_db(db_file, pass_list, False, True, False)
 
         ctrl_t_df, ctrl_e_df = get_test_transcript_exon_dicts()
         for key, item in ctrl_t_df.items():
@@ -1276,7 +1276,7 @@ def check_dfs(loc_df, ctrl_loc_df,
 
 
 def add_transcriptome_no_reorder_gtf(sg, gtf):
-    t_df, exon_df, from_talon = swan.parse_gtf(gtf, False)
+    t_df, exon_df, from_talon = swan.parse_gtf(gtf, False, False)
     sg.loc_df, sg.edge_df, sg.t_df = sg.create_dfs(t_df, exon_df, from_talon)
     return sg
 
