@@ -53,17 +53,12 @@ class SwanGraph(Graph):
 			expression information
 	"""
 
-	def __init__(self, sc=False, file=None):
+	def __init__(self, sc=False):
 
-		if not file:
-			super().__init__()
+		super().__init__()
 
-			# only a SwanGraph should have a plotted graph
-			self.pg = PlottedGraph()
-
-		else:
-			check_file_loc(file, 'SwanGraph')
-			self.load_graph(file)
+		# only a SwanGraph should have a plotted graph
+		self.pg = PlottedGraph()
 
 		if sc:
 			self.sc = True
@@ -1541,7 +1536,7 @@ class SwanGraph(Graph):
 # 		return ann
 
 	##########################################################################
-	######################## Loading/saving SwanGraphs #####################
+	############################ Saving SwanGraphs ###########################
 	##########################################################################
 
 	def save_graph(self, prefix):
@@ -1557,35 +1552,6 @@ class SwanGraph(Graph):
 		pickle.dump(self, picklefile)
 		picklefile.close()
 
-	# loads a splice graph object from pickle form
-	def load_graph(self, fname):
-
-		picklefile = open(fname, 'rb')
-		graph = pickle.load(picklefile)
-
-		# assign SwanGraph fields from file to self
-		self.loc_df = graph.loc_df
-		self.edge_df = graph.edge_df
-		self.t_df = graph.t_df
-		self.adata = graph.adata
-		self.edge_adata = graph.adata
-
-		self.datasets = graph.datasets
-		self.counts = graph.counts
-		self.pg = graph.pg
-		self.G = graph.G
-
-		self.deg_test = graph.deg_test
-		self.deg_test_groups = graph.deg_test_groups
-		self.det_test = graph.det_test
-		self.det_test_groups = graph.det_test_groups
-
-		picklefile.close()
-
-		print('Graph from {} loaded'.format(fname))
-
-
-
 	##########################################################################
 	############################ Plotting utilities ##########################
 	##########################################################################
@@ -1597,7 +1563,7 @@ class SwanGraph(Graph):
 
 		Parameters:
 			obs_col (str): Name of metadata column to set colors for
-			cmap (dict): Dictionary of metadata value : color
+			cmap (dict): Dictionary of metadata value : color (hex code with #)
 		"""
 
 		# check if obs_col is even there
@@ -1605,13 +1571,29 @@ class SwanGraph(Graph):
 			raise Exception('Metadata column {} not found'.format(obs_col))
 
 		# TODO check if all values in cmap are in the obs_col
+		# also maybe not my problem lol
 
 		# map values in order specific to
 		obs_order = list(self.adata.obs_names)
-		sample_order = self.adata.obs.loc[obs_order, 'sample']
+		sample_order = self.adata.obs.loc[obs_order, obs_col]
 		sample_order = sample_order.unique().tolist()
 		sample_colors = [cmap[s] for s in sample_order]
 		self.adata.uns['{}_colors'.format(obs_col)] = sample_colors
+
+		# also store rgb values in dict for use with gen_report
+		for key, item in cmap.items():
+			item = item[1:]
+			r,g,b = tuple(int(item[i:i+2], 16) for i in (0, 2, 4))
+			cmap[key] = (r,g,b)
+		self.adata.uns['{}_dict'.format(obs_col)] = cmap
+
+		# # also add these to the other adatas
+		# self.edge_adata['{}_colors'.format(obs_col)] = sample_colors]
+		# self.edge_adata.uns['{}_dict'] = cmap
+		# self.tss_adata['{}_colors'.format(obs_col)] = sample_colors]
+		# self.tss_adata.uns['{}_dict'] = cmap
+		# self.tes_adata['{}_colors'.format(obs_col)] = sample_colors]
+		# self.tes_adata.uns['{}_dict'] = cmap
 
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
@@ -1822,12 +1804,12 @@ class SwanGraph(Graph):
 	##########################################################################
 	############################### Report stuff #############################
 	##########################################################################
-	# creates a report for each transcript model for a gene according to user input
 	def gen_report(self,
 				   gids,
 				   prefix,
 				   datasets='all',
 				   groupby=None,
+				   metadata_cols=None,
 				   novelty=False,
    				   layer='tpm', # choose from tpm, pi
 				   cmap='Spectral_r',
@@ -1923,6 +1905,30 @@ class SwanGraph(Graph):
 			if groupby not in self.adata.obs.columns.tolist():
 				raise Exception('Groupby column {} not found'.format(groupby))
 
+		# check if metadata columns are present
+		if metadata_cols:
+			for c in metadata_cols:
+				if c not in self.adata.obs.columns.tolist():
+					raise Exception('Metadata column {} not found'.format(c))
+
+				# if we're grouping by a certain variable, make sure
+				# the other metadata cols we plan on plotting have unique
+				# mappings to the other columns. if just grouping by dataset,
+				# since each dataset is unique, that's ok
+				if groupby and groupby != 'dataset':
+					if groupby == c:
+						continue
+
+				temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
+				temp = temp.groupby([groupby, c]).count().reset_index()
+
+				# if there are duplicates from the metadata column, throw exception
+				if temp[groupby].duplicated().any():
+						raise Exception('Metadata column {} '.format(c)+\
+							'not compatible with groupby column {}. '.format(groupby)+\
+							'Groupby column has more than 1 unique possible '+\
+							'value from metadata column.')
+
 		# check to see if input genes are in the graph
 		if type(gids) != list:
 			gids = [gids]
@@ -2000,9 +2006,10 @@ class SwanGraph(Graph):
 		# takes longer
 		if len(gids) < 10:
 			for gid in gids:
-				_create_gene_report(gid, self, t_df, datasets, prefix, novelty,
-					layer, cmap, include_qvals, indicate_dataset, indicate_novel,
-					display_numbers, browser)
+				_create_gene_report(gid, self, t_df, datasets, groupby,
+					prefix, metadata_cols, novelty, layer, cmap,
+					include_qvals, indicate_dataset,
+					indicate_novel, display_numbers, browser)
 		# else:
 		# 	# launch report jobs on different threads
 		# 	with multiprocessing.Pool(threads) as pool:
@@ -2055,7 +2062,9 @@ def _create_gene_report(gid,
 	sg,
 	t_df,
 	datasets,
+	groupby,
 	prefix,
+	metadata_cols,
 	novelty,
 	layer,
 	cmap,
@@ -2173,7 +2182,11 @@ def _create_gene_report(gid,
 				 gid=gid)
 	report = Report(gid_prefix,
 					report_type,
+					sg.adata.obs,
+					sg.adata.uns,
 					datasets=datasets,
+					groupby=groupby,
+					metadata_cols=metadata_cols,
 					novelty=novelty,
 					layer=layer,
 					cmap=cmap,

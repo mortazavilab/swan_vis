@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
+import pickle
 from statsmodels.stats.multitest import multipletests
 import scipy.stats as st
 import matplotlib.pyplot as plt
@@ -9,7 +10,6 @@ import copy
 from collections import defaultdict
 from tqdm import tqdm
 from swan_vis.talon_utils import *
-
 
 pd.options.mode.chained_assignment = None
 
@@ -919,6 +919,14 @@ def reformat_talon_abundance(fname, ofile=None):
 
 	# otherwise dump to output file
 	df.to_csv(ofile, sep='\t', index=False)
+
+def read(file):
+	check_file_loc(file, 'SwanGraph')
+	picklefile = open(file, 'rb')
+	sg = pickle.load(picklefile)
+
+	print('Read in graph from {}'.format(file))
+	return sg
 
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done

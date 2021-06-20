@@ -8,7 +8,11 @@ class Report(FPDF):
 	def __init__(self,
 				 prefix,
 				 report_type,
+				 obs,
+				 uns,
 				 datasets,
+				 groupby,
+				 metadata_cols,
 				 novelty=False,
 				 layer='tpm',
 				 cmap='Spectral_r',
@@ -27,17 +31,23 @@ class Report(FPDF):
 		else:
 			self.report_type = report_type
 
-		self.layer = layer
-
 		# booleans of what's in the report
 		self.novelty = novelty
 		self.include_qvals = include_qvals
 		self.display_numbers = display_numbers
 
-		# the columns that we'll include
+		# what we're plotting
 		self.datasets = datasets
 		# self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.datasets)
+		self.metadata_cols = metadata_cols
+		self.layer = layer
+		self.obs = obs
+		self.uns = uns
+		if groupby == None:
+			self.groupby = 'dataset'
+		else:
+			self.groupby = groupby
 
 		# prefix for files that we'll pull from
 		self.prefix = prefix
@@ -55,10 +65,13 @@ class Report(FPDF):
 
 		# add extra room for the scale/colorbar if we're doing
 		# the browser/heatmap version
-		if self.report_type == 'swan':
-			self.header_height = 10
-		if self.report_type == 'browser':
-			self.header_height = 20
+		# if self.report_type == 'swan':
+		# 	self.header_height = 10
+		# if self.report_type == 'browser':
+		# 	self.header_height = 20
+		self.header_height = 20
+		if self.metadata_cols:
+			self.meta_height = self.header_height/len(self.metadata_cols)
 
 		# dataset width is contingent on # of datasets
 		# as well as if we're including the novelty column
@@ -67,18 +80,38 @@ class Report(FPDF):
 		else:
 			self.w_dataset = 146/self.n_dataset_cols
 
-	# # grab the relevant columns associated with the report type
-	# def get_report_cols(self, data_type):
-	# 	if not data_type:
-	# 		return self.datasets
-	# 	elif data_type == 'tpm':
-	# 		report_cols = [d+'_tpm' for d in self.datasets]
-	# 	elif data_type == 'heatmap':
-	# 		if self.dpi:
-	# 			report_cols = ['{}_dpi'.format(d) for d in self.datasets]
-	# 		else:
-	# 			report_cols = [d+'_norm_log_tpm' for d in self.datasets]
-	# 	return report_cols
+	# for each metadata column, color report header
+	def color_header(self, data_col):
+		x = self.get_x()
+		y = 0.5
+		print()
+		print(data_col)
+		print(x, y)
+
+		for ind, meta_col in enumerate(self.metadata_cols):
+			print(ind)
+
+			self.set_y(y+(ind*self.meta_height))
+			self.set_x(x)
+
+			# get meta_col category
+			meta_cat = self.obs.loc[self.obs[self.groupby] == data_col, meta_col]
+			meta_cat = meta_cat.unique().tolist()[0]
+
+			print(meta_col)
+			print(meta_cat)
+			print(self.get_x())
+			print(self.get_y())
+
+			# get the color and convert to rgb
+			# source: https://stackoverflow.com/questions/29643352/converting-hex-to-rgb-value-in-python
+			color = self.uns['{}_dict'.format(meta_col)][meta_cat]
+			r = color[0]
+			g = color[1]
+			b = color[2]
+			self.set_fill_color(r,g,b)
+
+			self.cell(self.w_dataset, self.meta_height, fill=True, border=False)
 
 	# header - should differ based on whether it's a browser report or
 	# a swan report
@@ -94,8 +127,22 @@ class Report(FPDF):
 
 		# dataset ID headers
 		for col in self.datasets:
-			self.cell(self.w_dataset, self.header_height, col,
-					  border=True, align='C')
+
+			# we're using colors to represent different metadata vars.
+			if self.metadata_cols:
+				self.color_header(col)
+
+			# just using the dataset names
+			else:
+				self.cell(self.w_dataset, self.header_height, col,
+						  border=True, align='C')
+
+		# reset current location in case we colored metadata cols
+		self.set_y(0.5)
+		self.set_x(196.5)
+
+		# reset to white
+		self.set_fill_color(255,255,255)
 
 		# in case we need to add the browser models
 		browser_scale_x = self.get_x()
@@ -166,9 +213,9 @@ class Report(FPDF):
 			norm_val = (entry[col]-self.g_min)/(self.g_max-self.g_min)
 			color = self.cmap(norm_val)
 			r = color[0]*255
-			b = color[1]*255
-			g = color[2]*255
-			self.set_fill_color(r,b,g)
+			g = color[1]*255
+			b = color[2]*255
+			self.set_fill_color(r,g,b)
 			border = False
 			fill = True
 
