@@ -154,7 +154,8 @@ class TestSGAnalysis(object):
     # test get_die_genes - obs col doesn't exist
     def test_get_die_genes_5(self):
         sg = get_die_test_sg()
-        obs_col = 'dataset'
+        print(sg.adata.obs)
+        obs_col = 'condition'
         obs_conditions = ['PB65_B017', 'PB65_B018']
         id_col = 'tid'
         with pytest.raises(Exception) as e:

@@ -273,8 +273,7 @@ def pivot_path_list(t_df, path_col):
 ##########################################################################
 ############### Related to calculating abundance values ##################
 ##########################################################################
-
-def calc_total_counts(adata, obs_col='dataset'):
+def calc_total_counts(adata, obs_col='dataset', layer='counts'):
 	"""
 	Calculate cumulative expression per adata entry based on condition given
 	by `obs_col`. Default column to use is `adata.obs` index column, `dataset`.
@@ -291,12 +290,13 @@ def calc_total_counts(adata, obs_col='dataset'):
 			per condition.
 
 	"""
-	adata.X = adata.layers['counts']
+	adata.X = adata.layers[layer]
 	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
 		columns=adata.var.index.tolist())
 
 	# add up values on condition (row)
 	df = df.groupby(level=0).sum()
+
 	# df = df.transpose()
 
 	return df

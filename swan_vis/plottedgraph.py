@@ -167,7 +167,8 @@ class PlottedGraph(Graph):
     def calc_node_edge_styles(self):
         self.calc_node_colors()
         self.calc_edge_colors()
-        self.get_ordered_edges()
+        if self.graph_type == 'transcript_path':
+            self.get_ordered_edges()
         self.calc_edge_linestyles()
 
     ###############################################################################

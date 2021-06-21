@@ -329,7 +329,7 @@ class SwanGraph(Graph):
 		try:
 			df = pd.read_csv(counts_file, sep='\t')
 		except:
-			raise Error('Problem reading expression matrix {}'.format(counts_file))
+			raise ValueError('Problem reading expression matrix {}'.format(counts_file))
 
 		# check if abundance matrix is a talon abundance matrix
 		cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
@@ -443,7 +443,7 @@ class SwanGraph(Graph):
 		try:
 			df = pd.read_csv(fname, sep='\t')
 		except:
-			raise Error('Problem reading metadata file {}'.format(fname))
+			raise ValueError('Problem reading metadata file {}'.format(fname))
 
 		# which columns are duplicate?
 		sg_cols = list(set(self.adata.obs.columns.tolist())-set(['dataset']))
@@ -916,7 +916,167 @@ class SwanGraph(Graph):
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
 	##########################################################################
+	def subset_on_gene_sg(self, gid, obs_col=None, obs_cats=None):
+		"""
+		Subset the swan Graph on a given gene and return the subset graph.
 
+		Parameters:
+			gid (str): Gene ID to subset on
+			obs_col (str): Column in adata.obs to subset on
+			obs_cats (list of str): Categories in obs_col to subset on
+
+		returns:
+			subset_sg (swan Graph): Swan Graph subset on the input gene.
+		"""
+
+		# make sure this gid is even in the Graph
+		self.check_gene(gid)
+
+		# get the strand
+		strand = self.get_strand_from_gid(gid)
+
+		# subset t_df first, it's the easiest
+		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+		t_df = self.t_df.loc[tids].copy(deep=True)
+		t_df['path'] = self.t_df.loc[tids].apply(
+				lambda x: copy.deepcopy(x.path), axis=1)
+		t_df['loc_path'] = self.t_df.loc[tids].apply(
+				lambda x: copy.deepcopy(x.loc_path), axis=1)
+
+		# also subset anndata
+		if obs_col and obs_cats:
+			# print(obs_col)
+			# print(obs_cats)
+			obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
+			obs_vars = obs_vars.index.tolist()
+			# print(obs_vars)
+			# print(tids)
+			adata = self.adata[obs_vars, tids]
+		else:
+			adata = self.adata[:, tids]
+
+		# subset loc_df based on all the locs that are in the paths from
+		# the already-subset t_df
+		paths = t_df['loc_path'].tolist()
+		locs = [node for path in paths for node in path]
+		locs = np.unique(locs)
+		loc_df = self.loc_df.loc[locs].copy(deep=True)
+
+		# subset edge_df based on all the edges that are in the paths from
+		# the alread-subset t_df
+		paths = t_df['path'].tolist()
+		edges = [node for path in paths for node in path]
+		edges = np.unique(edges)
+		edge_df = self.edge_df.loc[edges].copy(deep=True)
+
+		# create a new graph that's been subset
+		subset_sg = SwanGraph()
+		subset_sg.loc_df = loc_df
+		subset_sg.edge_df = edge_df
+		subset_sg.t_df = t_df
+		subset_sg.adata = adata
+		subset_sg.datasets = adata.obs.index.tolist()
+		subset_sg.abundance = self.abundance
+		subset_sg.sc = self.sc
+		subset_sg.pg = self.pg
+
+		# # TODO
+		# subset_sg.edge_adata = edge_adata
+		# subset_sg.tss_adata = tss_adata
+		# subset_sg.tes_adata = tes_adata
+
+		# renumber locs
+		if strand == '-':
+			id_map = subset_sg.get_ordered_id_map(rev_strand=True)
+			subset_sg.update_ids(id_map)
+		else:
+			subset_sg.update_ids()
+
+		subset_sg.get_loc_types()
+
+		# finally create the graph
+		subset_sg.create_graph_from_dfs()
+
+		return subset_sg
+
+	def order_transcripts_subset(self, t_df, order='tid'):
+		"""
+		Order the transcripts in an input t_df based on an input heuristic.
+		Can order alphabetically by transcript ID, by expression of each
+		transcript, or by the genomic location of the transcripts' TSSs or TESs.
+
+		Parameters:
+			order (str): Method to order transcripts by. Choose from ['tid',
+				'expression', 'tss', 'tes', 'log2tpm']
+
+		Returns:
+			t_df (pandas DataFrame): Transcripts ordered by the input heuristic
+			tids (list of str): List of transcript IDs ordered by the input
+				heuristic
+		"""
+
+		# order by transcript id
+		if order == 'tid':
+			ordered_tids = sorted(t_df.index.tolist())
+			t_df = t_df.loc[ordered_tids]
+
+		# order by expression
+		elif order == 'expression':
+			# make sure there are counts in the graph at all
+			if not self.abundance:
+				raise Exception('Cannot order by expression because '
+								'there is no expression data.')
+
+			t_df['sum'] = t_df.sum(axis=1)
+			t_df.sort_values(by='sum', ascending=False, inplace=True)
+			t_df.drop('sum', axis=1, inplace=True)
+
+		# order by log2tpm expression
+		elif order == 'log2tpm':
+			# make sure there are counts in the graph at all
+			if not self.abundance:
+				raise Exception('Cannot order by expression because '
+								'there is no expression data.')
+
+			t_df['sum'] = np.log2(t_df+1).sum(axis=1)
+			t_df.sort_values(by='sum', ascending=False, inplace=True)
+			t_df.drop('sum', axis=1, inplace=True)
+
+		# order by tss location
+		elif order == 'tss':
+			t_df = t_df.merge(self.t_df[['path', 'loc_path']],
+				how='left', left_index=True, right_index=True)
+			t_df['start_coord'] = t_df.apply(lambda x:
+				self.loc_df.loc[x.loc_path[0], 'coord'], axis=1)
+			t_df['strand'] = t_df.apply(lambda x:
+				self.edge_df.loc[x.path[0], 'strand'], axis=1)
+			fwd = t_df.loc[t_df.strand == '+']
+			rev = t_df.loc[t_df.strand == '-']
+			fwd.sort_values(by='start_coord', ascending=True, inplace=True)
+			# print(fwd[['strand', 'start_coord']])
+			rev.sort_values(by='start_coord', ascending=False, inplace=True)
+			# print(rev[['strand', 'start_coord']])
+			t_df = pd.concat([fwd, rev])
+			# print(t_df[['strand', 'start_coord']])
+			t_df.drop(['start_coord', 'strand', 'path', 'loc_path'], axis=1, inplace=True)
+
+		# order by tes location
+		elif order == 'tes':
+			t_df = t_df.merge(self.t_df[['path', 'loc_path']],
+				how='left', left_index=True, right_index=True)
+			t_df['end_coord'] = t_df.apply(lambda x:
+				self.loc_df.loc[x.loc_path[-1], 'coord'], axis=1)
+			t_df['strand'] = t_df.apply(lambda x:
+				self.edge_df.loc[x.path[-1], 'strand'], axis=1)
+			fwd = t_df.loc[t_df.strand == '+']
+			rev = t_df.loc[t_df.strand == '-']
+			fwd.sort_values(by='end_coord', ascending=True, inplace=True)
+			rev.sort_values(by='end_coord', ascending=False, inplace=True)
+			t_df = pd.concat([fwd, rev])
+			t_df.drop(['end_coord', 'strand', 'path', 'loc_path'], axis=1, inplace=True)
+
+		tids = t_df.index.tolist()
+		return t_df, tids
 
 	def order_transcripts(self, order='tid'):
 		"""
@@ -1372,7 +1532,7 @@ class SwanGraph(Graph):
 		"""
 		# check if obs_col is even there
 		if obs_col not in self.adata.obs.columns.tolist():
-			raise Exception('Metadata column {} not found'.format(obs_col))
+			raise ValueError('Metadata column {} not found'.format(obs_col))
 
 		# check if there are more than 2 unique values in obs_col
 		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
@@ -1400,7 +1560,7 @@ class SwanGraph(Graph):
 		# limit to obs_conditions
 		if obs_conditions:
 			if len(obs_conditions) != 2:
-				raise Error('obs_conditions must have exactly two values.')
+				raise ValueError('obs_conditions must have exactly two values.')
 			df = df[obs_conditions]
 			sums = sums[obs_conditions]
 		else:
@@ -1805,9 +1965,9 @@ class SwanGraph(Graph):
 	############################### Report stuff #############################
 	##########################################################################
 	def gen_report(self,
-				   gids,
+				   gid,
 				   prefix,
-				   datasets='all',
+				   columns=None,
 				   groupby=None,
 				   metadata_cols=None,
 				   novelty=False,
@@ -1819,6 +1979,7 @@ class SwanGraph(Graph):
 				   indicate_dataset=False,
 				   indicate_novel=False,
 				   display_numbers=False,
+				   transcript_name=False,
 				   browser=False,
 				   order='expression',
 				   threads=1):
@@ -1827,7 +1988,7 @@ class SwanGraph(Graph):
 		to the user's input.
 
 		Parameters:
-			gids (str or list of str): Gene ids or names to generate
+			gid (str): Gene id or name to generate
 				reports for
 			prefix (str): Path and/or filename prefix to save PDF and
 				images used to generate the PDF
@@ -1919,36 +2080,49 @@ class SwanGraph(Graph):
 					if groupby == c:
 						continue
 
-				temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
-				temp = temp.groupby([groupby, c]).count().reset_index()
+					temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
+					temp = temp.groupby([groupby, c]).count().reset_index()
 
-				# if there are duplicates from the metadata column, throw exception
-				if temp[groupby].duplicated().any():
-						raise Exception('Metadata column {} '.format(c)+\
-							'not compatible with groupby column {}. '.format(groupby)+\
-							'Groupby column has more than 1 unique possible '+\
-							'value from metadata column.')
+					# if there are duplicates from the metadata column, throw exception
+					if temp[groupby].duplicated().any():
+							raise Exception('Metadata column {} '.format(c)+\
+								'not compatible with groupby column {}. '.format(groupby)+\
+								'Groupby column has more than 1 unique possible '+\
+								'value from metadata column.')
 
-		# check to see if input genes are in the graph
-		if type(gids) != list:
-			gids = [gids]
-		for i, gid in enumerate(gids):
-			if gid not in self.t_df.gid.tolist():
-				gid = self.get_gid_from_gname(gid)
-				gids[i] = gid
-			self.check_gene(gid)
+		# check to see if input gene is in the graph
+		if gid not in self.t_df.gid.tolist():
+			gid = self.get_gid_from_gname(gid)
+		self.check_gene(gid)
 
 		# check to see if these plotting settings will play together
 		self.check_plotting_args(indicate_dataset,
 			indicate_novel, browser)
 
-		# make sure all input datasets are present in graph
-		if datasets == 'all':
-			datasets = self.datasets
-		elif not datasets:
-			datasets = []
+		# columns to display should be an order of either datasets or values
+		# from obs_col of things to include and the order
+		if groupby and columns:
+			gb_cats = self.adata.obs[groupby].unique().tolist()
+			for d in columns:
+				if d not in gb_cats:
+					raise ValueError('Groupby category {} not present in '.format(d)+\
+						'metadata column {}.'.format(groupby))
+		elif groupby and not columns:
+			columns = self.adata.obs[groupby].unique().tolist()
+		# if none given, display all
+		elif not columns:
+			columns = self.datasets
+		# if datasets are given, make sure they're in the SwanGraph
 		else:
-			self.check_datasets(datasets)
+			self.check_datasets(columns)
+
+		# # make sure all input datasets are present in graph
+		# if datasets == 'all':
+		# 	datasets = self.datasets
+		# elif not datasets:
+		# 	datasets = []
+		# else:
+		# 	self.check_datasets(datasets)
 
 		# if we've asked for novelty first check to make sure it's there
 		if novelty:
@@ -1956,35 +2130,54 @@ class SwanGraph(Graph):
 				raise Exception('No novelty information present in the graph. '
 					'Add it or do not use the "novelty" report option.')
 
+		if groupby:
+			sg = self.subset_on_gene_sg(gid, obs_col=groupby, obs_cats=columns)
+		else:
+			sg = self.subset_on_gene_sg(gid)
+		# print(sg.adata.obs.head())
+		# print(sg.adata.obs.columns)
+
+		# if we're grouping data, calculate those new numbers
+		# TODO probably limit pi calculations to relevant genes?
+		# additionally order transcripts
+		if groupby:
+			if layer == 'tpm':
+				# use whole adata to calc tpm
+				t_df = tpm_df = calc_tpm(self.adata, sg.t_df, obs_col=groupby).transpose()
+			elif layer == 'pi':
+				# calc tpm just so we can order based on exp
+				tpm_df = calc_tpm(self.adata, self.t_df, obs_col=groupby).transpose()
+				t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col=groupby)
+				t_df = t_df.transpose()
+		else:
+			if layer == 'tpm':
+				t_df = tpm_df = self.get_tpm().transpose()
+			elif layer == 'pi':
+				# calc tpm just so we can order based on exp
+				t_df = tpm_df = self.get_tpm().transpose()
+				t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col='dataset')
+				t_df = t_df.transpose()
+
 		# order transcripts by user's preferences
 		if order == 'expression' and self.abundance == False:
 			order = 'tid'
-		self.order_transcripts(order)
+		elif order == 'expression':
+			order = 'log2tpm'
+		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+		tpm_df = tpm_df.loc[tids]
+		_, tids = sg.order_transcripts_subset(tpm_df, order=order)
+		# return beep
+		del tpm_df
+		t_df = t_df.loc[tids]
 
-		# print(self.t_df.loc[self.t_df.gid == 'ENSMUSG00000020167.13'])
-		# print(self.t_df)
-		tids = self.t_df.index.tolist()
-
-		# if we're grouping data, calculate those new numbers
-		# probably limit pi calculations to relevant genes?
-		if groupby:
-			if layer == 'tpm':
-				t_df = calc_tpm(self.adata, self.t_df, obs_col=groupby).transpose()
-			elif layer == 'pi':
-				t_df, _ = calc_pi(self.adata, self.t_df, obs_col=groupby)
-				t_df = t_df.transpose()
-
-		ordered_tids = list(set(tids).intersection(set(t_df.index.tolist())))
-		t_df = t_df.loc[ordered_tids]
-
-		# subset t_df based on gene
-		tids = self.t_df.loc[self.t_df.gid.isin(gids)].index.tolist()
-		t_df = t_df.loc[tids].copy(deep=True)
+		# order columns by user's preferences
+		t_df = t_df[columns]
 
 		# remove unexpressed transcripts if desired
 		if not include_unexpressed:
 			t_df = t_df.loc[t_df.any(axis=1)]
 
+		print(t_df)
 		# # make sure de has been run if needed
 		# if include_qvals:
 		# 	if not self.check_de('transcript'):
@@ -1997,30 +2190,169 @@ class SwanGraph(Graph):
 		# 	t_df['significant'] = t_df.qval <= q
 		# 	t_df = set_dupe_index(t_df, 'tid')
 
-		# make sure number of threads is compatible with the system
-		max_cores = multiprocessing.cpu_count()
-		if threads > max_cores:
-			threads = max_cores
+		# get tids in this report
+		report_tids = t_df.index.tolist()
 
-		# if there are fewer than 10 genes, the overhead for multiprocessing
-		# takes longer
-		if len(gids) < 10:
-			for gid in gids:
-				_create_gene_report(gid, self, t_df, datasets, groupby,
-					prefix, metadata_cols, novelty, layer, cmap,
-					include_qvals, indicate_dataset,
-					indicate_novel, display_numbers, browser)
-		# else:
-		# 	# launch report jobs on different threads
-		# 	with multiprocessing.Pool(threads) as pool:
-		# 		pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
-		# 			repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
-		# 			repeat(indicate_novel), repeat(browser), repeat(report_type),
-		# 			repeat(novelty), repeat(heatmap), repeat(dpi),
-		# 			repeat(cmap), repeat(include_qvals)))
+		# plot each transcript with these settings
+		print()
+		print('Plotting transcripts for {}'.format(gid))
+		sg.plot_each_transcript(report_tids, prefix,
+								  indicate_dataset,
+								  indicate_novel,
+								  browser=browser)
 
-		# for testing purposes, return t_df
-		return t_df
+		# get a different prefix for saving colorbars and scales
+		gid_prefix = prefix+'_{}'.format(gid)
+
+		# if we're plotting tracks, we need a scale as well
+		# also set what type of report this will be, 'swan' or 'browser'
+		if browser:
+			sg.pg.plot_browser_scale()
+			save_fig(gid_prefix+'_browser_scale.png')
+			report_type = 'browser'
+		else:
+			report_type = 'swan'
+
+		# plot colorbar for either tpm or pi
+		if layer == 'tpm':
+
+			# take log2(tpm) (add pseudocounts)
+			t_df = np.log2(t_df+1)
+
+			# min and max tpm vals
+			g_max = t_df.max().max()
+			g_min = t_df.min().min()
+
+			# create a colorbar
+			plt.rcParams.update({'font.size': 30})
+			fig, ax = plt.subplots(figsize=(14, 1.5))
+			fig.subplots_adjust(bottom=0.5)
+			fig.patch.set_visible(False)
+			ax.patch.set_visible(False)
+
+			try:
+				cmap = plt.get_cmap(cmap)
+			except:
+				raise ValueError('Colormap {} not found'.format(cmap))
+
+			norm = mpl.colors.Normalize(vmin=g_min, vmax=g_max)
+
+			cb = mpl.colorbar.ColorbarBase(ax,
+								cmap=cmap,
+								norm=norm,
+								orientation='horizontal')
+			cb.set_label('log2(TPM)')
+			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
+				bbox_inches='tight', dpi=200)
+			plt.clf()
+			plt.close()
+
+		elif layer == 'pi':
+
+			# min and max pi vals
+			g_max = 100
+			g_min = 0
+
+			# create a colorbar between 0 and 1
+			plt.rcParams.update({'font.size': 30})
+			fig, ax = plt.subplots(figsize=(14, 1.5))
+			fig.subplots_adjust(bottom=0.5)
+			fig.patch.set_visible(False)
+			ax.patch.set_visible(False)
+
+			try:
+				cmap = plt.get_cmap(cmap)
+			except:
+				raise ValueError('Colormap {} not found'.format(cmap))
+
+			norm = mpl.colors.Normalize(vmin=0, vmax=100)
+
+			cb = mpl.colorbar.ColorbarBase(ax,
+								cmap=cmap,
+								norm=norm,
+								orientation='horizontal')
+			cb.set_label('Percent of isoform use (' +'$\pi$'+')')
+			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
+				bbox_inches='tight', dpi=200)
+			plt.clf()
+			plt.close()
+
+		# merge with sg.t_df to get additional columns
+		datasets = t_df.columns
+		cols = ['novelty', 'tname'] # TODO - qval?
+		t_df = t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
+
+		# create report
+		print('Generating report for {}'.format(gid))
+		pdf_name = create_fname(prefix,
+					 indicate_dataset,
+					 indicate_novel,
+					 browser,
+					 ftype='report',
+					 gid=gid)
+		if transcript_name:
+			t_disp = 'Transcript Name'
+		else:
+			t_disp = 'Transcript ID'
+		report = Report(gid_prefix,
+						report_type,
+						sg.adata.obs,
+						sg.adata.uns,
+						datasets=datasets,
+						groupby=groupby,
+						metadata_cols=metadata_cols,
+						novelty=novelty,
+						layer=layer,
+						cmap=cmap,
+						g_min=g_min,
+						g_max=g_max,
+						include_qvals=include_qvals,
+						display_numbers=display_numbers,
+						t_disp=t_disp)
+		report.add_page()
+
+		# loop through each transcript and add it to the report
+		for ind, entry in t_df.iterrows():
+			tid = ind
+
+			# display name for transcript
+			if transcript_name:
+				t_disp = entry['tname']
+			else:
+				t_disp = tid
+			fname = create_fname(prefix,
+								 indicate_dataset,
+								 indicate_novel,
+								 browser,
+								 ftype='path',
+								 tid=tid)
+			report.add_transcript(entry, fname, t_disp)
+		report.write_pdf(pdf_name)
+
+##########################################################################
+############################# Data retrieval #############################
+##########################################################################
+	def get_tpm(self, kind='transcript'):
+		"""
+		Retrieve TPM per dataset.
+
+		Parameters:
+			kind (str): Choose from ['transcript', 'edge', 'tss', 'tes']
+
+		Returns:
+			df (pandas DataFrame): Pandas datafrom where rows are the different
+				conditions from `dataset` and the columns are ids in the
+				SwanGraph, and values represent the TPM value per
+				isoform/edge/tss/tes per dataset.
+		"""
+		if kind == 'transcript':
+			adata = self.adata
+		# TODO - edge, tss, tes
+
+		adata.X = adata.layers['tpm']
+		df = pd.DataFrame(data=adata.X, index=adata.obs['dataset'].tolist(), \
+			columns=adata.var.index.tolist())
+		return df
 
 	##########################################################################
 	############################# Error handling #############################
@@ -2052,157 +2384,3 @@ class SwanGraph(Graph):
 			if indicate_novel or indicate_dataset:
 				raise Exception('Cannot indicate_novel or indicate_dataset '
 								'with browser option.')
-
-##########################################################################
-################################## Extras ################################
-##########################################################################
-
-# generate a report for one gene; used for parallelization
-def _create_gene_report(gid,
-	sg,
-	t_df,
-	datasets,
-	groupby,
-	prefix,
-	metadata_cols,
-	novelty,
-	layer,
-	cmap,
-	include_qvals,
-	indicate_dataset,
-	indicate_novel,
-	display_numbers,
-	browser):
-
-	# subset on gene
-	report_tids = sg.t_df.loc[sg.t_df.gid == gid, 'tid'].tolist()
-	report_tids = list(set(report_tids).intersection(set(t_df.index.tolist())))
-	gid_t_df = t_df.loc[report_tids].copy(deep=True)
-
-	# plot each transcript with these settings
-	print()
-	print('Plotting transcripts for {}'.format(gid))
-	sg.plot_each_transcript(report_tids, prefix,
-							  indicate_dataset,
-							  indicate_novel,
-							  browser=browser)
-
-	# get a different prefix for saving colorbars and scales
-	gid_prefix = prefix+'_{}'.format(gid)
-
-	# if we're plotting tracks, we need a scale as well
-	# also set what type of report this will be, 'swan' or 'browser'
-	if browser:
-		sg.pg.plot_browser_scale()
-		save_fig(gid_prefix+'_browser_scale.png')
-		report_type = 'browser'
-	else:
-		report_type = 'swan'
-
-	# # subset on gene
-	# tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
-	# gid_t_df = t_df.loc[tids].copy(deep=True)
-
-	# plot colorbar for either tpm or pi
-	if layer == 'tpm':
-
-		# take log2(tpm) (add pseudocounts)
-		gid_t_df = np.log2(gid_t_df+1)
-
-		# min and max tpm vals
-		g_max = gid_t_df.max().max()
-		g_min = gid_t_df.min().min()
-
-		# create a colorbar
-		plt.rcParams.update({'font.size': 30})
-		fig, ax = plt.subplots(figsize=(14, 1.5))
-		fig.subplots_adjust(bottom=0.5)
-		fig.patch.set_visible(False)
-		ax.patch.set_visible(False)
-
-		try:
-			cmap = plt.get_cmap(cmap)
-		except:
-			raise ValueError('Colormap {} not found'.format(cmap))
-
-		norm = mpl.colors.Normalize(vmin=g_min, vmax=g_max)
-
-		cb = mpl.colorbar.ColorbarBase(ax,
-							cmap=cmap,
-							norm=norm,
-							orientation='horizontal')
-		cb.set_label('log2(TPM)')
-		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
-			bbox_inches='tight', dpi=200)
-		plt.clf()
-		plt.close()
-
-	elif layer == 'pi':
-
-		# min and max pi vals
-		g_max = 100
-		g_min = 0
-
-		# create a colorbar between 0 and 1
-		plt.rcParams.update({'font.size': 30})
-		fig, ax = plt.subplots(figsize=(14, 1.5))
-		fig.subplots_adjust(bottom=0.5)
-		fig.patch.set_visible(False)
-		ax.patch.set_visible(False)
-
-		try:
-			cmap = plt.get_cmap(cmap)
-		except:
-			raise ValueError('Colormap {} not found'.format(cmap))
-
-		norm = mpl.colors.Normalize(vmin=0, vmax=100)
-
-		cb = mpl.colorbar.ColorbarBase(ax,
-							cmap=cmap,
-							norm=norm,
-							orientation='horizontal')
-		cb.set_label('Percent of isoform use (' +'$\pi$'+')')
-		plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
-			bbox_inches='tight', dpi=200)
-		plt.clf()
-		plt.close()
-
-	# merge with sg.t_df to get additional columns
-	datasets = t_df.columns
-	cols = ['novelty'] # TODO - qval?
-	gid_t_df = gid_t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
-
-	# create report
-	print('Generating report for {}'.format(gid))
-	pdf_name = create_fname(prefix,
-				 indicate_dataset,
-				 indicate_novel,
-				 browser,
-				 ftype='report',
-				 gid=gid)
-	report = Report(gid_prefix,
-					report_type,
-					sg.adata.obs,
-					sg.adata.uns,
-					datasets=datasets,
-					groupby=groupby,
-					metadata_cols=metadata_cols,
-					novelty=novelty,
-					layer=layer,
-					cmap=cmap,
-					g_min=g_min,
-					g_max=g_max,
-					include_qvals=include_qvals,
-					display_numbers=display_numbers)
-	report.add_page()
-
-	# loop through each transcript and add it to the report
-	for ind, entry in gid_t_df.iterrows():
-		fname = create_fname(prefix,
-							 indicate_dataset,
-							 indicate_novel,
-							 browser,
-							 ftype='path',
-							 tid=ind)
-		report.add_transcript(entry, fname, ind)
-	report.write_pdf(pdf_name)

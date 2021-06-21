@@ -19,7 +19,8 @@ class Report(FPDF):
 				 g_min=None,
 				 g_max=None,
 				 include_qvals=False,
-				 display_numbers=False):
+				 display_numbers=False,
+				 t_disp='Transcript ID'):
 		super().__init__(orientation='L')
 
 		# change margins
@@ -38,12 +39,12 @@ class Report(FPDF):
 
 		# what we're plotting
 		self.datasets = datasets
-		# self.report_cols = self.get_report_cols(data_type)
 		self.n_dataset_cols = len(self.datasets)
 		self.metadata_cols = metadata_cols
 		self.layer = layer
 		self.obs = obs
 		self.uns = uns
+		self.t_disp = t_disp
 		if groupby == None:
 			self.groupby = 'dataset'
 		else:
@@ -84,12 +85,8 @@ class Report(FPDF):
 	def color_header(self, data_col):
 		x = self.get_x()
 		y = 0.5
-		print()
-		print(data_col)
-		print(x, y)
 
 		for ind, meta_col in enumerate(self.metadata_cols):
-			print(ind)
 
 			self.set_y(y+(ind*self.meta_height))
 			self.set_x(x)
@@ -97,11 +94,6 @@ class Report(FPDF):
 			# get meta_col category
 			meta_cat = self.obs.loc[self.obs[self.groupby] == data_col, meta_col]
 			meta_cat = meta_cat.unique().tolist()[0]
-
-			print(meta_col)
-			print(meta_cat)
-			print(self.get_x())
-			print(self.get_y())
 
 			# get the color and convert to rgb
 			# source: https://stackoverflow.com/questions/29643352/converting-hex-to-rgb-value-in-python
@@ -119,7 +111,7 @@ class Report(FPDF):
 		self.set_font('Arial', 'B', 10)
 
 		# transcript ID header
-		self.cell(50, self.header_height, 'Transcript ID', border=True, align='C')
+		self.cell(50, self.header_height, self.t_disp, border=True, align='C')
 
 		# novelty header (if needed)
 		if self.novelty:

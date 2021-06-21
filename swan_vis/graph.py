@@ -527,12 +527,14 @@ class Graph:
 		self.loc_df.loc[tss, 'TSS'] = True
 		self.loc_df.loc[tes, 'TES'] = True
 
-	def subset_on_gene(self, gid):
+	def subset_on_gene(self, gid, obs_col=None, obs_cats=None):
 		"""
 		Subset the swan Graph on a given gene and return the subset graph.
 
 		Parameters:
 			gid (str): Gene ID to subset on
+			obs_col (str): Column in adata.obs to subset on
+			obs_cats (list of str): Categories in obs_col to subset on
 
 		returns:
 			subset_sg (swan Graph): Swan Graph subset on the input gene.
@@ -545,11 +547,24 @@ class Graph:
 		strand = self.get_strand_from_gid(gid)
 
 		# subset t_df first, it's the easiest
-		t_df = self.t_df.loc[self.t_df.gid == gid].copy(deep=True)
-		t_df['path'] = self.t_df.loc[self.t_df.gid == gid].apply(
+		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+		t_df = self.t_df.loc[tids].copy(deep=True)
+		t_df['path'] = self.t_df.loc[tids].apply(
 				lambda x: copy.deepcopy(x.path), axis=1)
-		t_df['loc_path'] = self.t_df.loc[self.t_df.gid == gid].apply(
+		t_df['loc_path'] = self.t_df.loc[tids].apply(
 				lambda x: copy.deepcopy(x.loc_path), axis=1)
+
+		# # also subset anndata
+		# if obs_col and obs_cats:
+		# 	# print(obs_col)
+		# 	# print(obs_cats)
+		# 	obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
+		# 	obs_vars = obs_vars.index.tolist()
+		# 	# print(obs_vars)
+		# 	# print(tids)
+		# 	adata = self.adata[obs_vars, tids]
+		# else:
+		# 	adata = self.adata[:, tids]
 
 		# subset loc_df based on all the locs that are in the paths from
 		# the already-subset t_df
@@ -570,7 +585,13 @@ class Graph:
 		subset_sg.loc_df = loc_df
 		subset_sg.edge_df = edge_df
 		subset_sg.t_df = t_df
-		subset_sg.datasets = self.datasets
+		# subset_sg.adata = adata
+		# subset_sg.datasets = adata.obs.index.tolist()
+
+		# # TODO
+		# subset_sg.edge_adata = edge_adata
+		# subset_sg.tss_adata = tss_adata
+		# subset_sg.tes_adata = tes_adata
 
 		# renumber locs
 		if strand == '-':
