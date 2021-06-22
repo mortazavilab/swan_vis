@@ -390,9 +390,7 @@ class SwanGraph(Graph):
 			self.adata.layers['counts'] = self.adata.X
 			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
 
-			# TODO - this takes too long to calc with sc data
-			# maybe add a "sc" option that doesn't run this when it's set
-			# also could probably parallelize calc_pi
+			# could probably parallelize calc_pi
 			if not self.sc:
 				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 		else:
@@ -420,6 +418,8 @@ class SwanGraph(Graph):
 
 		# add abundance for edges, TSS per gene, and TES per gene
 		self.create_edge_adata()
+		self.create_end_adata(kind='tss')
+		self.create_end_adata(kind='tes')
 
 		# set abundance flag to true
 		self.abundance = True
@@ -451,23 +451,29 @@ class SwanGraph(Graph):
 		dupe_cols = [c for c in meta_cols if c in sg_cols]
 
 		# drop columns from one table depending on overwrite settings
+		adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
 		if dupe_cols:
 			if overwrite:
-				self.adata.obs.drop(dupe_cols, axis=1, inplace=True)
+				for adata in adatas:
+					if overwrite:
+						adata.obs.drop(dupe_cols, axis=1, inplace=True)
 			else:
 				df.drop(dupe_cols, axis=1, inplace=True)
 
-		# merge df with adata obs table
-		self.adata.obs = self.adata.obs.merge(df, how='left', on='dataset')
+		# for each anndata
+		for adata in adatas:
 
-		# make sure all dtypes in obs table are non intergers
-		for ind, entry in self.adata.obs.dtypes.to_frame().iterrows():
-			if entry[0] == 'int64':
-				self.adata.obs[ind] = self.adata.obs[ind].astype('str')
+			# merge df with adata obs table
+			adata.obs = adata.obs.merge(df, how='left', on='dataset')
 
-		# and set index to dataset
-		self.adata.obs['index'] = self.adata.obs.dataset
-		self.adata.obs.set_index('index', inplace=True)
+			# make sure all dtypes in obs table are non intergers
+			for ind, entry in adata.obs.dtypes.to_frame().iterrows():
+				if entry[0] == 'int64':
+					adata.obs[ind] = adata.obs[ind].astype('str')
+
+			# and set index to dataset
+			adata.obs['index'] = adata.obs.dataset
+			adata.obs.set_index('index', inplace=True)
 
 	##########################################################################
 	############# Obtaining abundance of edges, locs, and ends ###############
@@ -481,25 +487,48 @@ class SwanGraph(Graph):
 			kind (str): Choose from 'tss' or 'tes'
 		"""
 
-		end_exp_df = get_ends(self.t_df, kind)
+		df = get_ends(self.t_df, kind)
 
 		# get a mergeable transcript expression df
 		tid = self.adata.var.index.tolist()
 		obs = self.adata.obs.index.tolist()
 		data = self.adata.layers['counts'].transpose()
 		t_exp_df = pd.DataFrame(columns=obs, data=data, index=tid)
-		t_exp_df = t_exp_df.merge(self.t_df)
+		t_exp_df = t_exp_df.merge(self.t_df, how='left',
+			left_index=True, right_index=True)
 
 		# merge counts per transcript with end expression
-		end_exp_df = end_exp_df.merge(t_exp_df, how='left',
+		df = df.merge(t_exp_df, how='left',
 			left_index=True, right_index=True)
 
 		# sort based on vertex id
-		end_exp_df.sort_index(inplace=True, ascending=True)
+		df.sort_index(inplace=True, ascending=True)
+
+		# set index to gene ID, gene name, and vertex id ˘¿
+		df.reset_index(drop=True, inplace=True)
+		df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
+		df = df[self.datasets]
+
+		# groupby on gene and assign each unique TSS / gene combo an ID
+		id_col = '{}_id'.format(kind)
+		name_col = '{}_name'.format(kind)
+		df.reset_index(inplace=True)
+		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
+		df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
+						ascending=[True, True])\
+                        .groupby(['gid']) \
+                        .cumcount() + 1
+		df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
+		df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
+		df.drop('end_gene_num', axis=1, inplace=True)
 
 		# obs, var, and X tables for new data
-		var = end_exp_df.index.to_frame()
-		X = end_exp_df.transpose().values
+		var_cols = ['gid', 'gname', 'vertex_id', id_col, name_col]
+		var = df[var_cols]
+		var.set_index('{}_id'.format(kind), inplace=True)
+		df.drop(var_cols, axis=1, inplace=True)
+		df = df[self.adata.obs.index.tolist()]
+		X = df.transpose().values
 		obs = self.adata.obs
 
 		if kind == 'tss':
@@ -509,28 +538,30 @@ class SwanGraph(Graph):
 
 			# add counts and tpm as layers
 			self.tss_adata.layers['counts'] = self.tss_adata.X
-			self.tss_adata.layers['tpm'] = calc_tpm(self.tss_adata, self.t_df).to_numpy()
-			self.tss_adata.layers['pi'] = calc_pi(self.tss_adata, self.t_df)[0].to_numpy()
+			self.tss_adata.layers['tpm'] = calc_tpm(self.tss_adata).to_numpy()
+			if not self.sc:
+				self.tss_adata.layers['pi'] = calc_pi(self.tss_adata,
+						self.tss_adata.var)[0].to_numpy()
 
+			# some cleanup for unstructured data if it was already added
 			if self.has_abundance():
+				self.tss_adata.uns = self.tss_adata.uns
 
-				# some cleanup for unstructured data
-				self.edge_adata.uns = self.tss_adata.uns
+		if kind == 'tes':
 
-		# elif kind == 'tes':
+			# create end-level adata object
+			self.tes_adata = anndata.AnnData(var=var, obs=obs, X=X)
 
-		# # create end-level adata object
-		# self.edge_adata = anndata.AnnData(var=var, obs=obs, X=X)
-		#
-		# # add counts and tpm as layers
-		# self.edge_adata.layers['counts'] = self.edge_adata.X
-		# self.edge_adata.layers['tpm'] = calc_tpm(self.edge_adata, self.edge_df).to_numpy()
-		# self.edge_adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
-		#
-		# if self.has_abundance():
-		#
-		# 	# some cleanup for unstructured data
-		# 	self.edge_adata.uns = self.edge_adata.uns
+			# add counts and tpm as layers
+			self.tes_adata.layers['counts'] = self.tes_adata.X
+			self.tes_adata.layers['tpm'] = calc_tpm(self.tes_adata).to_numpy()
+			if not self.sc:
+				self.tes_adata.layers['pi'] = calc_pi(self.tes_adata,
+						self.tes_adata.var)[0].to_numpy()
+
+			# some cleanup for unstructured data if it was already added
+			if self.has_abundance():
+				self.tes_adata.uns = self.tes_adata.uns
 
 	def create_edge_adata(self):
 		"""
@@ -1508,7 +1539,7 @@ class SwanGraph(Graph):
 		gids = df['index'].tolist()
 		return gids, df
 
-	def get_die_genes(self, obs_col='dataset',
+	def get_die_genes(self, kind='iso', obs_col='dataset',
 					  obs_conditions=None, rc_thresh=10):
 		"""
 		Finds genes with differential isoform expression between two conditions
@@ -1530,29 +1561,47 @@ class SwanGraph(Graph):
 				p-values, as well as change in percent isoform usage (dpi) for
 				all tested genes.
 		"""
+		# get correct adata
+		if kind == 'iso':
+			adata = self.adata
+			ref_df = self.t_df
+		elif kind == 'tss':
+			adata = self.tss_adata
+			ref_df = self.tss_adata.var
+		elif kind == 'tes':
+			adata = self.tes_adata
+			ref_df = self.tes_adata.var
+
 		# check if obs_col is even there
-		if obs_col not in self.adata.obs.columns.tolist():
+		if obs_col not in adata.obs.columns.tolist():
 			raise ValueError('Metadata column {} not found'.format(obs_col))
 
 		# check if there are more than 2 unique values in obs_col
-		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+		if len(adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
 			raise ValueError('Must provide obs_conditions argument when obs_col has'\
 				' >2 unique values')
 		elif not obs_conditions:
-			obs_conditions = self.adata.obs[obs_col].unique().tolist()
+			obs_conditions = adata.obs[obs_col].unique().tolist()
 		elif len(obs_conditions) != 2:
 			raise ValueError('obs_conditions must have exactly 2 values')
 
+		# check if these values of obs_col exist
+		if obs_col and obs_conditions:
+			conds = adata.obs[obs_col].unique().tolist()
+			for cond in obs_conditions:
+				if cond not in conds:
+					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+
 		# use calculated values already in the SwanGraph
 		if obs_col == 'dataset' and not self.sc:
-			df = pd.DataFrame(data=self.adata.layers['pi'],
-								 index=self.adata.obs.index,
-								 columns=self.adata.var.index)
-			sums = calc_total_counts(self.adata, obs_col)
+			df = pd.DataFrame(data=adata.layers['pi'],
+								 index=adata.obs.index,
+								 columns=adata.var.index)
+			sums = calc_total_counts(adata, obs_col)
 
 		# recalculate pi and aggregate counts
 		else:
-			df, sums = calc_pi(self.adata, self.t_df, obs_col=obs_col)
+			df, sums = calc_pi(adata, ref_df, obs_col=obs_col)
 
 		df = df.transpose()
 		sums = sums.transpose()
@@ -1567,7 +1616,8 @@ class SwanGraph(Graph):
 			obs_conditions = adata.obs[obs_col].unique().tolist()
 
 		# add gene id
-		df = df.merge(self.t_df['gid'], how='left', left_index=True, right_index=True)
+		df = df.merge(ref_df['gid'], how='left',
+			left_index=True, right_index=True)
 
 		# add counts and cumulative counts across the samples
 		count_cols = sums.columns
@@ -1593,8 +1643,11 @@ class SwanGraph(Graph):
 		# Benjamini-Hochberg correction
 		gene_de_df.dropna(axis=0, inplace=True)
 		p_vals = gene_de_df.p_val.tolist()
-		_, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
-		gene_de_df['adj_p_val'] = adj_p_vals
+		if len(p_vals) > 0:
+			_, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
+			gene_de_df['adj_p_val'] = adj_p_vals
+		else:
+			gene_de_df['adj_p_val'] = np.nan
 		gene_de_df.reset_index(inplace=True)
 
 		return gene_de_df
@@ -1747,12 +1800,12 @@ class SwanGraph(Graph):
 			cmap[key] = (r,g,b)
 		self.adata.uns['{}_dict'.format(obs_col)] = cmap
 
-		# # also add these to the other adatas
-		# self.edge_adata['{}_colors'.format(obs_col)] = sample_colors]
-		# self.edge_adata.uns['{}_dict'] = cmap
-		# self.tss_adata['{}_colors'.format(obs_col)] = sample_colors]
-		# self.tss_adata.uns['{}_dict'] = cmap
-		# self.tes_adata['{}_colors'.format(obs_col)] = sample_colors]
+		# also add these to the other adatas
+		self.edge_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.edge_adata.uns['{}_dict'] = cmap
+		self.tss_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.tss_adata.uns['{}_dict'] = cmap
+		# self.tes_adata['{}_colors'.format(obs_col)] = sample_colors
 		# self.tes_adata.uns['{}_dict'] = cmap
 
 	def plot_graph(self, gid,
@@ -2134,8 +2187,6 @@ class SwanGraph(Graph):
 			sg = self.subset_on_gene_sg(gid, obs_col=groupby, obs_cats=columns)
 		else:
 			sg = self.subset_on_gene_sg(gid)
-		# print(sg.adata.obs.head())
-		# print(sg.adata.obs.columns)
 
 		# if we're grouping data, calculate those new numbers
 		# TODO probably limit pi calculations to relevant genes?
@@ -2177,7 +2228,6 @@ class SwanGraph(Graph):
 		if not include_unexpressed:
 			t_df = t_df.loc[t_df.any(axis=1)]
 
-		print(t_df)
 		# # make sure de has been run if needed
 		# if include_qvals:
 		# 	if not self.check_de('transcript'):

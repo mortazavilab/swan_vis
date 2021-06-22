@@ -380,7 +380,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 
 	return df, sums
 
-def calc_tpm(adata, sg_df, obs_col='dataset'):
+def calc_tpm(adata, sg_df=None, obs_col='dataset'):
 	"""
 	Calculate the TPM per condition given by `obs_col`.
 	Default column to use is `adata.obs` index column, `dataset`.
@@ -430,7 +430,7 @@ def calc_tpm(adata, sg_df, obs_col='dataset'):
 	df = df.transpose()
 
 	# reorder in adata.var / t_df order
-	if id_col != 'tss_id' and id_col != 'tes_id':
+	if not isinstance(sg_df, type(None)):
 		df = df[sg_df[id_col].tolist()]
 
 	return df

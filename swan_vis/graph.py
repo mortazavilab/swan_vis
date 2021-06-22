@@ -45,7 +45,6 @@ class Graph:
 		# adata objects for transcripts, edges, locations, tss, and tes
 		self.adata = anndata.AnnData()
 		self.edge_adata = anndata.AnnData()
-		# self.loc_adata = anndata.AnnData()
 		self.tss_adata = anndata.AnnData()
 		self.tes_adata = anndata.AnnData()
 
