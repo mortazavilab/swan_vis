@@ -72,7 +72,9 @@ class Report(FPDF):
 		# 	self.header_height = 20
 		self.header_height = 20
 		if self.metadata_cols:
-			self.meta_height = self.header_height/len(self.metadata_cols)
+			# self.meta_height = (self.header_height-1)/len(self.metadata_cols)
+			self.meta_height = (self.header_height)/len(self.metadata_cols)
+
 
 		# dataset width is contingent on # of datasets
 		# as well as if we're including the novelty column

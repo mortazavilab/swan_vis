@@ -69,83 +69,6 @@ class SwanGraph(Graph):
 	############## Related to adding datasets and merging #####################
 	###########################################################################
 
-	# def add_datasets(self, config, include_isms=False, verbose=False):
-	# 	"""
-	# 	Add transcripts from multiple datasets from a config TSV file
-	#
-	# 	Parameters:
-	# 		config (str): Path to TSV config file with the following
-	# 			columns (indicated by the header):
-	#
-	# 			Required:
-	# 				config (strs): Path to config file
-	#
-	# 			Optional:
-	# 				dataset_name: Dataset name in TALON db to add transcripts from
-	# 					Default=None
-	# 				pass_list: TALON pass_list of transcripts to add.
-	# 					Default: None
-	# 				counts_file: Path to tsv counts matrix
-	# 					Default=Non
-	# 				count_cols: Column names in counts_file to use
-	# 					Default=None
-	# 				tid_col: Column name in counts_file containing transcript id
-	# 					Default='annot_transcript_id'
-	#
-	# 		include_isms (bool): Include ISMs from input datasets
-	# 			Default=False
-	#
-	# 		verbose (bool): Display progress
-	# 			Default: False
-	# 	"""
-	#
-	# 	# make sure the config file exits
-	# 	check_file_loc(config, 'config')
-	#
-	# 	# read in the config file
-	# 	df = pd.read_csv(config, sep='\t')
-	#
-	# 	# check for required columns
-	# 	if 'fname' not in df.columns:
-	# 		raise Exception('Please provide the "fname" column in '
-	# 			'config file for batch SwanGraph initialization.')
-	# 	if 'col' not in df.columns:
-	# 		raise Exception('Please provide the "col" column in '
-	# 			'config file for batch SwanGraph initialization.')
-	#
-	# 	# are there any unexpected columns?
-	# 	expected_cols = ['fname', 'col',
-	# 					 'pass_list', 'dataset_name',
-	# 					 'counts_file', 'count_cols',
-	# 					 'tid_col', 'include_isms',
-	# 					 'verbose']
-	# 	for c in df.columns.tolist():
-	# 		if c not in expected_cols:
-	# 			print('Encountered unexpected column name "{}"'.format(c))
-	#
-	# 	# loop through each entry in config file
-	# 	for ind, entry in df.iterrows():
-	#
-	# 		# get the values for the rest of the arguments
-	# 		file = entry['fname']
-	# 		col = entry['col']
-	#
-	# 		kwargs = {}
-	# 		for c in df.columns.tolist():
-	# 			if c != 'fname' and c != 'col':
-	# 				if not pd.isnull(entry[c]):
-	# 					kwargs[c] = entry[c]
-	#
-	# 		# call add_annotation if we got that as a column
-	# 		if col == 'annotation':
-	# 			self.add_annotation(file, verbose=verbose)
-	#
-	# 		# otherwise add_dataset
-	# 		else:
-	# 			self.add_dataset(col, file,
-	# 				include_isms=include_isms,
-	# 				verbose=verbose, **kwargs)
-
 	def add_annotation(self, fname, verbose=False):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
@@ -444,6 +367,10 @@ class SwanGraph(Graph):
 			df = pd.read_csv(fname, sep='\t')
 		except:
 			raise ValueError('Problem reading metadata file {}'.format(fname))
+
+		# has abundance been added yet?
+		if not self.abundance:
+			raise ValueError('Cannot add metadata. No datasets have been added')
 
 		# which columns are duplicate?
 		sg_cols = list(set(self.adata.obs.columns.tolist())-set(['dataset']))
@@ -1010,6 +937,7 @@ class SwanGraph(Graph):
 		subset_sg.abundance = self.abundance
 		subset_sg.sc = self.sc
 		subset_sg.pg = self.pg
+		subset_sg.annotation = self.annotation
 
 		# # TODO
 		# subset_sg.edge_adata = edge_adata
@@ -1628,6 +1556,8 @@ class SwanGraph(Graph):
 		gids = df.gid.unique().tolist()
 		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
 		gene_de_df.index.name = 'gid'
+
+		# TODO - should parallelize this
 		for gene in gids:
 			gene_df = df.loc[df.gid==gene]
 			gene_df = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
@@ -1776,7 +1706,8 @@ class SwanGraph(Graph):
 
 		Parameters:
 			obs_col (str): Name of metadata column to set colors for
-			cmap (dict): Dictionary of metadata value : color (hex code with #)
+			cmap (dict): Dictionary of metadata value : color (hex code with #
+				character or named matplotlib color)
 		"""
 
 		# check if obs_col is even there
@@ -1793,6 +1724,11 @@ class SwanGraph(Graph):
 		sample_colors = [cmap[s] for s in sample_order]
 		self.adata.uns['{}_colors'.format(obs_col)] = sample_colors
 
+		# if colors are named, get hex code
+		for key, item in cmap.items():
+			if '#' not in item:
+				cmap[key] = mpl.colors.cnames[item]
+
 		# also store rgb values in dict for use with gen_report
 		for key, item in cmap.items():
 			item = item[1:]
@@ -1805,8 +1741,8 @@ class SwanGraph(Graph):
 		self.edge_adata.uns['{}_dict'] = cmap
 		self.tss_adata.uns['{}_colors'.format(obs_col)] = sample_colors
 		self.tss_adata.uns['{}_dict'] = cmap
-		# self.tes_adata['{}_colors'.format(obs_col)] = sample_colors
-		# self.tes_adata.uns['{}_dict'] = cmap
+		self.tes_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.tes_adata.uns['{}_dict'] = cmap
 
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
