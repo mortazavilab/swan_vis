@@ -1695,6 +1695,49 @@ class SwanGraph(Graph):
 		pickle.dump(self, picklefile)
 		picklefile.close()
 
+	def save_edge_abundance(self, prefix, kind='counts'):
+		"""
+		Saves edge expression from the current SwanGraph in TSV format with
+		complete information about where edge is.
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_edge_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+		"""
+
+		# add location information to edge_df
+		temp = self.edge_df.merge(self.loc_df[['chrom', 'coord']],
+					how='left', left_on='v1', right_on='vertex_id')
+		temp.rename({'coord': 'start'}, axis=1, inplace=True)
+		temp = temp.merge(self.loc_df[['coord']],
+					how='left', left_on='v2', right_on='vertex_id')
+		temp.rename({'coord': 'stop'}, axis=1, inplace=True)
+		temp.drop(['v1', 'v2', 'edge_id'], axis=1, inplace=True)
+
+		# get collapsed abundance table from edge_adata
+		columns = self.edge_adata.var.index.tolist()
+		rows = self.edge_adata.obs.index.tolist()
+		if kind == 'counts':
+			data = self.edge_adata.layers['counts']
+		elif kind == 'tpm':
+			data = self.edge_adata.layers['tpm']
+
+		df = pd.DataFrame(index=rows, columns=columns, data=data)
+		df = df.transpose()
+		df.reset_index(inplace=True)
+		df['index'] = df['index'].astype('int')
+
+		# merge the info together with the abundance
+		df = temp.merge(df, how='right', left_index=True, right_index=True)
+
+		# drop index
+		df.drop('index', axis=1, inplace=True)
+
+		# save file
+		fname = '{}_edge_abundance.tsv'.format(prefix)
+		df.to_csv(fname, sep='\t', index=False)
+
 	##########################################################################
 	############################ Plotting utilities ##########################
 	##########################################################################
