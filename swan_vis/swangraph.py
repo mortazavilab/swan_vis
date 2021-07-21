@@ -1762,8 +1762,7 @@ class SwanGraph(Graph):
 
 		# map values in order specific to
 		obs_order = list(self.adata.obs_names)
-		sample_order = self.adata.obs.loc[obs_order, obs_col]
-		sample_order = sample_order.unique().tolist()
+		sample_order = self.adata.obs[obs_col].cat.categories.tolist()
 		sample_colors = [cmap[s] for s in sample_order]
 		self.adata.uns['{}_colors'.format(obs_col)] = sample_colors
 
