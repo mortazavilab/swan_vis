@@ -14,7 +14,7 @@ import diffxpy.api as de
 from statsmodels.stats.multitest import multipletests
 import multiprocessing
 from itertools import repeat
-# from tqdm import tqdm
+from tqdm import tqdm
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -1468,7 +1468,7 @@ class SwanGraph(Graph):
 		return gids, df
 
 	def get_die_genes(self, kind='iso', obs_col='dataset',
-					  obs_conditions=None, rc_thresh=10):
+					  obs_conditions=None, rc_thresh=10, verbose=False):
 		"""
 		Finds genes with differential isoform expression between two conditions
 		that are in the obs table. If there are more than 2 unique values in
@@ -1482,6 +1482,7 @@ class SwanGraph(Graph):
 			rc_thresh (int): Number of reads required for each conditions
 				in order to test the gene.
 				Default: 10
+			verbose (bool): Display progress
 
 		Returns:
 			test (pandas DataFrame): A summary table of the differential
@@ -1558,6 +1559,11 @@ class SwanGraph(Graph):
 		gene_de_df.index.name = 'gid'
 
 		# TODO - should parallelize this
+		if verbose:
+			n_genes = len(gids)
+			pbar = tqdm(total=n_genes)
+			pbar.set_description('Testing for DIE for each gene')
+
 		for gene in gids:
 			gene_df = df.loc[df.gid==gene]
 			gene_df = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
@@ -1568,6 +1574,8 @@ class SwanGraph(Graph):
 				p = dpi = np.nan
 			gene_de_df.loc[gene, 'p_val'] = p
 			gene_de_df.loc[gene, 'dpi'] = dpi
+			if verbose:
+				pbar.update(1)
 
 		# remove untestable genes and perform p value
 		# Benjamini-Hochberg correction
