@@ -1464,7 +1464,7 @@ class SwanGraph(Graph):
 				the significance threshold
 		"""
 		df = df.loc[(df.adj_p_val<=p)&(df.dpi>=dpi)]
-		gids = df['index'].tolist()
+		gids = df['gid'].tolist()
 		return gids, df
 
 	def get_die_genes(self, kind='iso', obs_col='dataset',
@@ -1761,6 +1761,7 @@ class SwanGraph(Graph):
 		# also maybe not my problem lol
 
 		# map values in order specific to
+		self.adata.obs[obs_col] = self.adata.obs[obs_col].astype('category')
 		obs_order = list(self.adata.obs_names)
 		sample_order = self.adata.obs[obs_col].cat.categories.tolist()
 		sample_colors = [cmap[s] for s in sample_order]
