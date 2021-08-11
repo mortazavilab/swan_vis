@@ -443,8 +443,8 @@ class SwanGraph(Graph):
 		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
 		df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
 						ascending=[True, True])\
-                        .groupby(['gid']) \
-                        .cumcount() + 1
+						.groupby(['gid']) \
+						.cumcount() + 1
 		df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
 		df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
 		df.drop('end_gene_num', axis=1, inplace=True)
@@ -880,8 +880,9 @@ class SwanGraph(Graph):
 
 		Parameters:
 			gid (str): Gene ID to subset on
-			obs_col (str): Column in adata.obs to subset on
-			obs_cats (list of str): Categories in obs_col to subset on
+			obs_col (str or list of str): Column(s) in adata.obs to subset on
+			obs_cats (list of str or dict of list of str): Categories in
+				obs_col to subset on (if multiple obs_col, indexed by column name)
 
 		returns:
 			subset_sg (swan Graph): Swan Graph subset on the input gene.
@@ -903,12 +904,13 @@ class SwanGraph(Graph):
 
 		# also subset anndata
 		if obs_col and obs_cats:
-			# print(obs_col)
-			# print(obs_cats)
-			obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
-			obs_vars = obs_vars.index.tolist()
-			# print(obs_vars)
-			# print(tids)
+			if len(obs_col) > 1 and type(obs_cats) == dict:
+				obs_vars = self.adata.obs.index.tolist()
+				for col, cats in obs_cats.items():
+					obs_vars = list(set(obs_vars).intersection(self.adata.obs.loc[self.adata.obs[col].isin(cats)].index.tolist()))
+			else:
+				obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
+				obs_vars = obs_vars.index.tolist()
 			adata = self.adata[obs_vars, tids]
 		else:
 			adata = self.adata[:, tids]
@@ -2101,10 +2103,14 @@ class SwanGraph(Graph):
 				Default: 1.
 		"""
 
+		if type(groupby) != list:
+			groupby = [groupby]
+
 		# check if groupby column is present
 		if groupby:
-			if groupby not in self.adata.obs.columns.tolist():
-				raise Exception('Groupby column {} not found'.format(groupby))
+			for g in groupby:
+				if g not in self.adata.obs.columns.tolist():
+					raise Exception('Groupby column {} not found'.format(groupby))
 
 		# check if metadata columns are present
 		if metadata_cols:
@@ -2112,23 +2118,23 @@ class SwanGraph(Graph):
 				if c not in self.adata.obs.columns.tolist():
 					raise Exception('Metadata column {} not found'.format(c))
 
-				# if we're grouping by a certain variable, make sure
-				# the other metadata cols we plan on plotting have unique
-				# mappings to the other columns. if just grouping by dataset,
-				# since each dataset is unique, that's ok
-				if groupby and groupby != 'dataset':
-					if groupby == c:
-						continue
+			# if we're grouping by a certain variable, make sure
+			# the other metadata cols we plan on plotting have unique
+			# mappings to the other columns. if just grouping by dataset,
+			# since each dataset is unique, that's ok
+			if groupby and groupby != 'dataset':
+				cols = list(set([c, 'dataset']+groupby))
+				gb_cols = list(set([c]+groupby))
+				temp = self.adata.obs[cols].copy(deep=True)
+				temp = temp.groupby(gb_cols).count().reset_index()
 
-					temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
-					temp = temp.groupby([groupby, c]).count().reset_index()
-
-					# if there are duplicates from the metadata column, throw exception
-					if temp[groupby].duplicated().any():
-							raise Exception('Metadata column {} '.format(c)+\
-								'not compatible with groupby column {}. '.format(groupby)+\
-								'Groupby column has more than 1 unique possible '+\
-								'value from metadata column.')
+				# if there are duplicates from the metadata column, throw exception
+				if temp[groupby].duplicated().any():
+						print(temp.loc[temp[groupby].duplicated()])
+						raise Exception('Metadata column {} '.format(c)+\
+							'not compatible with groupby column(s) {}. '.format(groupby)+\
+							'Groupby column has more than 1 unique possible '+\
+							'value from metadata column.')
 
 		# check to see if input gene is in the graph
 		if gid not in self.t_df.gid.tolist():
@@ -2142,11 +2148,26 @@ class SwanGraph(Graph):
 		# columns to display should be an order of either datasets or values
 		# from obs_col of things to include and the order
 		if groupby and columns:
-			gb_cats = self.adata.obs[groupby].unique().tolist()
-			for d in columns:
-				if d not in gb_cats:
-					raise ValueError('Groupby category {} not present in '.format(d)+\
-						'metadata column {}.'.format(groupby))
+			if type(columns) == list and len(groupby) > 1:
+				raise ValueError('Must provide a dictionary as columns arg '+\
+								 'when using multiple groupby columns')
+			elif len(groupby) == 1:
+				gb_cats = self.adata.obs[groupby].unique().tolist()
+				for d in columns:
+					if d not in gb_cats:
+						raise ValueError('Groupby category {} not present in '.format(d)+\
+							'metadata column {}.'.format(groupby))
+
+			elif type(columns) == dict and len(groupby) > 1:
+				for key, item in columns.items():
+					if type(item) != list:
+						item = [item]
+					gb_cats = self.adata.obs[key].unique().tolist()
+					for d in item:
+						if d not in gb_cats:
+							raise ValueError('Groupby category {} not present in '.format(d)+\
+								'metadata column {}.'.format(key))
+
 		elif groupby and not columns:
 			columns = self.adata.obs[groupby].unique().tolist()
 		# if none given, display all
