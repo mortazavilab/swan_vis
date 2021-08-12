@@ -49,8 +49,14 @@ class SwanGraph(Graph):
 			The PlottedGraph holds the information from the most
 			recently made plot
 		adata (anndata AnnData):
-			Annotated data holding transcript structure and
-			expression information
+			Annotated data object to hold transcript expression values
+			and metadata
+		edge_adata (anndata AnnData):
+			Annotated data object to hold edge expression values and metadata
+		tss_adata (anndata AnnData):
+			Annotated data object to hold TSS expression values and metadata
+		tes_adata (anndata AnnData):
+			Annotated data object to hold TES expression values and metadata
 	"""
 
 	def __init__(self, sc=False):
@@ -443,8 +449,8 @@ class SwanGraph(Graph):
 		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
 		df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
 						ascending=[True, True])\
-						.groupby(['gid']) \
-						.cumcount() + 1
+                        .groupby(['gid']) \
+                        .cumcount() + 1
 		df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
 		df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
 		df.drop('end_gene_num', axis=1, inplace=True)
@@ -880,9 +886,8 @@ class SwanGraph(Graph):
 
 		Parameters:
 			gid (str): Gene ID to subset on
-			obs_col (str or list of str): Column(s) in adata.obs to subset on
-			obs_cats (list of str or dict of list of str): Categories in
-				obs_col to subset on (if multiple obs_col, indexed by column name)
+			obs_col (str): Column in adata.obs to subset on
+			obs_cats (list of str): Categories in obs_col to subset on
 
 		returns:
 			subset_sg (swan Graph): Swan Graph subset on the input gene.
@@ -904,13 +909,12 @@ class SwanGraph(Graph):
 
 		# also subset anndata
 		if obs_col and obs_cats:
-			if len(obs_col) > 1 and type(obs_cats) == dict:
-				obs_vars = self.adata.obs.index.tolist()
-				for col, cats in obs_cats.items():
-					obs_vars = list(set(obs_vars).intersection(self.adata.obs.loc[self.adata.obs[col].isin(cats)].index.tolist()))
-			else:
-				obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
-				obs_vars = obs_vars.index.tolist()
+			# print(obs_col)
+			# print(obs_cats)
+			obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
+			obs_vars = obs_vars.index.tolist()
+			# print(obs_vars)
+			# print(tids)
 			adata = self.adata[obs_vars, tids]
 		else:
 			adata = self.adata[:, tids]
@@ -1474,7 +1478,7 @@ class SwanGraph(Graph):
 		"""
 		Finds genes with differential isoform expression between two conditions
 		that are in the obs table. If there are more than 2 unique values in
-		`obs_col`,
+		`obs_col`, the specific categories must be specified in `obs_conditions`
 
 		Parameters:
 			obs_col (str): Column name from self.adata.obs table to group on.
@@ -1858,7 +1862,7 @@ class SwanGraph(Graph):
 							 indicate_novel=False,
 							 browser=False,
 							 prefix=None,
-							 display=False):
+							 display=True):
 		"""
 		Plots a path of a single transcript isoform through a gene summary
 		SwanGraph.
@@ -1880,7 +1884,7 @@ class SwanGraph(Graph):
 				the plotted figure
 				Default: None, won't automatically save
 			display (bool): Display the plot during runtime
-				Default: False
+				Default: True
 		"""
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
@@ -2023,8 +2027,7 @@ class SwanGraph(Graph):
 				   display_numbers=False,
 				   transcript_name=False,
 				   browser=False,
-				   order='expression',
-				   threads=1):
+				   order='expression'):
 		"""
 		Generates a PDF report for a given gene or list of genes according
 		to the user's input.
@@ -2034,33 +2037,23 @@ class SwanGraph(Graph):
 				reports for
 			prefix (str): Path and/or filename prefix to save PDF and
 				images used to generate the PDF
-
-			datasets (list of str): Datasets to include in the report
-				Default: Include columns for all datasets
-			groupby (str): Column in obs_col to group expression
+			columns (list of str): Datasets or groupby categories to include
+				in the report
+				Default: Include columns for all datasets / groupby category
+			groupby (str): Column in self.adata.obs to group expression
 				values by
 				Default: None
-
+			metadata_cols (list of str): Columns from metadata tables to include
+				as colored bars. Requires that colors have been set using
+				set_metadata_colors
 			novelty (bool): Include a column to dipslay novelty type of
 				each transcript. Requires that a TALON GTF or DB has
 				been used to load data in
 				Default: False
-
-			heatmap (bool): Display expression values in a heatmap
-				format. Requires that abundance information has been
-				added to the SwanGraph
-				Default: False
-			dpi (bool): Plot proportion isoform usage per condition
-				as opposed to log2(tpm)
+			layer (str): Layer to plot expression from. Choose 'tpm' or 'pi'
 			cmap (str): Matplotlib color map to display heatmap values
 				in.
 				Default: 'Spectral_r'
-			tpm (bool): Display TPM value of each transcript/dataset
-				combination, instead of presence/absence of each
-				transcript. Requires that abundance information has
-				been added to the SwanGraph
-				Default:False
-
 			include_qvals (bool): Display q-val of differential expression
 				for each transcript and bold entries found to be
 				differentially expressed. Requires that de_transcript_test
@@ -2070,23 +2063,22 @@ class SwanGraph(Graph):
 			q (float): Q-value significance threshold to use when
 				bolding transcripts if include_qvals = True.
 				Default: 0.05
-
 			include_unexpressed (bool): Add transcript entries to report
 				that are not expressed in any input dataset.
 				Default: False
-
 			indicate_dataset (str): Dataset name from SwanGraph to
-				highlight with outlined nodes and dashed edges
+				emphasize with outlined nodes and dashed edges
 				Incompatible with indicate_novel
 				Default: False (no highlighting)
-			indicate_novel (bool): Highlight novel nodes and edges by
+			indicate_novel (bool): Emphasize novel nodes and edges by
 				outlining them and dashing them respectively
 				Incompatible with indicate_dataset
 				Default: False
 			browser (bool): Plot transcript models in genome browser-
 				style format. Incompatible with indicate_dataset and
 				indicate_novel
-
+			display_numbers (bool): Display TPM or pi values atop each cell
+				Default: False
 			order (str): Order to display transcripts in the report.
 				Options are
 					'tid': alphabetically by transcript ID
@@ -2097,20 +2089,12 @@ class SwanGraph(Graph):
 					'tes': genomic coordinate of transcription end site
 				Default: 'expression' if abundance information is present,
 						 'tid' if not
-
-			threads (int): Number of threads to use. Multithreading is
-				recommended when making a large number of gene reports.
-				Default: 1.
 		"""
-
-		if type(groupby) != list:
-			groupby = [groupby]
 
 		# check if groupby column is present
 		if groupby:
-			for g in groupby:
-				if g not in self.adata.obs.columns.tolist():
-					raise Exception('Groupby column {} not found'.format(groupby))
+			if groupby not in self.adata.obs.columns.tolist():
+				raise Exception('Groupby column {} not found'.format(groupby))
 
 		# check if metadata columns are present
 		if metadata_cols:
@@ -2118,23 +2102,25 @@ class SwanGraph(Graph):
 				if c not in self.adata.obs.columns.tolist():
 					raise Exception('Metadata column {} not found'.format(c))
 
-			# if we're grouping by a certain variable, make sure
-			# the other metadata cols we plan on plotting have unique
-			# mappings to the other columns. if just grouping by dataset,
-			# since each dataset is unique, that's ok
-			if groupby and groupby != 'dataset':
-				cols = list(set([c, 'dataset']+groupby))
-				gb_cols = list(set([c]+groupby))
-				temp = self.adata.obs[cols].copy(deep=True)
-				temp = temp.groupby(gb_cols).count().reset_index()
+				# if we're grouping by a certain variable, make sure
+				# the other metadata cols we plan on plotting have unique
+				# mappings to the other columns. if just grouping by dataset,
+				# since each dataset is unique, that's ok
+				if groupby and groupby != 'dataset':
+					if groupby == c:
+						continue
 
-				# if there are duplicates from the metadata column, throw exception
-				if temp[groupby].duplicated().any():
-						print(temp.loc[temp[groupby].duplicated()])
-						raise Exception('Metadata column {} '.format(c)+\
-							'not compatible with groupby column(s) {}. '.format(groupby)+\
-							'Groupby column has more than 1 unique possible '+\
-							'value from metadata column.')
+					temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
+					temp = temp.groupby([groupby, c]).count().reset_index()
+					temp = temp.loc[~temp.dataset.isnull()]
+					print(temp)
+
+					# if there are duplicates from the metadata column, throw exception
+					if temp[groupby].duplicated().any():
+							raise Exception('Metadata column {} '.format(c)+\
+								'not compatible with groupby column {}. '.format(groupby)+\
+								'Groupby column has more than 1 unique possible '+\
+								'value from metadata column.')
 
 		# check to see if input gene is in the graph
 		if gid not in self.t_df.gid.tolist():
@@ -2148,26 +2134,11 @@ class SwanGraph(Graph):
 		# columns to display should be an order of either datasets or values
 		# from obs_col of things to include and the order
 		if groupby and columns:
-			if type(columns) == list and len(groupby) > 1:
-				raise ValueError('Must provide a dictionary as columns arg '+\
-								 'when using multiple groupby columns')
-			elif len(groupby) == 1:
-				gb_cats = self.adata.obs[groupby].unique().tolist()
-				for d in columns:
-					if d not in gb_cats:
-						raise ValueError('Groupby category {} not present in '.format(d)+\
-							'metadata column {}.'.format(groupby))
-
-			elif type(columns) == dict and len(groupby) > 1:
-				for key, item in columns.items():
-					if type(item) != list:
-						item = [item]
-					gb_cats = self.adata.obs[key].unique().tolist()
-					for d in item:
-						if d not in gb_cats:
-							raise ValueError('Groupby category {} not present in '.format(d)+\
-								'metadata column {}.'.format(key))
-
+			gb_cats = self.adata.obs[groupby].unique().tolist()
+			for d in columns:
+				if d not in gb_cats:
+					raise ValueError('Groupby category {} not present in '.format(d)+\
+						'metadata column {}.'.format(groupby))
 		elif groupby and not columns:
 			columns = self.adata.obs[groupby].unique().tolist()
 		# if none given, display all
@@ -2405,7 +2376,12 @@ class SwanGraph(Graph):
 		"""
 		if kind == 'transcript':
 			adata = self.adata
-		# TODO - edge, tss, tes
+		elif kind == 'edge':
+			adata = self.edge_adata
+		elif kind == 'tss':
+			adata = self.tss_adata
+		elif kind == 'tes':
+			adata = self.tes_adata
 
 		adata.X = adata.layers['tpm']
 		df = pd.DataFrame(data=adata.X, index=adata.obs['dataset'].tolist(), \
