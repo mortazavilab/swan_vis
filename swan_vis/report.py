@@ -163,6 +163,52 @@ class Report(FPDF):
 		self.image(self.prefix+'_colorbar_scale.png',
 			w=90, h=13.57)
 
+		# dataset color legends
+		start_y = self.get_y()-12
+		curr_y = start_y
+		curr_x = 0
+		self.set_font('Arial', '', 8)
+		i = 0
+		for meta_col in self.metadata_cols:
+			if i != 0:
+				curr_x += 20
+				curr_y = start_y
+			self.set_y(curr_y)
+			self.set_x(curr_x)
+			self.cell(32, 5, meta_col, align='L')
+			curr_y = curr_y + 6
+
+
+			for meta_cat in self.obs[meta_col].unique().tolist():
+
+				# if i % 6 == 0 and i != 0:
+				# 	if i == 12:
+				# 		start_y = start_y + 12
+				# 	curr_y = start_y
+				# 	curr_x += 37
+
+				self.set_y(curr_y)
+				self.set_x(curr_x)
+
+				# # get meta_col category
+				# meta_cat = self.obs.loc[self.obs[self.groupby] == data_col, meta_col]
+				# meta_cat = meta_cat.unique().tolist()[0]
+
+				# get the color and convert to rgb
+				# source: https://stackoverflow.com/questions/29643352/converting-hex-to-rgb-value-in-python
+				color = self.uns['{}_dict'.format(meta_col)][meta_cat]
+				r = color[0]
+				g = color[1]
+				b = color[2]
+				self.set_fill_color(r,g,b)
+
+				self.cell(5, 5, '', fill=True)
+				self.cell(32, 5, meta_cat)
+
+				curr_y = curr_y + 6
+				i+=1
+		self.set_font('Arial', '', 10)
+
 	# add a transcript model to the report
 	def add_transcript(self, entry, oname, tid):
 
