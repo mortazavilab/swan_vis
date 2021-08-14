@@ -178,13 +178,13 @@ class SwanGraph(Graph):
 		self.edge_df = edge_df
 		self.t_df = t_df
 
-		# # add location path
-		# self.get_loc_path()
-		#
-		# # remove ISM transcripts and locations and edges exclusively from ISM
-		# # transcripts
-		# if not include_isms:
-		# 	self.remove_isms()
+		# add location path
+		self.get_loc_path()
+
+		# remove ISM transcripts and locations and edges exclusively from ISM
+		# transcripts
+		if not include_isms:
+			self.remove_isms()
 
 		# label elements from the annotation
 		if annotation:
@@ -1147,7 +1147,13 @@ class SwanGraph(Graph):
 		ir_edges = []
 		ir_genes = []
 		ir_transcripts = []
+		# df for gene+transcript+edge combos
+		ir_df = pd.DataFrame()
+		number_edges = 0
 		for i, eid in enumerate(edge_ids):
+			number_edges += 1
+			if number_edges % 50 == 0:
+				print('processed {} / {} edges'.format(number_edges, len(edge_ids)))
 			# subgraph consisting of all nodes between the candidate
 			# intron-retaining edge coords in order and its edges
 			entry = self.edge_df.loc[eid]
@@ -1187,19 +1193,22 @@ class SwanGraph(Graph):
 						for cand_eid in sub_edges.index:
 							temp_df = cand_g_df[[cand_eid in path for path in cand_g_df.path.values.tolist()]]
 							tids = cand_t_df.tid.tolist()
-							if len(temp_df.index) > 0:
+							for tid in tids:
+								temp = pd.DataFrame(data=[[gid, tid, eid]],
+									columns=['gid', 'tid', 'egde_id'])
+								ir_df = pd.concat([ir_df, temp])
 								ir_edges.append(eid)
 								ir_genes.append(gid)
-								ir_transcripts.extend(tids)
+								ir_transcripts.append(tid)
 
-		ir_genes = list(set(ir_genes))
-		ir_transcripts = list(set(ir_transcripts))
-		ir_edges = list(set(ir_edges))
-
-		print('Found {} novel ir events from {} transcripts.'.format(len(ir_genes),
+		# ir_genes = list(set(ir_genes))
+		# ir_transcripts = list(set(ir_transcripts))
+		# ir_edges = list(set(ir_edges))
+		ir_transcripts = ir_df.tid.unique().tolist()
+		print('Found {} novel ir events in {} transcripts.'.format(len(ir_df.index),
 			len(ir_transcripts)))
 
-		return ir_genes, ir_transcripts, ir_edges
+		return ir_df
 
 	def find_es_genes(self):
 		"""
@@ -1233,7 +1242,13 @@ class SwanGraph(Graph):
 		es_edges = []
 		es_genes = []
 		es_transcripts = []
+		# df for gene+transcript+edge combos
+		es_df = pd.DataFrame()
+		number_edges = 0
 		for eid in edge_ids:
+			number_edges += 1
+			if number_edges % 50 == 0:
+				print('processed {} / {} edges'.format(number_edges, len(edge_ids)))
 			# subgraph consisting of all nodes between the candidate
 			# exon-skipping edge coords in order and its edges
 			entry = self.edge_df.loc[eid]
@@ -1275,18 +1290,22 @@ class SwanGraph(Graph):
 							temp_df = skip_g_df[[skip_eid in path for path in skip_g_df.path.values.tolist()]]
 							tids = skip_t_df.tid.tolist()
 							if len(temp_df.index) > 0:
-								es_edges.append(eid)
-								es_genes.append(gid)
-								es_transcripts.extend(tids)
+								for tid in tids:
+									temp = pd.DataFrame(data=[[gid, tid, eid]],
+										columns=['gid', 'tid', 'egde_id'])
+									es_df = pd.concat([es_df, temp])
+									es_edges.append(eid)
+									es_genes.append(gid)
+									es_transcripts.append(tid)
 
-		es_genes = list(set(es_genes))
-		es_transcripts = list(set(es_transcripts))
-		es_edges = list(set(es_edges))
-
-		print('Found {} novel es events in {} transcripts.'.format(len(es_edges),
+		# es_genes = list(set(es_genes))
+		# es_transcripts = list(set(es_transcripts))
+		# es_edges = list(set(es_edges))
+		es_transcripts = es_df.tid.unique().tolist()
+		print('Found {} novel es events in {} transcripts.'.format(len(es_df.index),
 			len(es_transcripts)))
 
-		return es_genes, es_transcripts, es_edges
+		return es_df
 
 	def de_gene_test(self, dataset_groups):
 		"""
@@ -1752,6 +1771,77 @@ class SwanGraph(Graph):
 		fname = '{}_edge_abundance.tsv'.format(prefix)
 		df.to_csv(fname, sep='\t', index=False)
 
+	def save_tss_abundance(self, prefix, kind='counts'):
+		"""
+		Saves TSS expression from the current SwanGraph in TSV format with
+		complete information about where TSS is.
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_tss_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+		"""
+		self.save_end_abundance(prefix, kind, how='tss')
+
+	def save_tes_abundance(self, prefix, kind='counts'):
+		"""
+		Saves TES expression from the current SwanGraph in TSV format with
+		complete information about where TES is.
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_tes_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+		"""
+		self.save_end_abundance(prefix, kind, how='tes')
+
+	def save_end_abundance(prefix, kind, how='tss'):
+		"""
+		Saves end expression from the current SwanGraph in TSV format with
+		complete information about where end is. Called from save_end_abundance
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_tes_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+			how (str): Choose "tss" or "tes"
+		"""
+
+		# add location information to end_adata.var
+		if how == 'tss':
+		    adata = self.tss_adata
+		    temp = self.tss_adata.var.copy(deep=True)
+		elif how == 'tes':
+		    adata = self.tes_adata
+		    temp = self.tes_adata.var.copy(deep=True)
+		temp.reset_index(inplace=True)
+
+		# add location information to end_adata.var
+		temp = temp.merge(sg.loc_df[['chrom', 'coord']],
+		            how='left', on='vertex_id')
+
+		# get abundance table from end_adata
+		columns = adata.var.index.tolist()
+		rows = adata.obs.index.tolist()
+		if kind == 'counts':
+		    data = adata.layers['counts']
+		elif kind == 'tpm':
+		    data = adata.layers['tpm']
+
+		df = pd.DataFrame(index=rows, columns=columns, data=data)
+		df = df.transpose()
+		df.reset_index(inplace=True)
+
+		# merge the info together with the abundance
+		df = temp.merge(df, how='right', left_index=True, right_index=True)
+
+		# drop index
+		df.drop('index', axis=1, inplace=True)
+
+		# save file
+		fname = '{}_{}_abundance.tsv'.format(prefix, how)
+		df.to_csv(fname, sep='\t', index=False)
+
 	##########################################################################
 	############################ Plotting utilities ##########################
 	##########################################################################
@@ -1804,8 +1894,8 @@ class SwanGraph(Graph):
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
 				   indicate_novel=False,
-				   prefix=None,
-				   display=True):
+				   prefix=None):
+				   # display=True):
 		"""
 		Plots a gene summary SwanGraph for an input gene.
 		Does not automatically save the figure by default!
@@ -1840,9 +1930,9 @@ class SwanGraph(Graph):
 			indicate_novel=indicate_novel)
 		self.pg.plot_graph()
 
-		# display the plot if option is given
-		if display:
-			plt.show()
+		# # display the plot if option is given
+		# if display:
+		# 	plt.show()
 
 		# if the user has provided a place to save
 		if prefix:
@@ -2113,7 +2203,6 @@ class SwanGraph(Graph):
 					temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
 					temp = temp.groupby([groupby, c]).count().reset_index()
 					temp = temp.loc[~temp.dataset.isnull()]
-					print(temp)
 
 					# if there are duplicates from the metadata column, throw exception
 					if temp[groupby].duplicated().any():
