@@ -1408,15 +1408,15 @@ class SwanGraph(Graph):
 				genes = test.gname.tolist()
 		return genes, test
 
-	def de_transcript_test(self, dataset_groups):
+	def de_transcript_test(self, obs_col, obs_conditions=None):
 		"""
-		Runs a differential expression test on the transcript level.
+		Runs a differential expression test on the gene level.
 
 		Parameters:
-			dataset_groups (list of list of str, len 2): Grouping of datasets
-				from the SwanGraph to be used in the differential
-				expression test
-				Example: [['data1','data2'],['data3','data4']]
+			obs_col (str): Metadata column from self.adata.obs to perform
+				the test on
+			obs_conditions (list of str, len 2): Categories from 'obs_col' in
+				self.adata.obs to perform the test on.
 
 		Returns:
 			test (pandas DataFrame): A summary table of the differential
@@ -1424,14 +1424,42 @@ class SwanGraph(Graph):
 				as log fold change.
 		"""
 
-		# format expression data to be used by diffxpy
-		ann = self.create_transcript_anndata(dataset_groups)
+		# check if obs_col is even there
+		if obs_col not in self.adata.obs.columns.tolist():
+			raise ValueError('Metadata column {} not found'.format(obs_col))
+
+		# check if there are more than 2 unique values in obs_col
+		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+			raise ValueError('Must provide obs_conditions argument when obs_col has'\
+				' >2 unique values')
+		elif not obs_conditions:
+			obs_conditions = self.adata.obs[obs_col].unique().tolist()
+		elif len(obs_conditions) != 2:
+			raise ValueError('obs_conditions must have exactly 2 values')
+
+		# check if these values of obs_col exist
+		if obs_col and obs_conditions:
+			conds = self.adata.obs[obs_col].unique().tolist()
+			for cond in obs_conditions:
+				if cond not in conds:
+					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+
+		# get an AnnData that's a subset based on obs_conditions
+		if obs_conditions:
+			inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
+			inds = inds.index.tolist()
+			adata = self.adata[inds, :]
+		else:
+			adata = self.adata
+
+		formula_loc = "~ 1 + {}".format(obs_col)
+		factor_loc_totest = obs_col
 
 		# test
 		test = de.test.wald(
-			data=ann,
-			formula_loc="~ 1 + condition",
-			factor_loc_totest="condition")
+			data=adata,
+			formula_loc=formula_loc,
+			factor_loc_totest=factor_loc_totest)
 		test = test.summary()
 		test.rename({'gene': 'tid'}, axis=1, inplace=True)
 
@@ -1443,9 +1471,9 @@ class SwanGraph(Graph):
 		# sort on log2fc
 		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
 
-		# assign the summary table to the parent object
-		self.det_test = test
-		self.det_test_groups = dataset_groups
+		# # assign the summary table to the parent object
+		# self.det_test = test
+		# self.det_test_groups = dataset_groups
 
 		return test
 
