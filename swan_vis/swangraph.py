@@ -449,8 +449,8 @@ class SwanGraph(Graph):
 		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
 		df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
 						ascending=[True, True])\
-                        .groupby(['gid']) \
-                        .cumcount() + 1
+						.groupby(['gid']) \
+						.cumcount() + 1
 		df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
 		df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
 		df.drop('end_gene_num', axis=1, inplace=True)
@@ -880,84 +880,106 @@ class SwanGraph(Graph):
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
 	##########################################################################
-	def subset_on_gene_sg(self, gid, obs_col=None, obs_cats=None):
+	def subset_on_gene_sg(self, gid=None, datasets=None):
 		"""
 		Subset the swan Graph on a given gene and return the subset graph.
 
 		Parameters:
 			gid (str): Gene ID to subset on
-			obs_col (str): Column in adata.obs to subset on
-			obs_cats (list of str): Categories in obs_col to subset on
+			datasets (list of str): List of datasets to keep in the subset
 
 		returns:
 			subset_sg (swan Graph): Swan Graph subset on the input gene.
 		"""
 
-		# make sure this gid is even in the Graph
-		self.check_gene(gid)
+		# didn't ask for either
+		if not gid and not datasets:
+			return self
 
-		# get the strand
-		strand = self.get_strand_from_gid(gid)
+		# subset on gene
+		if gid:
+			# make sure this gid is even in the Graph
+			self.check_gene(gid)
 
-		# subset t_df first, it's the easiest
-		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
-		t_df = self.t_df.loc[tids].copy(deep=True)
-		t_df['path'] = self.t_df.loc[tids].apply(
-				lambda x: copy.deepcopy(x.path), axis=1)
-		t_df['loc_path'] = self.t_df.loc[tids].apply(
-				lambda x: copy.deepcopy(x.loc_path), axis=1)
+			# get the strand
+			strand = self.get_strand_from_gid(gid)
+
+			# subset t_df first, it's the easiest
+			tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+			t_df = self.t_df.loc[tids].copy(deep=True)
+			t_df['path'] = self.t_df.loc[tids].apply(
+					lambda x: copy.deepcopy(x.path), axis=1)
+			t_df['loc_path'] = self.t_df.loc[tids].apply(
+					lambda x: copy.deepcopy(x.loc_path), axis=1)
+
+			# subset loc_df based on all the locs that are in the paths from
+			# the already-subset t_df
+			paths = t_df['loc_path'].tolist()
+			locs = [node for path in paths for node in path]
+			locs = np.unique(locs)
+			loc_df = self.loc_df.loc[locs].copy(deep=True)
+
+			# subset edge_df based on all the edges that are in the paths from
+			# the alread-subset t_df
+			paths = t_df['path'].tolist()
+			edges = [node for path in paths for node in path]
+			edges = np.unique(edges)
+			edge_df = self.edge_df.loc[edges].copy(deep=True)
+		if not gid:
+			t_df = self.t_df.copy(deep=True)
+			edge_df = self.edge_df.copy(deep=True)
+			loc_df = self.loc_df.copy(deep=True)
 
 		# also subset anndata
-		if obs_col and obs_cats:
-			# print(obs_col)
-			# print(obs_cats)
-			obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
-			obs_vars = obs_vars.index.tolist()
-			# print(obs_vars)
-			# print(tids)
-			adata = self.adata[obs_vars, tids]
-		else:
-			adata = self.adata[:, tids]
-
-		# subset loc_df based on all the locs that are in the paths from
-		# the already-subset t_df
-		paths = t_df['loc_path'].tolist()
-		locs = [node for path in paths for node in path]
-		locs = np.unique(locs)
-		loc_df = self.loc_df.loc[locs].copy(deep=True)
-
-		# subset edge_df based on all the edges that are in the paths from
-		# the alread-subset t_df
-		paths = t_df['path'].tolist()
-		edges = [node for path in paths for node in path]
-		edges = np.unique(edges)
-		edge_df = self.edge_df.loc[edges].copy(deep=True)
+		# if obs_col and obs_cats:
+		# 	# adatas = [self.adata, self.edge_adata,
+		# 	# 		  self.tss_adata, self.tes_adata]
+		# 	# for adata in adatas:
+		# 	# print(obs_col)
+		# 	# print(obs_cats)
+		# 	obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
+		# 	obs_vars = obs_vars.index.tolist()
+		# 	# print(obs_vars)
+		# 	# print(tids)
+		# 	adata = self.adata[obs_vars, tids]
+		new_adatas = dict()
+		# adatas = {'iso': self.adata, 'edge': self.edge_adata,
+		# 		  'tss': self.tss_adata, 'tes': self.tes_adata}
+		adatas = {'iso': self.adata}
+		for key, adata in adatas.items():
+			if datasets and gid:
+				new_adatas[key] = adata[datasets, tids]
+			elif gid:
+				new_adatas[key] = adata[:, tids]
+			elif datasets:
+				new_adatas[key] = adata[datasets, :]
+			else:
+				new_adatas[key] = adata
 
 		# create a new graph that's been subset
 		subset_sg = SwanGraph()
 		subset_sg.loc_df = loc_df
 		subset_sg.edge_df = edge_df
 		subset_sg.t_df = t_df
-		subset_sg.adata = adata
-		subset_sg.datasets = adata.obs.index.tolist()
+		subset_sg.adata = new_adatas['iso']
+		# subset_sg.edge_adata = new_adatas['edge']
+		# subset_sg.tss_adata = new_adatas['tss']
+		# subset_sg.tes_adata = new_adatas['tes']
+		subset_sg.datasets = subset_sg.adata.obs.index.tolist()
 		subset_sg.abundance = self.abundance
 		subset_sg.sc = self.sc
 		subset_sg.pg = self.pg
 		subset_sg.annotation = self.annotation
 
-		# # TODO
-		# subset_sg.edge_adata = edge_adata
-		# subset_sg.tss_adata = tss_adata
-		# subset_sg.tes_adata = tes_adata
+		# renumber locs if using a gene
+		if gid:
+			if strand == '-':
+				id_map = subset_sg.get_ordered_id_map(rev_strand=True)
+				subset_sg.update_ids(id_map)
+			else:
+				subset_sg.update_ids()
 
-		# renumber locs
-		if strand == '-':
-			id_map = subset_sg.get_ordered_id_map(rev_strand=True)
-			subset_sg.update_ids(id_map)
-		else:
-			subset_sg.update_ids()
-
-		subset_sg.get_loc_types()
+			subset_sg.get_loc_types()
 
 		# finally create the graph
 		subset_sg.create_graph_from_dfs()
@@ -1615,6 +1637,56 @@ class SwanGraph(Graph):
 
 		return gene_de_df
 
+	def add_multi_groupby(self, groupby):
+		"""
+		Adds a groupby column that is comprised of multiple other columns. For
+		instance, if 'sex' and 'age' are already in the obs table, add an
+		additional column that's comprised of sex and age.
+
+		Parameters:
+			groupby (list of str): List of column names to turn into a multi
+				groupby column
+
+		"""
+
+		# determine what to name column
+		col_name = '_'.join(groupby)
+
+		if col_name in self.adata.obs.columns:
+			col_name += '_1'
+			i = 1
+		while col_name in self.adata.obs.columns:
+			i += 1
+			col_name = col_name[:-1]
+			col_name += str(i)
+
+		adatas = [self.adata, self.tss_adata, \
+				  self.tes_adata, self.edge_adata]
+		for adata in adatas:
+			adata.obs[col_name] = ''
+
+		for i, group in enumerate(groupby):
+			for adata in adatas:
+				if i == 0:
+					adata.obs[col_name] = adata.obs[groupby].astype(str)
+				else:
+					adata.obs[col_name] = adata.obs[col_name] + '_' + adata.obs[group].astype(str)
+		return col_name
+
+	def rm_multi_groupby(self, col_name):
+		"""
+		Removes given col_name from the AnnDatas in the SwanGraph.
+
+		Parameters:
+			col_name (str): Column name
+		"""
+
+		# after we're done, drop this column
+		adatas = [self.adata, self.tss_adata, \
+				  self.tes_adata, self.edge_adata]
+		for adata in adatas:
+			adata.obs.drop(col_name, axis=1, inplace=True)
+
 # 	def create_gene_anndata(self, dataset_groups):
 # 		"""
 # 		Creates a gene-level AnnData object containing TPM that's
@@ -1809,24 +1881,24 @@ class SwanGraph(Graph):
 
 		# add location information to end_adata.var
 		if how == 'tss':
-		    adata = self.tss_adata
-		    temp = self.tss_adata.var.copy(deep=True)
+			adata = self.tss_adata
+			temp = self.tss_adata.var.copy(deep=True)
 		elif how == 'tes':
-		    adata = self.tes_adata
-		    temp = self.tes_adata.var.copy(deep=True)
+			adata = self.tes_adata
+			temp = self.tes_adata.var.copy(deep=True)
 		temp.reset_index(inplace=True)
 
 		# add location information to end_adata.var
 		temp = temp.merge(sg.loc_df[['chrom', 'coord']],
-		            how='left', on='vertex_id')
+					how='left', on='vertex_id')
 
 		# get abundance table from end_adata
 		columns = adata.var.index.tolist()
 		rows = adata.obs.index.tolist()
 		if kind == 'counts':
-		    data = adata.layers['counts']
+			data = adata.layers['counts']
 		elif kind == 'tpm':
-		    data = adata.layers['tpm']
+			data = adata.layers['tpm']
 
 		df = pd.DataFrame(index=rows, columns=columns, data=data)
 		df = df.transpose()
@@ -2103,7 +2175,7 @@ class SwanGraph(Graph):
 	def gen_report(self,
 				   gid,
 				   prefix,
-				   columns=None,
+				   datasets=None,
 				   groupby=None,
 				   metadata_cols=None,
 				   novelty=False,
@@ -2127,8 +2199,9 @@ class SwanGraph(Graph):
 				reports for
 			prefix (str): Path and/or filename prefix to save PDF and
 				images used to generate the PDF
-			columns (list of str): Datasets or groupby categories to include
-				in the report
+			datasets (dict of lists): Dictionary of {'metadata_col':
+				['metadata_category_1', 'metadata_category_2'...]} to represent
+				datasets and their order to include in the report.
 				Default: Include columns for all datasets / groupby category
 			groupby (str): Column in self.adata.obs to group expression
 				values by
@@ -2183,8 +2256,18 @@ class SwanGraph(Graph):
 
 		# check if groupby column is present
 		if groupby:
-			if groupby not in self.adata.obs.columns.tolist():
+			# grouping by more than one column
+			if type(groupby) == list and len(groupby) > 1:
+				for g in groupby:
+					if g not in self.adata.obs.columns.tolist():
+						raise Exception('Groupby column {} not found'.format(g))
+				groupby = self.add_multi_groupby(groupby)
+				multi_groupby = True
+			elif groupby not in self.adata.obs.columns.tolist():
 				raise Exception('Groupby column {} not found'.format(groupby))
+
+		else:
+			multi_groupby = False
 
 		# check if metadata columns are present
 		if metadata_cols:
@@ -2220,22 +2303,51 @@ class SwanGraph(Graph):
 		self.check_plotting_args(indicate_dataset,
 			indicate_novel, browser)
 
-		# columns to display should be an order of either datasets or values
-		# from obs_col of things to include and the order
-		if groupby and columns:
-			gb_cats = self.adata.obs[groupby].unique().tolist()
-			for d in columns:
-				if d not in gb_cats:
-					raise ValueError('Groupby category {} not present in '.format(d)+\
-						'metadata column {}.'.format(groupby))
-		elif groupby and not columns:
-			columns = self.adata.obs[groupby].unique().tolist()
-		# if none given, display all
-		elif not columns:
-			columns = self.datasets
-		# if datasets are given, make sure they're in the SwanGraph
+		# get the list of columns to include from the input datasets dict
+		if datasets:
+			# get a df that is subset of metadata
+			# also sort the datasets based on the order they appear in "datasets"
+			i = 0
+			sorters = []
+			for meta_col, meta_cats in datasets.items():
+				if meta_col not in self.adata.obs.columns.tolist():
+					raise Exception('Metadata column {} not found'.format(meta_col))
+				if type(meta_cats) == str:
+					meta_cats = [meta_cats]
+				if i == 0:
+					temp = self.adata.obs.loc[self.adata.obs[meta_col].isin(meta_cats)]
+				else:
+					temp = temp.loc[temp[meta_col].isin(meta_cats)]
+				sort_ind = dict(zip(meta_cats, range(len(meta_cats))))
+				sort_col = '{}_sort'.format(meta_col)
+				temp[sort_col] = temp[meta_col].map(sort_ind).astype(int)
+				sorters.append(sort_col)
+				i += 1
+
+			# sort the df based on the order that different categories appear in "datasets"
+			temp.sort_values(by=sorters, inplace=True, ascending=True)
+			temp.drop(sorters, axis=1, inplace=True)
+			columns = temp.dataset.tolist()
+			del temp
 		else:
-			self.check_datasets(columns)
+			columns = None
+
+		# # columns to display should be an order of either datasets or values
+		# # from obs_col of things to include and the order
+		# if groupby and columns:
+		# 	gb_cats = self.adata.obs[groupby].unique().tolist()
+		# 	for d in columns:
+		# 		if d not in gb_cats:
+		# 			raise ValueError('Groupby category {} not present in '.format(d)+\
+		# 				'metadata column {}.'.format(groupby))
+		# elif groupby and not columns:
+		# 	columns = self.adata.obs[groupby].unique().tolist()
+		# # if none given, display all
+		# elif not columns:
+		# 	columns = self.datasets
+		# # if datasets are given, make sure they're in the SwanGraph
+		# else:
+		# 	self.check_datasets(columns)
 
 		# # make sure all input datasets are present in graph
 		# if datasets == 'all':
@@ -2251,21 +2363,25 @@ class SwanGraph(Graph):
 				raise Exception('No novelty information present in the graph. '
 					'Add it or do not use the "novelty" report option.')
 
-		if groupby:
-			sg = self.subset_on_gene_sg(gid, obs_col=groupby, obs_cats=columns)
+		# abundance info to calculate TPM on - subset on datasets that will
+		# be included
+		if columns or datasets:
+			subset_adata = self.subset_on_gene_sg(datasets=columns).adata
 		else:
-			sg = self.subset_on_gene_sg(gid)
+			subset_adata = self.adata
+
+		# small SwanGraph with only this gene's data
+		sg = self.subset_on_gene_sg(gid=gid, datasets=columns)
 
 		# if we're grouping data, calculate those new numbers
-		# TODO probably limit pi calculations to relevant genes?
 		# additionally order transcripts
 		if groupby:
 			if layer == 'tpm':
 				# use whole adata to calc tpm
-				t_df = tpm_df = calc_tpm(self.adata, sg.t_df, obs_col=groupby).transpose()
+				t_df = tpm_df = calc_tpm(subset_adata, sg.t_df, obs_col=groupby).transpose()
 			elif layer == 'pi':
 				# calc tpm just so we can order based on exp
-				tpm_df = calc_tpm(self.adata, self.t_df, obs_col=groupby).transpose()
+				tpm_df = calc_tpm(subset_adata, self.t_df, obs_col=groupby).transpose()
 				t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col=groupby)
 				t_df = t_df.transpose()
 		else:
@@ -2285,12 +2401,11 @@ class SwanGraph(Graph):
 		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
 		tpm_df = tpm_df.loc[tids]
 		_, tids = sg.order_transcripts_subset(tpm_df, order=order)
-		# return beep
 		del tpm_df
 		t_df = t_df.loc[tids]
 
-		# order columns by user's preferences
-		t_df = t_df[columns]
+		# # order/exclude columns by user's preferences
+		# t_df = t_df[columns]
 
 		# remove unexpressed transcripts if desired
 		if not include_unexpressed:
@@ -2446,6 +2561,10 @@ class SwanGraph(Graph):
 								 tid=tid)
 			report.add_transcript(entry, fname, t_disp)
 		report.write_pdf(pdf_name)
+
+		# remove multi groupby column if necessary
+		if multi_groupby:
+			self.rm_multi_groupby(groupby)
 
 ##########################################################################
 ############################# Data retrieval #############################

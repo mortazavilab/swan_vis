@@ -585,6 +585,10 @@ class PlottedGraph(Graph):
         x_coord = scale_start - (gene_len/9)
         y_coord = -0.2
         txt = '{} {}'.format(text_scale, scale_unit)
+
+        # three digit numbers don't look so good
+        if len(str(text_scale)) > 2:
+            x_coord = scale_start - (gene_len/7)  
         ax.text(x_coord, y_coord, txt, fontsize=30)
 
         # # check if forward or reverse strand

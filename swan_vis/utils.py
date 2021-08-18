@@ -282,6 +282,7 @@ def calc_total_counts(adata, obs_col='dataset', layer='counts'):
 		adata (anndata AnnData): Annotated data object from the SwanGraph
 		obs_col (str): Column name from adata.obs table to group on.
 			Default: 'dataset'
+		layer (str): Layer of AnnData to pull from. Default = 'counts'
 
 	Returns:
 		df (pandas DataFrame): Pandas DataFrame where rows are the different
@@ -389,7 +390,7 @@ def calc_tpm(adata, sg_df=None, obs_col='dataset'):
 		adata (anndata AnnData): Annotated data object from the SwanGraph
 		sg_df (pandas DataFrame): Pandas DataFrame from SwanGraph that will
 			be used to order the rows of resultant TPM DataFrame
-		obs_col (str): Column name from adata.obs table to group on.
+		obs_col (str or list of str): Column name from adata.obs table to group on.
 			Default: 'dataset'
 
 	Returns:

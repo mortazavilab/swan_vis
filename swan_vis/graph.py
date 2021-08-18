@@ -30,6 +30,15 @@ class Graph:
 		t_df (pandas DataFrame):
 			DataFrame of all unique transcripts found
 			in the transcriptome
+		adata (anndata AnnData):
+			Annotated data object to hold transcript expression values
+			and metadata
+		edge_adata (anndata AnnData):
+			Annotated data object to hold edge expression values and metadata
+		tss_adata (anndata AnnData):
+			Annotated data object to hold TSS expression values and metadata
+		tes_adata (anndata AnnData):
+			Annotated data object to hold TES expression values and metadata
 		"""
 
 		self.datasets = []

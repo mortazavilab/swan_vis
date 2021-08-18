@@ -167,11 +167,11 @@ class Report(FPDF):
 		start_y = self.get_y()-12
 		curr_y = start_y
 		curr_x = 0
-		self.set_font('Arial', '', 8)
+		self.set_font('Arial', '', 10)
 		i = 0
 		for meta_col in self.metadata_cols:
 			if i != 0:
-				curr_x += 20
+				curr_x += 30
 				curr_y = start_y
 			self.set_y(curr_y)
 			self.set_x(curr_x)
