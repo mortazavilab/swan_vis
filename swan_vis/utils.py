@@ -59,6 +59,25 @@ def set_dupe_index(df, ind_name):
 	df.rename({ind_name+'_back': ind_name}, inplace=True, axis=1)
 	return(df)
 
+def make_uns_key(kind, obs_col, obs_conditions):
+	"""
+	Make a key name to reference die, det, or deg results in the .uns part of
+	SwanGraph.adata.
+
+	Parameters:
+		kind (str): Choose 'det', 'die', 'deg' (for differential transcript,
+			isoform switching / differential isoform expression,
+			differential gene expression respectively)
+
+	Returns:
+		uns_name (str): Name of .uns key
+	"""
+
+	uns_name = '{}_{}'.format(kind, obs_col)
+	if obs_conditions:
+		for cond in obs_conditions:
+			uns_name += '_{}'.format(cond)
+	return uns_name
 
 def get_fields(fields):
 	"""
