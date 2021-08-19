@@ -1137,18 +1137,18 @@ class SwanGraph(Graph):
 	######################## Analysis tools  #################################
 	##########################################################################
 
-	def find_ir_genes(self):
+	def find_ir_genes(self, verbose=False):
 		"""
 		Finds all unique genes containing novel intron retention events.
 		Requires that an annotation has been added to the SwanGraph.
 
+		Parameters:
+			verbose (bool): Display output
+
 		Returns:
-			ir_genes (list of str): A list of gene ids from the SwanGraph with
-				at least one novel intron retention event
-			ir_transcripts (list of str): A list of transcript ids from the
-				SwanGraph with at least one novel intron retention event
-			ir_edges (list of tuples): A list of exonic edges in the
-				SwanGraph that retain at least one intronic edge
+			ir_df (pandas DataFrame): DataFrame detailing discovered novel
+				intron retention edges and the transcripts and genes they
+				come from
 		"""
 
 		# get only novel edges
@@ -1164,6 +1164,12 @@ class SwanGraph(Graph):
 		# get subset of transcripts that are novel to look for ir edges in
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
 
+		# verbose output
+		if verbose:
+			n_progress = len(edge_ids)
+			pbar = tqdm(total=n_progress)
+			pbar.set_description('Testing each novel edge for intron retention')
+
 		# for each edge, see if the subgraph between the edge vertices
 		# contains an exonic edge
 		ir_edges = []
@@ -1171,11 +1177,7 @@ class SwanGraph(Graph):
 		ir_transcripts = []
 		# df for gene+transcript+edge combos
 		ir_df = pd.DataFrame()
-		number_edges = 0
 		for i, eid in enumerate(edge_ids):
-			number_edges += 1
-			if number_edges % 50 == 0:
-				print('processed {} / {} edges'.format(number_edges, len(edge_ids)))
 			# subgraph consisting of all nodes between the candidate
 			# intron-retaining edge coords in order and its edges
 			entry = self.edge_df.loc[eid]
@@ -1222,6 +1224,8 @@ class SwanGraph(Graph):
 								ir_edges.append(eid)
 								ir_genes.append(gid)
 								ir_transcripts.append(tid)
+			if verbose:
+				pbar.update(1)
 
 		# ir_genes = list(set(ir_genes))
 		# ir_transcripts = list(set(ir_transcripts))
@@ -1235,18 +1239,18 @@ class SwanGraph(Graph):
 
 		return ir_df
 
-	def find_es_genes(self):
+	def find_es_genes(self, verbose=False):
 		"""
 		Finds all unique genes containing novel exon skipping events.
 		Requires that an annotation has been added to the SwanGraph.
 
+		Parameters:
+			verbose (bool): Display output
+
 		Returns:
-			es_genes (list of str): A list of gene ids from the SwanGraph with
-				at least one novel exon skipping event
-			es_transcripts (list of str): A list of transcript ids from the
-				SwanGraph with at least one novel exon skipping event
-			es_edges (list of tuples): A list of intronic edges in the
-				SwanGraph that skip at least one exonic edge
+			es_df (pandas DataFrame): DataFrame detailing discovered novel
+				exon-skipping edges and the transcripts and genes they
+				come from
 		"""
 
 		# get only novel edges
@@ -1262,6 +1266,12 @@ class SwanGraph(Graph):
 		# get subset of transcripts that are novel to look for ir edges in
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
 
+		# verbose output
+		if verbose:
+			n_progress = len(edge_ids)
+			pbar = tqdm(total=n_progress)
+			pbar.set_description('Testing each novel edge for exon skipping')
+
 		# for each edge, see if the subgraph between the edge vertices
 		# contains an exonic edge
 		es_edges = []
@@ -1269,11 +1279,7 @@ class SwanGraph(Graph):
 		es_transcripts = []
 		# df for gene+transcript+edge combos
 		es_df = pd.DataFrame()
-		number_edges = 0
 		for eid in edge_ids:
-			number_edges += 1
-			if number_edges % 50 == 0:
-				print('processed {} / {} edges'.format(number_edges, len(edge_ids)))
 			# subgraph consisting of all nodes between the candidate
 			# exon-skipping edge coords in order and its edges
 			entry = self.edge_df.loc[eid]
@@ -1322,6 +1328,8 @@ class SwanGraph(Graph):
 									es_edges.append(eid)
 									es_genes.append(gid)
 									es_transcripts.append(tid)
+			if verbose:
+				pbar.update(1)
 
 		# es_genes = list(set(es_genes))
 		# es_transcripts = list(set(es_transcripts))
@@ -1578,7 +1586,7 @@ class SwanGraph(Graph):
 
 		return test
 
-	def get_die_genes(self, kind='iso', obs_col='dataset',
+	def die_gene_test(self, kind='iso', obs_col='dataset',
 					  obs_conditions=None, rc_thresh=10, verbose=False):
 		"""
 		Finds genes with differential isoform expression between two conditions
@@ -1700,7 +1708,8 @@ class SwanGraph(Graph):
 		gene_de_df.reset_index(inplace=True)
 
 		# add summary table to anndata
-		uns_name = make_uns_key(kind='die',
+		kind = 'die_{}'.format(kind)
+		uns_name = make_uns_key(kind=kind,
 					obs_col=obs_col, obs_conditions=obs_conditions)
 
 		self.adata.uns[uns_name] = gene_de_df
@@ -1709,12 +1718,18 @@ class SwanGraph(Graph):
 
 	# filter differential isoform expression test results based on
 	# both an adjusted p value and dpi cutoff
-	def filter_die_results(self, obs_col, obs_conditions=None, p=0.05, dpi=10):
+	def get_die_genes(self, kind='iso',
+							obs_col='dataset',
+							obs_conditions=None,
+							p=0.05,
+							dpi=10):
 		"""
 		Filters differential isoform expression test results based on adj.
 		p-value and change in percent isoform usage (dpi).
 
 		Parameters:
+			kind (str): Choose from 'iso', 'tss' or 'tes'
+				Default: 'iso'
 			obs_col (str): Column name from self.adata.obs table to group on.
 				Default: 'dataset'
 			obs_conditions (list of str, len 2): Which conditions from obs_col
@@ -1732,13 +1747,15 @@ class SwanGraph(Graph):
 
 		# check to see if this was even tested
 		uns_name = make_uns_key(kind='die',
-					obs_col=obs_col, obs_conditions=obs_conditions)
+					obs_col=obs_col,
+					obs_conditions=obs_conditions,
+					die_kind=kind)
 		try:
 			test = self.adata.uns[uns_name]
 		except:
 			raise Exception('Problem accessing DIE test results for {}, {}'.format(obs_col, obs_conditions))
 
-		test = test.loc[(df.adj_p_val<=p)&(test.dpi>=dpi)]
+		test = test.loc[(test.adj_p_val<=p)&(test.dpi>=dpi)]
 
 		return test
 
@@ -2192,8 +2209,10 @@ class SwanGraph(Graph):
 				   cmap='Spectral_r',
 				   include_qvals=False,
 				   q=0.05,
+				   log2fc=1,
+				   qval_obs_col=None,
+				   qval_obs_conditions=None,
 				   include_unexpressed=False,
-				   indicate_dataset=False,
 				   indicate_novel=False,
 				   display_numbers=False,
 				   transcript_name=False,
@@ -2235,13 +2254,12 @@ class SwanGraph(Graph):
 			q (float): Q-value significance threshold to use when
 				bolding transcripts if include_qvals = True.
 				Default: 0.05
+			log2fc (float): Log2fc significance threshold to use when
+				bolding transcripts if include_qvals = True
+			qval_obs_col (str): Metadata column from self.adata
 			include_unexpressed (bool): Add transcript entries to report
 				that are not expressed in any input dataset.
 				Default: False
-			indicate_dataset (str): Dataset name from SwanGraph to
-				emphasize with outlined nodes and dashed edges
-				Incompatible with indicate_novel
-				Default: False (no highlighting)
 			indicate_novel (bool): Emphasize novel nodes and edges by
 				outlining them and dashing them respectively
 				Incompatible with indicate_dataset
@@ -2277,6 +2295,8 @@ class SwanGraph(Graph):
 
 		else:
 			multi_groupby = False
+
+		indicate_dataset = False
 
 		# check if metadata columns are present
 		if metadata_cols:
@@ -2341,31 +2361,6 @@ class SwanGraph(Graph):
 		else:
 			columns = None
 
-		# # columns to display should be an order of either datasets or values
-		# # from obs_col of things to include and the order
-		# if groupby and columns:
-		# 	gb_cats = self.adata.obs[groupby].unique().tolist()
-		# 	for d in columns:
-		# 		if d not in gb_cats:
-		# 			raise ValueError('Groupby category {} not present in '.format(d)+\
-		# 				'metadata column {}.'.format(groupby))
-		# elif groupby and not columns:
-		# 	columns = self.adata.obs[groupby].unique().tolist()
-		# # if none given, display all
-		# elif not columns:
-		# 	columns = self.datasets
-		# # if datasets are given, make sure they're in the SwanGraph
-		# else:
-		# 	self.check_datasets(columns)
-
-		# # make sure all input datasets are present in graph
-		# if datasets == 'all':
-		# 	datasets = self.datasets
-		# elif not datasets:
-		# 	datasets = []
-		# else:
-		# 	self.check_datasets(datasets)
-
 		# if we've asked for novelty first check to make sure it's there
 		if novelty:
 			if not self.has_novelty():
@@ -2420,17 +2415,22 @@ class SwanGraph(Graph):
 		if not include_unexpressed:
 			t_df = t_df.loc[t_df.any(axis=1)]
 
-		# # make sure de has been run if needed
-		# if include_qvals:
-		# 	if not self.check_de('transcript'):
-		# 		raise Exception('Differential transcript expression test needed '
-		# 			'to use include_qvals. Run de_transcript_test.')
-		# 	de_df = self.det_test.copy(deep=True)
-		# 	t_df = reset_dupe_index(t_df, 'tid')
-		# 	t_df['significant'] = False
-		# 	t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
-		# 	t_df['significant'] = t_df.qval <= q
-		# 	t_df = set_dupe_index(t_df, 'tid')
+		# make sure de has been run if needed
+		if include_qvals:
+			uns_key = make_uns_key(kind='det',
+								   obs_col=qval_obs_col,
+					   			   obs_conditions=qval_obs_conditions)
+			qval_df = self.adata.uns[uns_key].copy(deep=True)
+			qval_df['significant'] = (qval_df.qval <= q)&(qval_df.log2fc >= log2fc)
+		else:
+			qval_df = None
+
+			# t_df = reset_dupe_index(t_df, 'tid')
+			# t_df.rename({'index':'tid'}, axis=1, inplace=True)
+			# t_df['significant'] = False
+			# t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
+			# t_df['significant'] = t_df.qval <= q
+			# t_df = set_dupe_index(t_df, 'tid')
 
 		# get tids in this report
 		report_tids = t_df.index.tolist()
@@ -2549,6 +2549,7 @@ class SwanGraph(Graph):
 						g_min=g_min,
 						g_max=g_max,
 						include_qvals=include_qvals,
+						qval_df=qval_df,
 						display_numbers=display_numbers,
 						t_disp=t_disp)
 		report.add_page()

@@ -59,7 +59,7 @@ def set_dupe_index(df, ind_name):
 	df.rename({ind_name+'_back': ind_name}, inplace=True, axis=1)
 	return(df)
 
-def make_uns_key(kind, obs_col, obs_conditions):
+def make_uns_key(kind, obs_col, obs_conditions, die_kind='iso'):
 	"""
 	Make a key name to reference die, det, or deg results in the .uns part of
 	SwanGraph.adata.
@@ -68,13 +68,23 @@ def make_uns_key(kind, obs_col, obs_conditions):
 		kind (str): Choose 'det', 'die', 'deg' (for differential transcript,
 			isoform switching / differential isoform expression,
 			differential gene expression respectively)
+		obs_col (str): Column name from self.adata.obs table to group on.
+		obs_conditions (list of str, len 2): Which conditions from obs_col
+			to compare? Required if obs_col has more than 2 unique values.
+		die_kind (str): Which DIE test results. Choose from 'iso', 'tss', 'tes'
+			Default: 'tss'
 
 	Returns:
 		uns_name (str): Name of .uns key
 	"""
+	if kind == 'die':
+		kind = 'die_{}'.format(die_kind)
 
 	uns_name = '{}_{}'.format(kind, obs_col)
 	if obs_conditions:
+		# sort arbitrarily for reproducibility regardless
+		# of order conditions were passed in
+		obs_conditions = sorted(obs_conditions)
 		for cond in obs_conditions:
 			uns_name += '_{}'.format(cond)
 	return uns_name
