@@ -217,7 +217,7 @@ class Report(FPDF):
 
 		# corresponding entry from qval_df
 		if self.include_qvals:
-			qval_entry = self.qval_df.loc[self.qval_df.tid == tid].head(1).squeeze()
+			qval_entry = self.qval_df.loc[self.qval_df.tid == entry.name].head(1).squeeze()
 
 		# entries should not be bolded
 		if self.include_qvals:

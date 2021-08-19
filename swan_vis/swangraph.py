@@ -2282,6 +2282,8 @@ class SwanGraph(Graph):
 		"""
 
 		# check if groupby column is present
+		multi_groupby = False
+		indicate_dataset = False
 		if groupby:
 			# grouping by more than one column
 			if type(groupby) == list and len(groupby) > 1:
@@ -2293,10 +2295,6 @@ class SwanGraph(Graph):
 			elif groupby not in self.adata.obs.columns.tolist():
 				raise Exception('Groupby column {} not found'.format(groupby))
 
-		else:
-			multi_groupby = False
-
-		indicate_dataset = False
 
 		# check if metadata columns are present
 		if metadata_cols:
@@ -2390,12 +2388,24 @@ class SwanGraph(Graph):
 				t_df = t_df.transpose()
 		else:
 			if layer == 'tpm':
+				# use whole adata to calc tpm
 				t_df = tpm_df = self.get_tpm().transpose()
+				t_df = t_df[subset_adata.obs.dataset.tolist()]
+				# t_df = tpm_df = calc_tpm(subset_adata, sg.t_df).transpose()
 			elif layer == 'pi':
 				# calc tpm just so we can order based on exp
+				# tpm_df = calc_tpm(subset_adata, self.t_df).transpose()
 				t_df = tpm_df = self.get_tpm().transpose()
-				t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col='dataset')
+				t_df = t_df[subset_adata.obs.dataset.tolist()]
+				t_df, _ = calc_pi(sg.adata, sg.t_df)
 				t_df = t_df.transpose()
+			# if layer == 'tpm':
+			# 	t_df = tpm_df = self.get_tpm().transpose()
+			# elif layer == 'pi':
+			# 	# calc tpm just so we can order based on exp
+			# 	t_df = tpm_df = self.get_tpm().transpose()
+			# 	t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col='dataset')
+			# 	t_df = t_df.transpose()
 
 		# order transcripts by user's preferences
 		if order == 'expression' and self.abundance == False:
@@ -2424,13 +2434,6 @@ class SwanGraph(Graph):
 			qval_df['significant'] = (qval_df.qval <= q)&(qval_df.log2fc >= log2fc)
 		else:
 			qval_df = None
-
-			# t_df = reset_dupe_index(t_df, 'tid')
-			# t_df.rename({'index':'tid'}, axis=1, inplace=True)
-			# t_df['significant'] = False
-			# t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
-			# t_df['significant'] = t_df.qval <= q
-			# t_df = set_dupe_index(t_df, 'tid')
 
 		# get tids in this report
 		report_tids = t_df.index.tolist()
