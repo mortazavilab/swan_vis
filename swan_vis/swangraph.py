@@ -15,6 +15,8 @@ from statsmodels.stats.multitest import multipletests
 import multiprocessing
 from itertools import repeat
 from tqdm import tqdm
+import matplotlib.colors as mc
+import colorsys
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -34,8 +36,6 @@ class SwanGraph(Graph):
 			Names of datasets in the Graph
 		counts (list of str):
 			Names of columns holding counts in the Graph
-		tpm (list of str):
-			Names of columns holding tpm values in the Graph
 		loc_df (pandas DataFrame):
 			DataFrame of all unique observed genomic
 			coordinates in the transcriptome
@@ -1944,6 +1944,47 @@ class SwanGraph(Graph):
 	############################ Plotting utilities ##########################
 	##########################################################################
 
+	def set_plotting_colors(self, cmap=None, default=False):
+		"""
+		Set plotting colors for SwanGraph and browser models.
+
+		Parameters:
+			cmap (dict): Dictionary of metadata value : color (hex code with #
+				character or named matplotlib color). Keys should be a subset
+				or all of ['tss', 'tes', 'internal', 'exon', 'intron', 'browser']
+				Default: None
+			default (bool): Whether to revert to default colors
+		"""
+
+		def adjust_lightness(color, amount=0.5):
+		    import colorsys
+		    import matplotlib.colors as mc
+		    try:
+		        c = mc.cnames[color]
+		    except:
+		        c = color
+		    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+		    c = colorsys.hls_to_rgb(c[0], .8, c[2])
+		    c = mc.to_hex(c)
+		    return c
+
+		# user-defined colors
+		if cmap:
+			grays = ['exon', 'intron', 'tss', 'tes']
+			# if colors are named, get hex code
+			for key, item in cmap.items():
+				if '#' not in item:
+					cmap[key] = mc.cnames[item]
+				self.pg.color_dict[key] = item
+				if key in grays:
+					gray_key = '{}_gray'.format(key)
+					gray_color = adjust_lightness(item, 2)
+					self.pg.color_dict[gray_key] = gray_color
+
+		# just get the default colors
+		if default:
+			self.pg.color_dict = self.pg.get_color_dict()
+
 	def set_metadata_colors(self, obs_col, cmap):
 		"""
 		Set plotting colors for datasets based on a column in the metadata
@@ -1972,7 +2013,7 @@ class SwanGraph(Graph):
 		# if colors are named, get hex code
 		for key, item in cmap.items():
 			if '#' not in item:
-				cmap[key] = mpl.colors.cnames[item]
+				cmap[key] = mc.cnames[item]
 
 		# also store rgb values in dict for use with gen_report
 		for key, item in cmap.items():
@@ -2524,7 +2565,7 @@ class SwanGraph(Graph):
 
 		# merge with sg.t_df to get additional columns
 		datasets = t_df.columns
-		cols = ['novelty', 'tname'] # TODO - qval?
+		cols = ['novelty', 'tname']
 		t_df = t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
 
 		# create report

@@ -135,9 +135,10 @@ talon_filter_transcripts \
 	--minDatasets 2 \
 	--o hffc6_pass_list.csv
     
-cat hepg2_pass_list.csv > all_pass_list.csv
-cat hffc6_pass_list >> all_pass_list.csv 
-sort all_pass_list.csv | uniq > all_pass_list.csv
+cat hepg2_pass_list.csv > temp.csv
+cat hffc6_pass_list.csv >> temp.csv 
+cat temp.csv | uniq > all_pass_list.csv
+rm temp.csv
 ```
 
 ## Create a GTF of annotated transcripts for all observed transcripts that passed filtering
