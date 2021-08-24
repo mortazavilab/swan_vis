@@ -11,673 +11,797 @@ import sqlite3
 import pickle
 import anndata
 import diffxpy.api as de
+from statsmodels.stats.multitest import multipletests
 import multiprocessing
 from itertools import repeat
 from tqdm import tqdm
+import matplotlib.colors as mc
+import colorsys
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
 from swan_vis.plottedgraph import PlottedGraph
 from swan_vis.report import Report
 
+pd.options.mode.chained_assignment = None
+
 class SwanGraph(Graph):
 	"""
 	A graph class to represent a transcriptome and perform
 	plotting and analysis from it
 
-		Attributes:
+	Attributes:
 
-			datasets (list of str):
-				Names of datasets in the Graph
-			counts (list of str):
-				Names of columns holding counts in the Graph
-			tpm (list of str):
-				Names of columns holding tpm values in the Graph
-			loc_df (pandas DataFrame):
-				DataFrame of all unique observed genomic
-				coordinates in the transcriptome
-			edge_df (pandas DataFrame):
-				DataFrame of all unique observed exonic or intronic
-				combinations of splice sites in the transcriptome
-			t_df (pandas DataFrame):
-				DataFrame of all unique transcripts found
-				in the transcriptome
-			pg (swan PlottedGraph):
-				The PlottedGraph holds the information from the most
-				recently made plot
-			deg_test (pandas DataFrame):
-				A summary table of the results of a differential gene
-				expression test
-			deg_test_groups (list of str, len 2):
-				The configuration of groupings used to run the differential
-				gene expression test
-				det_test (pandas DataFrame):
-				A summary table of the results of a differential transcript
-				expression test
-			det_test_groups (list of str, len 2):
-				The configuration of groupings used to run the differential
-				transcript expression test
+		datasets (list of str):
+			Names of datasets in the Graph
+		counts (list of str):
+			Names of columns holding counts in the Graph
+		loc_df (pandas DataFrame):
+			DataFrame of all unique observed genomic
+			coordinates in the transcriptome
+		edge_df (pandas DataFrame):
+			DataFrame of all unique observed exonic or intronic
+			combinations of splice sites in the transcriptome
+		t_df (pandas DataFrame):
+			DataFrame of all unique transcripts found
+			in the transcriptome
+		pg (swan PlottedGraph):
+			The PlottedGraph holds the information from the most
+			recently made plot
+		adata (anndata AnnData):
+			Annotated data object to hold transcript expression values
+			and metadata
+		edge_adata (anndata AnnData):
+			Annotated data object to hold edge expression values and metadata
+		tss_adata (anndata AnnData):
+			Annotated data object to hold TSS expression values and metadata
+		tes_adata (anndata AnnData):
+			Annotated data object to hold TES expression values and metadata
 	"""
 
-	def __init__(self, file=None):
+	def __init__(self, sc=False):
 
-		if not file:
-			super().__init__()
+		super().__init__()
 
-			# only a SwanGraph should have a plotted graph
-			self.pg = PlottedGraph()
+		# only a SwanGraph should have a plotted graph
+		self.pg = PlottedGraph()
 
-			# only a SwanGraph should have DEG and DET data
-			self.deg_test = pd.DataFrame()
-			self.deg_test_groups = ''
-			self.det_test = pd.DataFrame()
-			self.det_test_groups = ''
-
+		if sc:
+			self.sc = True
 		else:
-			check_file_loc(file, 'SwanGraph')
-			self.load_graph(file)
+			self.sc = False
 
 	###########################################################################
 	############## Related to adding datasets and merging #####################
 	###########################################################################
 
-	def add_datasets(self, config, include_isms=False, verbose=False):
-		"""
-		Add transcripts from multiple datasets from a config TSV file
-
-			Parameters:
-
-				config (str): Path to TSV config file with the following
-					columns (indicated by the header):
-
-					Required:
-						col: Name of column to add data to in the SwanGraph
-						fname: Path to GTF or TALON db
-
-					Optional:
-						dataset_name: Dataset name in TALON db to add transcripts from
-							Default=None
-						whitelist: TALON whitelist of transcripts to add.
-							Default: None
-						counts_file: Path to tsv counts matrix
-							Default=None
-						count_cols: Column names in counts_file to use
-							Default=None
-						tid_col: Column name in counts_file containing transcript id
-							Default='annot_transcript_id'
-
-				include_isms (bool): Include ISMs from input datasets
-					Default=False
-
-				verbose (bool): Display progress
-					Default: False
-		"""
-
-		# make sure the config file exits
-		check_file_loc(config, 'config')
-
-		# read in the config file
-		df = pd.read_csv(config, sep='\t')
-
-		# check for required columns
-		if 'fname' not in df.columns:
-			raise Exception('Please provide the "fname" column in '
-				'config file for batch SwanGraph initialization.')
-		if 'col' not in df.columns:
-			raise Exception('Please provide the "col" column in '
-				'config file for batch SwanGraph initialization.')
-
-		# are there any unexpected columns?
-		expected_cols = ['fname', 'col',
-						 'whitelist', 'dataset_name',
-						 'counts_file', 'count_cols',
-						 'tid_col', 'include_isms',
-						 'verbose']
-		for c in df.columns.tolist():
-			if c not in expected_cols:
-				print('Encountered unexpected column name "{}"'.format(c))
-
-		# loop through each entry in config file
-		for ind, entry in df.iterrows():
-
-			# get the values for the rest of the arguments
-			file = entry['fname']
-			col = entry['col']
-
-			kwargs = {}
-			for c in df.columns.tolist():
-				if c != 'fname' and c != 'col':
-					if not pd.isnull(entry[c]):
-						kwargs[c] = entry[c]
-
-			# call add_annotation if we got that as a column
-			if col == 'annotation':
-				self.add_annotation(file, verbose=verbose)
-
-			# otherwise add_dataset
-			else:
-				self.add_dataset(col, file,
-					include_isms=include_isms,
-					verbose=verbose, **kwargs)
-
 	def add_annotation(self, fname, verbose=False):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
 
-			Parameters:
-				fname (str): Path to annotation GTF
-				verbose (bool): Display progress
-					Default: False
+		Parameters:
+			fname (str): Path to annotation GTF
+			verbose (bool): Display progress
+				Default: False
 		"""
 
-		# column name for annotation
-		col = 'annotation'
+		# is there already an annotation?
+		if self.annotation:
+			raise ValueError('Annotation already added to SwanGraph')
 
 		# use the add_dataset function to add stuff to graph
-		self.add_dataset(col, fname, include_isms=True, verbose=verbose)
+		self.add_dataset(fname, include_isms=True, \
+			annotation=True, verbose=verbose)
 
 		# call all transcripts from the annotation "Known"
 		self.t_df.loc[self.t_df.annotation == True, 'novelty'] = 'Known'
 		self.t_df.novelty.fillna('Undefined', inplace=True)
 
-	def add_dataset(self, col, fname,
-					dataset_name=None,
-					whitelist=None,
-					counts_file=None, count_cols=None,
-					tid_col='annot_transcript_id',
+		# set flag
+		self.annotation = True
+
+	def add_transcriptome(self, fname, pass_list=None,
+		include_isms=False, verbose=False):
+
+		"""
+		Adds a whole transcriptome from a set of samples. No abundance is
+		included here!
+
+		Parameters:
+			fname (str): Path to GTF or TALON db
+			pass_list (str): Path to pass list file (if passing a TALON DB)
+			include_isms (bool): Include ISMs from input dataset
+				Default: False
+			verbose (bool): Display progress
+				Default: False
+		"""
+
+		# use the add_dataset function to add transcripts to graph
+		tids = self.add_dataset(fname, pass_list=pass_list,
+			include_isms=include_isms,
+			verbose=verbose)
+
+		# fill NaN annotation transcripts with false
+		if 'annotation' in self.t_df.columns:
+			self.t_df.annotation.fillna(False, inplace=True)
+
+	def add_dataset(self, fname,
+					pass_list=None,
 					include_isms=False,
-					verbose=False,
-					**kwargs):
+					annotation=False,
+					verbose=False):
 		"""
 		Add transcripts from a dataset from either a GTF or a TALON database.
 
-			Parameters:
-
-				col (str): Name of column to add data to in the SwanGraph
-				fname (str): Path to GTF or TALON db
-
-				# Only for loading from TALON
-				dataset_name (str): Dataset name in TALON db to add transcripts from
-					Default=None
-				whitelist (str): TALON whitelist of transcripts to add.
-					Default: None
-
-				# Only if also adding abundance
-				counts_file (str): Path to tsv counts matrix
-					Default=None
-				count_cols (str or list of str): Column names in counts_file to use
-					Default=None
-				tid_col (str): Column name in counts_file containing transcript id
-					Default='annot_transcript_id'
-
-				include_isms (bool): Include ISMs from input dataset
-					Default=False
-
-				verbose (bool): Display progress
-					Default: False
+		Parameters:
+			fname (str): Path to GTF or TALON db
+			pass_list (str): Path to pass list file
+			include_isms (bool): Include ISMs from input dataset
+				Default: False
+			annotation (bool): Whether transcripts being added are from
+				an annotation. Set automatically from add_annotation.
+				Default: False
+			verbose (bool): Display progress
+				Default: False
 		"""
-
-		# make sure that input dataset name is not
-		# already in any of the df col spaces
-		if col in self.datasets:
-			raise Exception('Dataset {} is already in the graph. '
-				'Provide a different name.'.format(col))
-		if col in self.loc_df.columns:
-			raise Exception('Dataset name {} conflicts with preexisting '
-				'column in loc_df. Choose a different name.'.format(col))
-		if col in self.edge_df.columns:
-			raise Exception('Dataset name {} conflicts with preexisting '
-				'column in edge_df. Choose a different name.'.format(col))
-		if col in self.t_df.columns:
-			raise Exception('Dataset name {} conflicts with preexisting '
-				'column in t_df. Choose a different name.'.format(col))
 
 		# are we dealing with a gtf or a db?
 		ftype = gtf_or_db(fname)
 
-		print()
-		print('Adding dataset {} to the SwanGraph'.format(col))
-
-		# first entry is easy
-		if self.is_empty():
-
-			# get loc_df, edge_df, t_df
-			if ftype == 'gtf':
-				self.create_dfs_gtf(fname, verbose)
-			elif ftype == 'db':
-				self.create_dfs_db(fname, whitelist, dataset_name, verbose)
-
-			# add column to each df to indicate where data came from
-			self.loc_df[col] = True
-			self.edge_df[col] = True
-			self.t_df[col] = True
-
-		# adding a new dataset to the graph requires us to merge
-		# SwanGraph objects
+		if annotation:
+			data = 'annotation'
 		else:
-			temp = SwanGraph()
-			if ftype == 'gtf':
-				temp.create_dfs_gtf(fname, verbose)
-			elif ftype == 'db':
-				temp.create_dfs_db(fname, whitelist, dataset_name, verbose)
-			self.merge_dfs(temp, col, verbose)
+			data = 'transcriptome'
+		print()
+		print('Adding {} to the SwanGraph'.format(data))
 
-		# remove isms if we have access to that information
-		if 'novelty' in self.t_df.columns and not include_isms:
-			self.t_df = self.t_df.loc[self.t_df.novelty != 'ISM']
+		# get loc_df, edge_df, t_df
+		if ftype == 'gtf':
+			check_file_loc(fname, 'GTF')
+			t_df, exon_df, from_talon = parse_gtf(fname, include_isms, verbose)
+		elif ftype == 'db':
+			check_file_loc(fname, 'TALON DB')
+			observed = True
+			t_df, exon_df = parse_db(fname, pass_list, observed,
+									 include_isms, verbose)
+			from_talon = True
 
-		# order node ids by genomic position, add node types,
+		# keep track of transcripts from GTF if we're adding annotation
+		if annotation:
+			annot_tids = t_df.tid.tolist()
+
+		# create the dfs with new and preexisting data and assign them to the
+		# df fields of the SwanGraph
+		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
+
+		self.loc_df = loc_df
+		self.edge_df = edge_df
+		self.t_df = t_df
+
+		# add location path
+		self.get_loc_path()
+
+		# remove ISM transcripts and locations and edges exclusively from ISM
+		# transcripts
+		if not include_isms:
+			self.remove_isms()
+
+		# label elements from the annotation
+		if annotation:
+			self.label_annotated(annot_tids)
+
+		# # remove isms if we have access to that information
+		# if 'novelty' in self.t_df.columns and not include_isms:
+		# 	self.t_df = self.t_df.loc[self.t_df.novelty != 'ISM']
+
+		# if there's already an annotation, label the transcripts added
+		# that are not in the annotation
+		if self.annotation and not annotation:
+			self.t_df.annotation = self.t_df.annotation.fillna(False)
+			self.edge_df.annotation = self.edge_df.annotation.fillna(False)
+			self.loc_df.annotation = self.loc_df.annotation.fillna(False)
+
+		# order node ids by genomic position, add node types, add loc_path,
 		# and create graph
 		if verbose:
 			print('Reindexing and sorting entries on genomic location...')
+
 		self.update_ids(verbose=verbose)
 		self.order_edge_df()
 		self.order_transcripts()
 		self.get_loc_types()
 		self.create_graph_from_dfs()
 
-		# update graph metadata
-		self.datasets.append(col)
-
-		# if we're also adding abundances
-		if counts_file and count_cols:
-			self.add_abundance(counts_file, count_cols,
-				col, tid_col, verbose)
-
 		if verbose:
-			print('Dataset {} added to the SwanGraph'.format(col))
+			if annotation:
+				data = 'annotation'
+			else:
+				data = 'transcriptome'
+			print()
+			print('{} added to the SwanGraph'.format(data.capitalize()))
 
-	def add_abundance(self, counts_file, count_cols,
-					  dataset_name, tid_col='annot_transcript_id',
-					  verbose=False):
+	def remove_isms(self):
 		"""
-		Adds abundance information to an existing dataset in the SwanGraph.
+		Remove ISM transcripts as well as nodes and edges that exclusively
+		come from ISM transcripts.
+		"""
+		if 'novelty' in self.t_df.columns:
 
-			Parameters:
+			# transcripts
+			self.t_df = self.t_df.loc[self.t_df.novelty != 'ISM']
 
-				counts_file (str): Path to tsv counts matrix
-				count_cols (str or list of str): Column names in counts_file to use
-				dataset_name (str): Name of SwanGraph dataset to associate abundance with
-				tid_col (str): Column name in counts_file containing transcript id
-					Default: 'annot_transcript_id'
+			# edges
+			edge_df = pivot_path_list(self.t_df, 'path')
+			eids = edge_df.edge_id.unique().tolist()
+			self.edge_df = self.edge_df.loc[eids]
 
-				verbose (bool): Display progress updates
-					Default: False
+			# locs
+			loc_df = pivot_path_list(self.t_df, 'loc_path')
+			lids = loc_df.vertex_id.unique().tolist()
+			self.loc_df = self.loc_df.loc[lids]
+
+	def add_abundance(self, counts_file):
+		"""
+		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
+		SwanGraph but not in the counts matrix will be assigned 0 counts.
+		Transcripts in the abundance matrix but not in the SwanGraph will not
+		have expression added.
+
+		Parameters:
+			counts_file (str): Path to TSV expression file where first column is
+				the transcript ID and following columns name the added datasets and
+				their counts in each dataset, OR to a TALON abundance matrix.
 		"""
 
-		if verbose:
-			print('Adding abundance information...')
+		# read in abundance file
+		check_file_loc(counts_file, 'abundance matrix')
+		try:
+			df = pd.read_csv(counts_file, sep='\t')
+		except:
+			raise ValueError('Problem reading expression matrix {}'.format(counts_file))
 
-		# if the dataset we're trying to add counts too doesn't exist
-		if dataset_name not in self.datasets:
-			raise Exception('Trying to add expression data to a dataset '
-							'that is not in the graph. Add dataset to graph first.')
+		# check if abundance matrix is a talon abundance matrix
+		cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
+		 	'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
+			'gene_novelty', 'transcript_novelty', 'ISM_subtype']
+		if df.columns.tolist()[:11] == cols:
+			df = reformat_talon_abundance(counts_file)
 
-		# get counts from input abundance file
-		abundance_df = process_abundance_file(counts_file, count_cols, tid_col)
-		abundance_df.rename({'tpm': '{}_tpm'.format(dataset_name),
-							 'counts': '{}_counts'.format(dataset_name)},
-							 axis=1, inplace=True)
+		# rename transcript ID column
+		col = df.columns[0]
+		df.rename({col: 'tid'}, axis=1, inplace=True)
 
-		# merge on transcript id (tid) with t_df and make sure it's
-		# formatted correctly
-		self.t_df.reset_index(drop=True, inplace=True)
-		self.t_df = self.t_df.merge(abundance_df, on='tid', how='left')
-		self.t_df.fillna(value=0, inplace=True)
-		self.t_df = create_dupe_index(self.t_df, 'tid')
-		self.t_df = set_dupe_index(self.t_df, 'tid')
+		# limit to just the transcripts already in the graph
+		sg_tids = self.t_df.tid.tolist()
+		ab_tids = df.tid.tolist()
 
-		# finally update object's metadata
-		self.counts.append('{}_counts'.format(dataset_name))
-		self.tpm.append('{}_tpm'.format(dataset_name))
+		# right merge to keep everything in the t_df already
+		df = df.merge(self.t_df['tid'].to_frame(), how='right', left_on='tid', right_index=True)
+		df.drop(['tid_x', 'tid_y'], axis=1, inplace=True)
 
-	# merge dfs from two SwanGraph objects
-	def merge_dfs(self, b, b_col, verbose):
+		# fill NaNs with 0 counts
+		df.fillna(0, inplace=True)
+		df.set_index('tid', inplace=True)
 
-		if verbose:
-			print('Merging with preexisting SwanGraph...')
+ 		# transpose to get adata format
+		df = df.T
 
-		# merge loc dfs
-		# what locations correspond between the datasets?
-		self.merge_loc_dfs(b, b_col)
-		id_map = self.get_merged_id_map()
+		# get adata components - obs, var, and X
+		var = df.columns.to_frame()
+		var.columns = ['tid']
+		obs = df.index.to_frame()
+		obs.columns = ['dataset']
+		X = df.to_numpy()
 
-		self.loc_df.drop(['vertex_id_a','vertex_id_b'], axis=1, inplace=True)
-		self.loc_df['vertex_id'] = self.loc_df.index
-		self.loc_df = create_dupe_index(self.loc_df, 'vertex_id')
-		self.loc_df = set_dupe_index(self.loc_df, 'vertex_id')
-		b.loc_df = create_dupe_index(b.loc_df, 'vertex_id')
-		b.loc_df = set_dupe_index(b.loc_df, 'vertex_id')
+		# add each dataset to list of "datasets", check if any are already there!
+		datasets = obs.dataset.tolist()
+		for d in datasets:
+			if d in self.datasets:
+				raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
+		self.datasets.extend(datasets)
 
-		# update the ids in b to make edge_df, t_df merging easier
-		b.update_ids(id_map=id_map)
+		print()
+		if len(datasets) <= 5:
+			print('Adding abundance for datasets {} to SwanGraph.'.format(', '.join(datasets)))
+		else:
+			mini_datasets = datasets[:5]
+			n = len(datasets) - len(mini_datasets)
+			print('Adding abundance for datasets {}... (and {} more) to SwanGraph'.format(', '.join(mini_datasets), n))
 
-		# merge edge_df and t_df
-		self.merge_edge_dfs(b, b_col)
-		self.merge_t_dfs(b, b_col)
+		# if there is preexisting abundance data in the SwanGraph, concatenate
+		# otherwise, adata is the new transcript level adata
+		if not self.has_abundance():
 
-	# merge t_dfs on tid, gid, gname, path
-	def merge_t_dfs(self, b, b_col):
+			# create transcript-level adata object
+			self.adata = anndata.AnnData(var=var, obs=obs, X=X)
 
-		# print note to user about merging with novelty
-		existing_cols = self.t_df.columns
-		add_cols = b.t_df.columns
-		if 'novelty' not in existing_cols and 'novelty' in add_cols:
-			print('Novelty info not found for '
-				  'existing data. Transcripts '
-				  'without novelty information will be '
-				  'labelled "Undefined".')
-		elif 'novelty' not in add_cols and 'novelty' in existing_cols:
-			print('Novelty info not found for '
-				 '{} data. Transcripts '
-				 'without novelty information will be '
-				 'labelled "Undefined".'.format(b_col))
+			# add counts as layers
+			self.adata.layers['counts'] = self.adata.X
+			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
 
-		# some df reformatting
-		self.t_df.reset_index(drop=True, inplace=True)
-		b.t_df.reset_index(drop=True, inplace=True)
-		b.t_df[b_col] = True
+			# could probably parallelize calc_pi
+			if not self.sc:
+				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+		else:
+			# concatenate the raw, tpm, and pi data
+			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
 
-		# convert paths to tuples so we can merge on them
-		self.t_df.path = self.t_df.path.map(tuple)
-		b.t_df.path = b.t_df.path.map(tuple)
+			# concatenate obs
+			obs = pd.concat([self.adata.obs, obs], axis=0)
 
-		# merge on transcript information
-		t_df = self.t_df.merge(b.t_df,
-			   how='outer',
-			   on=['tid', 'gid', 'gname', 'path'],
-			   suffixes=['_a', '_b'])
+			# construct a new adata from the concatenated objects
+			adata = anndata.AnnData(var=var, obs=obs, X=X)
+			adata.layers['counts'] = X
 
-		# convert path back to list
-		t_df.path = list(t_df.path)
+			# some cleanup for unstructured data
+			adata.uns = self.adata.uns
 
-		# assign False to entries that are not in the new dataset,
-		# and to new entries that were not in the prior datasets
-		d_cols = self.datasets+[b_col]
-		t_df[d_cols] = t_df[d_cols].fillna(value=False, axis=1)
+			# set anndata to new guy
+			self.adata = adata
 
-		# deal with novelties
-		t_df_cols = t_df.columns.tolist()
-		if 'novelty' in t_df_cols or 'novelty_a' in t_df_cols:
-			t_df = self.merge_t_df_novelties(t_df)
+			# recalculate pi and tpm
+			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
 
-		# set up index again
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
+			if not self.sc:
+				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
 
-		self.t_df = t_df
+		# add abundance for edges, TSS per gene, and TES per gene
+		self.create_edge_adata()
+		self.create_end_adata(kind='tss')
+		self.create_end_adata(kind='tes')
 
-	def merge_t_df_novelties(self, t_df):
+		# set abundance flag to true
+		self.abundance = True
 
-		# merged dfs with and without novelty
-		if 'novelty' in t_df.columns.tolist():
-			t_df.fillna(value={'novelty': 'Undefined'},
-				inplace=True)
+	def add_metadata(self, fname, overwrite=False):
+		"""
+		Adds metadata to the SwanGraph from a tsv.
 
-		# merged dfs where both have novelty types
-		elif 'novelty_a' in t_df.columns.tolist():
+		Parameters:
+			fname (str): Path / filename of tab-separated input file to add as
+				metadata for the datasets in the SwanGraph. Must contain column
+				'dataset' which contains dataset names that match those already
+				in the SwanGraph.
+			overwrite (bool): Whether or not to overwrite duplicated columns
+				already present in the SwanGraph.
+				Default: False
+		"""
 
-			# if we already have any undefined entries, fill with nan
-			t_df.replace({'novelty_a': {'Undefined': np.nan},
-						  'novelty_b': {'Undefined': np.nan}},
-						  inplace=True)
+		# read in abundance file
+		check_file_loc(fname, 'metadata file')
+		try:
+			df = pd.read_csv(fname, sep='\t')
+		except:
+			raise ValueError('Problem reading metadata file {}'.format(fname))
 
-			# first take values that are only present in one dataset
-			t_df['novelty_a'].fillna(t_df['novelty_b'], inplace=True)
-			t_df['novelty_b'].fillna(t_df['novelty_a'], inplace=True)
-			a = t_df[['tid', 'novelty_a']].copy(deep=True)
-			a.rename({'novelty_a': 'novelty'}, axis=1, inplace=True)
-			a.reset_index(drop=True, inplace=True)
-			b = t_df[['tid', 'novelty_b']].copy(deep=True)
-			b.rename({'novelty_b': 'novelty'}, axis=1, inplace=True)
-			b.reset_index(drop=True, inplace=True)
+		# has abundance been added yet?
+		if not self.abundance:
+			raise ValueError('Cannot add metadata. No datasets have been added')
 
-			# merge novelties on tid and novelty, then extract
-			# transcript ids that are duplicated, which represent
-			# those that have conflicting novelty assignments
-			nov = a.merge(b, on=['tid', 'novelty'], how='outer')
-			amb_tids = nov[nov.tid.duplicated()].tid.tolist()
+		# which columns are duplicate?
+		sg_cols = list(set(self.adata.obs.columns.tolist())-set(['dataset']))
+		meta_cols = list(set(df.columns.tolist())-set(['dataset']))
+		dupe_cols = [c for c in meta_cols if c in sg_cols]
 
-			# label conflicting transcripts as Ambiguous
-			if amb_tids:
-				print('Novelty types between datasets conflict. Strongly '
-					  'consider using input from the same data source to '
-					  'reconcile these. Conflicting isoforms will be '
-					  'labelled "Ambiguous".')
-				nov.set_index('tid', inplace=True)
-				nov.loc[amb_tids, 'novelty'] = 'Ambiguous'
-				nov.reset_index(inplace=True)
-				nov.drop_duplicates(inplace=True)
+		# drop columns from one table depending on overwrite settings
+		adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
+		if dupe_cols:
+			if overwrite:
+				for adata in adatas:
+					if overwrite:
+						adata.obs.drop(dupe_cols, axis=1, inplace=True)
+			else:
+				df.drop(dupe_cols, axis=1, inplace=True)
 
-			# finally, merge new novelty types into t_df
-			t_df.drop(['novelty_a', 'novelty_b'], axis=1, inplace=True)
-			t_df = t_df.merge(nov, on='tid')
+		# for each anndata
+		for adata in adatas:
 
-		return t_df
+			# merge df with adata obs table
+			adata.obs = adata.obs.merge(df, how='left', on='dataset')
 
+			# make sure all dtypes in obs table are non intergers
+			for ind, entry in adata.obs.dtypes.to_frame().iterrows():
+				if entry[0] == 'int64':
+					adata.obs[ind] = adata.obs[ind].astype('str')
 
-	# merge edge_dfs on edge_id, v1, v2, strand, edge_type
-	def merge_edge_dfs(self, b, b_col):
+			# and set index to dataset
+			adata.obs['index'] = adata.obs.dataset
+			adata.obs.set_index('index', inplace=True)
 
-		# some df reformatting
-		self.edge_df.reset_index(drop=True, inplace=True)
-		b.edge_df.reset_index(drop=True, inplace=True)
-		b.edge_df[b_col] = True
+	##########################################################################
+	############# Obtaining abundance of edges, locs, and ends ###############
+	##########################################################################
+	def create_end_adata(self, kind):
+		"""
+		Create a tss / tes-level adata object. Enables calculating tss / tes
+		usage across samples.
 
-		# merge on edge info
-		edge_df = self.edge_df.merge(b.edge_df,
-				  how='outer',
-				  on=['edge_id', 'v1', 'v2', 'edge_type', 'strand'],
-				  suffixes=['_a', '_b'])
+		Parameters:
+			kind (str): Choose from 'tss' or 'tes'
+		"""
 
-		# assign False to entries that are not in the new dataset,
-		# and to new entries that were not in the prior datasets
-		d_cols = self.datasets+[b_col]
-		edge_df[d_cols] = edge_df[d_cols].fillna(value=False, axis=1)
+		df = get_ends(self.t_df, kind)
 
-		# remake index
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
+		# get a mergeable transcript expression df
+		tid = self.adata.var.index.tolist()
+		obs = self.adata.obs.index.tolist()
+		data = self.adata.layers['counts'].transpose()
+		t_exp_df = pd.DataFrame(columns=obs, data=data, index=tid)
+		t_exp_df = t_exp_df.merge(self.t_df, how='left',
+			left_index=True, right_index=True)
 
-		self.edge_df = edge_df
+		# merge counts per transcript with end expression
+		df = df.merge(t_exp_df, how='left',
+			left_index=True, right_index=True)
 
-	# merge loc_dfs on coord, chrom, strand
-	def merge_loc_dfs(self, b, b_col):
+		# sort based on vertex id
+		df.sort_index(inplace=True, ascending=True)
 
-		# some df reformatting
-		node_types = ['TSS', 'TES', 'internal']
+		# set index to gene ID, gene name, and vertex id ˘¿
+		df.reset_index(drop=True, inplace=True)
+		df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
+		df = df[self.datasets]
 
-		self.loc_df.drop(node_types, axis=1, inplace=True)
-		self.loc_df.reset_index(drop=True, inplace=True)
+		# groupby on gene and assign each unique TSS / gene combo an ID
+		id_col = '{}_id'.format(kind)
+		name_col = '{}_name'.format(kind)
+		df.reset_index(inplace=True)
+		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
+		df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
+						ascending=[True, True])\
+						.groupby(['gid']) \
+						.cumcount() + 1
+		df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
+		df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
+		df.drop('end_gene_num', axis=1, inplace=True)
 
-		# b.loc_df.drop(node_types, axis=1, inplace=True)
-		b.loc_df.reset_index(drop=True, inplace=True)
-		b.loc_df[b_col] = True
+		# obs, var, and X tables for new data
+		var_cols = ['gid', 'gname', 'vertex_id', id_col, name_col]
+		var = df[var_cols]
+		var.set_index('{}_id'.format(kind), inplace=True)
+		df.drop(var_cols, axis=1, inplace=True)
+		df = df[self.adata.obs.index.tolist()]
+		X = df.transpose().values
+		obs = self.adata.obs
 
-		# merge on location info
-		loc_df = self.loc_df.merge(b.loc_df,
-				 how='outer',
-				 on=['chrom', 'coord', 'strand'],
-				 suffixes=['_a','_b'])
+		if kind == 'tss':
 
-		# assign False to entries that are not in the new dataset,
-		# and to new entries that were not in prior datasets
-		d_cols = self.datasets+[b_col]
-		loc_df[d_cols] = loc_df[d_cols].fillna(value=False, axis=1)
+			# create end-level adata object
+			self.tss_adata = anndata.AnnData(var=var, obs=obs, X=X)
 
-		self.loc_df = loc_df
+			# add counts and tpm as layers
+			self.tss_adata.layers['counts'] = self.tss_adata.X
+			self.tss_adata.layers['tpm'] = calc_tpm(self.tss_adata).to_numpy()
+			if not self.sc:
+				self.tss_adata.layers['pi'] = calc_pi(self.tss_adata,
+						self.tss_adata.var)[0].to_numpy()
 
-	# returns a dictionary mapping vertex b: vertex a for each
-	# vertex in dataset b
-	def get_merged_id_map(self):
+			# some cleanup for unstructured data if it was already added
+			if self.has_abundance():
+				self.tss_adata.uns = self.tss_adata.uns
 
-		id_map = list(zip(self.loc_df.vertex_id_b,
-						  self.loc_df.vertex_id_a))
-		id_map = [list(i) for i in id_map]
+		if kind == 'tes':
 
-		# loop through id_map and assign new ids for
-		# those present in b but not a
-		b_ind = int(self.loc_df.vertex_id_a.max() + 1)
-		i = 0
-		while i < len(id_map):
-			if math.isnan(id_map[i][1]):
-				id_map[i][1] = b_ind
-				b_ind += 1
-			# set up entries where there isn't a b id (entries only found in a)
-			# to be removed
-			elif math.isnan(id_map[i][0]):
-				id_map[i] = []
-			i += 1
+			# create end-level adata object
+			self.tes_adata = anndata.AnnData(var=var, obs=obs, X=X)
 
-		# remove entries that are only in a but not in b
-		# make sure everything is ints
-		id_map = [i for i in id_map if len(i) == 2]
-		id_map = dict([(int(a), int(b)) for a,b in id_map])
+			# add counts and tpm as layers
+			self.tes_adata.layers['counts'] = self.tes_adata.X
+			self.tes_adata.layers['tpm'] = calc_tpm(self.tes_adata).to_numpy()
+			if not self.sc:
+				self.tes_adata.layers['pi'] = calc_pi(self.tes_adata,
+						self.tes_adata.var)[0].to_numpy()
 
-		return id_map
+			# some cleanup for unstructured data if it was already added
+			if self.has_abundance():
+				self.tes_adata.uns = self.tes_adata.uns
+
+	def create_edge_adata(self):
+		"""
+		Create an edge-level adata object. Enables calculating edge usage across
+		samples.
+		"""
+
+		# get table what edges are in each transcript
+		edge_exp_df = pivot_path_list(self.t_df, 'path')
+
+		# get a mergeable transcript expression df
+		tid = self.adata.var.index.tolist()
+		obs = self.adata.obs.index.tolist()
+		data = self.adata.layers['counts'].transpose()
+		t_exp_df = pd.DataFrame(columns=obs, data=data, index=tid)
+
+		# merge counts per transcript with edges
+		edge_exp_df = edge_exp_df.merge(t_exp_df, how='left',
+			left_index=True, right_index=True)
+
+		# sum the counts per transcript / edge / dataset
+		edge_exp_df = edge_exp_df.groupby('edge_id').sum()
+
+		# order based on order of edges in self.edge_df
+		edge_exp_df = edge_exp_df.merge(self.edge_df[['v1', 'v2']],
+			how='left', left_index=True, right_index=True)
+		edge_exp_df.sort_values(by=['v1', 'v2'], inplace=True)
+		edge_exp_df.drop(['v1', 'v2'], axis=1, inplace=True)
+
+		# obs, var, and X tables for new data
+		var = edge_exp_df.index.to_frame()
+		X = edge_exp_df.transpose().values
+		obs = self.adata.obs
+
+		# create edge-level adata object
+		self.edge_adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+		# add counts and tpm as layers
+		self.edge_adata.layers['counts'] = self.edge_adata.X
+		self.edge_adata.layers['tpm'] = calc_tpm(self.edge_adata, self.edge_df).to_numpy()
+			# self.edge_adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+
+		if self.has_abundance():
+
+			# some cleanup for unstructured data
+			self.edge_adata.uns = self.edge_adata.uns
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
 	##########################################################################
 
-	# create loc_df (nodes), edge_df (edges), and t_df (transcripts) from gtf
-	# adapted from Dana Wyman and TALON
-	def create_dfs_gtf(self, gtf_file, verbose):
+	def get_current_locs(self):
+		"""
+		Get a dictionary of unique locations already in the SwanGraph, along
+		with the number of unique locations. Used to create the dataframes
+		in create_dfs.
 
-		# make sure file exists
-		check_file_loc(gtf_file, 'GTF')
+		Returns:
+			locs (dict): Dictionary of unique genomic locations. Keys are
+				(chromosome, coordinate). Items are the vertex IDs from the
+				SwanGraph.
+			n (int): Number of unique genomic locations. -1 if SwanGraph
+				is empty.
+		"""
+		if not self.is_empty():
+			n = self.loc_df.vertex_id.max()
 
-		# counts the number of transcripts in a given GTF
-		def count_transcripts(gtf_file):
-			df = pd.read_csv(gtf_file, sep='\t', usecols=[2],
-				names=['entry_type'], comment='#')
-			df = df.loc[df.entry_type == 'transcript']
-			n = len(df.index)
-			return n
+			ids = self.loc_df.vertex_id.tolist()
+			chroms = self.loc_df.chrom.tolist()
+			coords = self.loc_df.coord.tolist()
+			locs = dict([((ch, co), vid) for ch, co, vid in zip(chroms, coords, ids)])
+		else:
+			locs = {}
+			n = -1
 
-		# get the number of transcripts in the file
-		n_transcripts = count_transcripts(gtf_file)
+		return locs, n
 
-		# dictionaries to hold unique edges and transcripts
-		transcripts = {}
-		exons = {}
+	def get_current_edges(self):
+		"""
+		Get a dictionary of unique edges already in the SwanGraph, along with
+		the number of unique edges. Used to create the dataframes in
+		create_dfs_gtf and create_dfs_db.
 
-		# display progess
-		if verbose:
-			pbar = tqdm(total=n_transcripts)
-			counter = 0
+		Returns:
+			edges (dict): Dictionary of unique edges. Keys are (chromosome,
+				start (v1) coord, end (v2) coord, strand, edge_type). Items are
+				the edge IDs, v1, v2, and edge_type from the SwanGraph.
+			n (int): Number of unique edges. -1 if SwanGraph is emtpy.
+		"""
 
-		with open(gtf_file) as gtf:
-			for line in gtf:
+		if not self.is_empty():
 
-				# ignore header lines
-				if line.startswith('#'):
-					continue
+			# number of edges currently
+			n = self.edge_df.edge_id.max()
 
-				# split each entry
-				line = line.strip().split('\t')
+			# get a version of edge_df with the coordinates
+			edge_df = self.add_edge_coords()
 
-				# get some fields from gtf that we care about
-				chrom = line[0]
-				entry_type = line[2]
-				start = int(line[3])
-				stop = int(line[4])
-				strand = line[6]
-				fields = line[-1]
+			edges = {}
+			for ind, entry in edge_df.iterrows():
+				ch = entry.chrom
+				v1_coord = entry.v1_coord
+				v2_coord = entry.v2_coord
+				strand = entry.strand
+				edge_type = entry.edge_type
+				v1 = entry.v1
+				v2 = entry.v2
+				key = (ch,v1_coord,v2_coord,strand,edge_type)
+				item = {'edge_id': entry['edge_id'],
+						'edge_type': edge_type,
+						'v1': v1,
+						'v2': v2}
+				edges[key] = item
+		else:
+			edges = {}
+			n = -1
 
-				# transcript entry
-				if entry_type == "transcript":
+		return edges, n
 
-					# update progress bar
-					if verbose:
-						counter+=1
-						if counter % 100 == 0:
-							pbar.update(100)
-							pbar.set_description('Processing transcripts')
+	def add_edge_coords(self):
+		"""
+		Add coordinates and chromosome to edge_df from loc_df.
 
-					attributes = get_fields(fields)
+		Returns:
+			edge_df (pandas DataFrame): Copy of self.edge_df with genomic
+				coordinate information
+		"""
+		temp = self.loc_df[['chrom', 'coord', 'vertex_id']]
+		temp.reset_index(inplace=True, drop=True)
 
-					# check if this gtf has transcript novelty vals
-					# for the first transcript entry
-					if not transcripts:
-						if 'talon_transcript' in attributes:
-							from_talon = True
-						else:
-							from_talon = False
+		edge_df = self.edge_df.copy(deep=True)
 
-					tid = attributes['transcript_id']
-					gid = attributes['gene_id']
+		edge_df = edge_df.merge(temp, how='left',
+			left_on='v1', right_on='vertex_id')
+		edge_df.rename({'coord': 'v1_coord'}, axis=1, inplace=True)
 
-					# check if there's a gene name field and add one if not
-					if 'gene_name' not in attributes:
-						attributes['gene_name'] = attributes['gene_id']
+		temp = self.loc_df[['coord', 'vertex_id']]
+		temp.reset_index(inplace=True, drop=True)
 
-					gname = attributes['gene_name']
+		edge_df = edge_df.merge(temp, how='left',
+			left_on='v2', right_on='vertex_id')
+		edge_df.rename({'coord': 'v2_coord'}, axis=1, inplace=True)
 
-					# add transcript to dictionary
-					entry = {'gid': gid,
-							 'gname': gname,
-							 'tid': tid,
-							 'strand': strand,
-							 'exons': []}
+		return edge_df
 
-					# if we're using a talon gtf, add a novelty field
-					if from_talon:
-						novelty = get_transcript_novelties(attributes)
-						entry['novelty'] = novelty
+	def create_dfs(self, transcripts, exons,
+				   from_talon=False):
+		"""
+		Create loc, edge, and transcript dataframes. Input parameters are from
+		either parse_gtf or parse_db. By default retains structure and metadata
+		from preexisting transcripts in the SwanGraph.
 
-					transcript = {tid: entry}
-					transcripts.update(transcript)
+		Parameters:
+			transcripts (dict of dict): Dictionary of transcripts from file.
+				Keys (str): transcript id
+				Items (dict): gene id, gene name, transcript id (same as key),
+				transcript name, strand, and exons belonging to the transcript.
+			exons (dict of dict): Dictionary of exons in GTF.
+				Keys (str): exon ids (chromosome_v1_v2_strand_exon)
+				Items (dict): edge id (same as key), chromosome, v1, v2, strand,
+				and edge type (all exon in this case)
+			from_talon (bool): Whether or not the GTF was determined to be
+				from TALON.
+				Default: False
 
-				# exon entry
-				elif entry_type == "exon":
-					attributes = get_fields(fields)
-					start, stop = find_edge_start_stop(start, stop, strand)
-					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
-					tid = attributes['transcript_id']
+		Returns:
+			loc_df (pandas DataFrame): DataFrame of unique genomic locations
+				from input TALON DB or GTF as well as those already in the
+				SwanGraph.
+			edge_df (pandas DataFrame): DataFrame of unique introns and exons
+				from input TALON DB or GTF as well as those already in the
+				SwanGraph.
+			t_df (pandas DataFrame): DataFrame of unique transcripts from input
+				TALON DB or GTF as well as those already in the SwanGraph.
+		"""
 
-					# add novel exon to dictionary
-					if eid not in exons:
-						edge = {eid: {'eid': eid,
-									  'chrom': chrom,
-									  'v1': start,
-									  'v2': stop,
-									  'strand': strand}}
-						exons.update(edge)
+		# turn each dataframe back into a dict
+		if type(transcripts) != dict:
+			transcripts = transcripts.to_dict(orient='index')
+		if type(exons) != dict:
+			exons = exons.to_dict(orient='index')
 
-			   		# add this exon to the transcript's list of exons
-					if tid in transcripts:
-						transcripts[tid]['exons'].append(eid)
+		locs = self.create_loc_dict(exons)
+		transcripts, edges = self.create_transcript_edge_dicts(transcripts, exons, locs)
 
+		# turn transcripts, edges, and locs into dataframes
+		locs = [{'chrom': key[0],
+				 'coord': key[1],
+				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
+		loc_df = pd.DataFrame(locs)
 
-		# close progress bar
-		if verbose:
-			pbar.close()
+		edges = [{'v1': item['v1'],
+				  'v2': item['v2'],
+				  'strand': key[3],
+				  'edge_id': item['edge_id'],
+				  'edge_type': item['edge_type']} for key, item in edges.items()]
+		edge_df = pd.DataFrame(edges)
 
-		# once we have all transcripts, make loc_df
-		locs = {}
-		vertex_id = 0
-		for edge_id, edge in exons.items():
+		if from_talon:
+			transcripts = [{'tid': key,
+						'tname': item['tname'],
+						'gid': item['gid'],
+						'gname': item['gname'],
+						'path': item['path'],
+						'novelty': item['novelty']} for key, item in transcripts.items()]
+		else:
+			transcripts = [{'tid': key,
+						'tname': item['tname'],
+						'gid': item['gid'],
+						'gname': item['gname'],
+						'path': item['path']} for key, item in transcripts.items()]
+		t_df = pd.DataFrame(transcripts)
+
+		# remove entries that are already in the SwanGraph so we just get
+		# dfs of new entries
+		tids = self.t_df.tid.tolist()
+		eids = self.edge_df.edge_id.tolist()
+		vids = self.loc_df.vertex_id.tolist()
+		t_df = t_df.loc[~t_df.tid.isin(tids)]
+		edge_df = edge_df.loc[~edge_df.edge_id.isin(eids)]
+		loc_df = loc_df.loc[~loc_df.vertex_id.isin(vids)]
+
+		# format indices of dfs
+		loc_df = create_dupe_index(loc_df, 'vertex_id')
+		loc_df = set_dupe_index(loc_df, 'vertex_id')
+		edge_df = create_dupe_index(edge_df, 'edge_id')
+		edge_df = set_dupe_index(edge_df, 'edge_id')
+		t_df = create_dupe_index(t_df, 'tid')
+		t_df = set_dupe_index(t_df, 'tid')
+
+		# and concatenate with those that exist
+		loc_df = pd.concat([self.loc_df, loc_df])
+		edge_df = pd.concat([self.edge_df, edge_df])
+		t_df = pd.concat([self.t_df, t_df])
+
+		# account for mixed novelty content
+		if 'novelty' in t_df.columns:
+			t_df['novelty'] = t_df['novelty'].fillna('Undefined')
+
+		return loc_df, edge_df, t_df
+
+	def create_loc_dict(self, exons):
+		"""
+		Create location dictionary using the exons found from a GTF or TALON
+		DB.
+
+		Parameters:
+			exons (dict): Dictionary of exons found in the GTF or TALON DB.
+				Keys (str): chr_v1_c2_strand_exon.
+				Items (dict): eid, chrom, v1, v2, strand, edge_type
+
+		Returns:
+			locs (dict): Dictionary of locations and their vertex IDs
+				in the SwanGraph, including existing and novel locations.
+				Keys: (chrom, coord). Items: vertex_id.
+		"""
+
+		locs, vertex_id = self.get_current_locs()
+		vertex_id += 1
+		for eid, edge in exons.items():
 			chrom = edge['chrom']
-			strand = edge['strand']
-
 			v1 = edge['v1']
 			v2 = edge['v2']
 
 			# exon start
-			key = (chrom, v1, strand)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
-			# exon end
-			key = (chrom, v2, strand)
+			key = (chrom, v1)
 			if key not in locs:
 				locs[key] = vertex_id
 				vertex_id += 1
 
-		# add locs-indexed path to transcripts, and populate edges
-		edges = {}
-		for _,t in transcripts.items():
+			# exon end
+			key = (chrom, v2)
+			if key not in locs:
+				locs[key] = vertex_id
+				vertex_id += 1
+
+		return locs
+
+	def create_transcript_edge_dicts(self, transcripts, exons, locs):
+		"""
+		Create edge dictionary using the exons found from a GTF or TALON DB, and
+		add the edge path to the transcript dictionary (only dictionary
+		attribute added by this function).
+
+		Parameters:
+			transcripts (dict): Dictionary of transcripts found in the GTF or
+				TALON DB.
+				Keys (str): transcript ID
+				Items (dict): gid, gname, tid, tname, strand, novelty (if talon),
+					exons (list of 'chr_coord1_coord2_strand_exon').
+			exons (dict): Dictionary of exons found in the GTF or TALON DB.
+				Keys (str): chr_v1_c2_strand_exon.
+				Items (dict): eid, chrom, v1, v2, strand, edge_type
+
+		Returns:
+			transcripts (dict): Dictionary of only NEW transcripts.
+				Keys (str): transcript ID
+				Items (str): TODO
+			edges (dict): Dictionary of edges and their edge IDs
+				in the SwanGraph, including existing and novel edges.
+				Keys: TODO
+				Items: TODO
+		"""
+
+		edges, edge_id = self.get_current_edges()
+		edge_id += 1
+		for key, t in transcripts.items():
 			t['path'] = []
 			strand = t['strand']
 			t_exons = t['exons']
@@ -695,315 +819,262 @@ class SwanGraph(Graph):
 				strand = exon['strand']
 
 				# add current exon and subsequent intron
-				# (if not the last exon) for each exon to edges
-				key = (chrom, v1, v2, strand)
-				v1_key = (chrom, v1, strand)
-				v2_key = (chrom, v2, strand)
-				edge_id = (locs[v1_key], locs[v2_key])
+				# (if not the last exon) for each exon to edge
+				# also add this exon to the current transcript's path
+				key = (chrom, v1, v2, strand, 'exon')
+				v1_key = (chrom, v1)
+				v2_key = (chrom, v2)
 				if key not in edges:
-					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
-
-				# add exon locs to path
-				t['path'] += list(edge_id)
-
-				# if this isn't the last exon, we also needa add an intron
-				# this consists of v2 of the prev exon and v1 of the next exon
-				if i < len(t_exons)-1:
-					next_exon = exons[t_exons[i+1]]
-					v1 = next_exon['v1']
-					key = (chrom, v2, v1, strand)
-					v1_key = (chrom, v1, strand)
-					edge_id = (locs[v2_key], locs[v1_key])
-					if key not in edges:
-						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
-
-		# turn transcripts, edges, and locs into dataframes
-		locs = [{'chrom': key[0],
-				 'coord': key[1],
-				 'strand': key[2],
-				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
-		loc_df = pd.DataFrame(locs)
-
-		edges = [{'v1': item['edge_id'][0],
-				  'v2': item['edge_id'][1],
-				  'strand': key[3],
-				  'edge_id': item['edge_id'],
-				  'edge_type': item['edge_type']} for key, item in edges.items()]
-		edge_df = pd.DataFrame(edges)
-
-		if from_talon:
-			transcripts = [{'tid': key,
-						'gid': item['gid'],
-						'gname': item['gname'],
-						'path': item['path'],
-						'novelty': item['novelty']} for key, item in transcripts.items()]
-		else:
-			transcripts = [{'tid': key,
-						'gid': item['gid'],
-						'gname': item['gname'],
-						'path': item['path']} for key, item in transcripts.items()]
-
-		t_df = pd.DataFrame(transcripts)
-
-		# final df formatting
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
-
-		self.loc_df = loc_df
-		self.edge_df = edge_df
-		self.t_df = t_df
-
-	# create SwanGraph dataframes from a TALON db. Code very ripped from
-	# TALON's create_GTF utility
-	def create_dfs_db(self, database, whitelist, dataset, verbose):
-
-		# make sure file exists
-		check_file_loc(database, 'TALON DB')
-
-		# annot = check_annot_validity(annot, database)
-
-		whitelist = handle_filtering(database,
-											True,
-											whitelist,
-											dataset)
-		# create separate gene and transcript whitelists
-		gene_whitelist = []
-		transcript_whitelist = []
-		for key,group in itertools.groupby(whitelist,operator.itemgetter(0)):
-			gene_whitelist.append(key)
-			for id_tuple in list(group):
-				transcript_whitelist.append(id_tuple[1])
-
-		# get gene, transcript, and exon annotations
-		gene_annotations = get_annotations(database, "gene",
-										   whitelist = gene_whitelist)
-		transcript_annotations = get_annotations(database, "transcript",
-												 whitelist = transcript_whitelist)
-		exon_annotations = get_annotations(database, "exon")
-
-		# get transcript data from the database
-		gene_2_transcripts = get_gene_2_transcripts(database,
-							 transcript_whitelist)
-
-		# get exon location info from database
-		exon_ID_2_location = fetch_exon_locations(database)
-
-		transcripts = {}
-		exons = {}
-
-		if verbose:
-			n_transcripts = len(transcript_whitelist)
-			pbar = tqdm(total=n_transcripts)
-			pbar.set_description('Processing transcripts')
-
-		# loop through genes, transcripts, and exons
-		for gene_ID, transcript_tuples in gene_2_transcripts.items():
-			curr_annot = gene_annotations[gene_ID]
-			gene_annotation_dict = {}
-			for annot in curr_annot:
-				attribute = annot[3]
-				value = annot[4]
-				gene_annotation_dict[attribute] = value
-
-			# check if there's a gene name field and add one if not
-			if 'gene_name' not in gene_annotation_dict:
-				gene_annotation_dict['gene_name'] = gene_annotation_dict['gene_id']
-
-			# get transcript entries
-			for transcript_entry in transcript_tuples:
-				transcript_ID = transcript_entry["transcript_ID"]
-				curr_transcript_annot = transcript_annotations[transcript_ID]
-
-				transcript_annotation_dict = {}
-				for annot in curr_transcript_annot:
-					attribute = annot[3]
-					value = annot[4]
-					transcript_annotation_dict[attribute] = value
-
-				tid = transcript_annotation_dict['transcript_id']
-				gid = gene_annotation_dict['gene_id']
-				gname = gene_annotation_dict['gene_name']
-				strand = transcript_entry['strand']
-				novelty = get_transcript_novelties(transcript_annotation_dict)
-
-				# add transcript to dictionary
-				entry = {'gid': gid,
-						 'gname': gname,
-						 'tid': tid,
-						 'strand': strand,
-						 'novelty': novelty,
-						 'exons': []}
-				transcript = {tid: entry}
-				transcripts.update(transcript)
-
-				if verbose:
-					pbar.update(1)
-
-				if transcript_entry["n_exons"] != 1:
-					transcript_edges = [str(transcript_entry["start_exon"])] + \
-									   str(transcript_entry["jn_path"]).split(",")+ \
-									   [str(transcript_entry["end_exon"])]
+					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon',
+								  'v1': locs[v1_key], 'v2': locs[v2_key]}
+					t['path'] += [edge_id]
+					edge_id += 1
 				else:
-					transcript_edges = [transcript_entry["start_exon"]]
+					t['path'] += [edges[key]['edge_id']]
 
-				# get exon entries
-				for exon_ID in transcript_edges[::2]:
-					exon_ID = int(exon_ID)
-					curr_exon_annot = exon_annotations[exon_ID]
-
-					exon_annotation_dict = {}
-					for annot in curr_exon_annot:
-						attribute = annot[3]
-						value = annot[4]
-						exon_annotation_dict[attribute] = value
-
-					e_tuple = exon_ID_2_location[exon_ID]
-					chrom = e_tuple[0]
-					start = e_tuple[1]
-					stop = e_tuple[2]
-					strand = e_tuple[3]
-					start, stop = find_edge_start_stop(start, stop, strand)
-					eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
-
-					# add novel exon to dictionary
-					if eid not in exons:
-						edge = {eid: {'eid': eid,
-									  'chrom': chrom,
-									  'v1': start,
-									  'v2': stop,
-									  'strand': strand}}
-						exons.update(edge)
-
-					# add this exon to the transcript's list of exons
-					if tid in transcripts:
-						transcripts[tid]['exons'].append(eid)
-
-		# once we have all transcripts, make loc_df
-		locs = {}
-		vertex_id = 0
-		for edge_id, edge in exons.items():
-			chrom = edge['chrom']
-			strand = edge['strand']
-
-			v1 = edge['v1']
-			v2 = edge['v2']
-
-			# exon start
-			key = (chrom, v1, strand)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
-			# exon end
-			key = (chrom, v2, strand)
-			if key not in locs:
-				locs[key] = vertex_id
-				vertex_id += 1
-
-		# add locs-indexed path to transcripts, and populate edges
-		edges = {}
-		# print(dict(list(transcripts.items())[:3]))
-		for _,t in transcripts.items():
-			t['path'] = []
-			strand = t['strand']
-			t_exons = t['exons']
-
-			for i, exon_id in enumerate(t_exons):
-				# print('shouldnt u be in here')
-				# exit()
-
-				# pull some information from exon dict
-				exon = exons[exon_id]
-				chrom = exon['chrom']
-				v1 = exon['v1']
-				v2 = exon['v2']
-				strand = exon['strand']
-
-				# add current exon and subsequent intron
-				# (if not the last exon) for each exon to edges
-				key = (chrom, v1, v2, strand)
-				v1_key = (chrom, v1, strand)
-				v2_key = (chrom, v2, strand)
-				edge_id = (locs[v1_key], locs[v2_key])
-				if key not in edges:
-					edges[key] = {'edge_id': edge_id, 'edge_type': 'exon'}
-
-				# add exon locs to path
-				t['path'] += list(edge_id)
-
-				# if this isn't the last exon, we also needa add an intron
+				# if this isn't the last exon, we also need to add an intron
 				# this consists of v2 of the prev exon and v1 of the next exon
+				# also add this intron to the current transcript's path
 				if i < len(t_exons)-1:
 					next_exon = exons[t_exons[i+1]]
 					v1 = next_exon['v1']
-					key = (chrom, v2, v1, strand)
-					v1_key = (chrom, v1, strand)
-					edge_id = (locs[v2_key], locs[v1_key])
+					key = (chrom, v2, v1, strand, 'intron')
+					v1_key = (chrom, v1)
 					if key not in edges:
-						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron'}
+						edges[key] = {'edge_id': edge_id, 'edge_type': 'intron',
+									  'v1': locs[v2_key], 'v2': locs[v1_key]}
+						t['path'] += [edge_id]
+						edge_id += 1
+					else:
+						t['path'] += [edges[key]['edge_id']]
+		return transcripts, edges
 
-		# turn transcripts, edges, and locs into dataframes
-		locs = [{'chrom': key[0],
-				 'coord': key[1],
-				 'strand': key[2],
-				 'vertex_id': vertex_id} for key, vertex_id in locs.items()]
-		loc_df = pd.DataFrame(locs)
+	def label_annotated(self, tids):
+		"""
+		From a list of transcript IDs that were added as part of the annotation,
+		add a boolean column to each DataFrame in the SwanGraph indicating if
+		that location/edge/transcript is or is not in the SwanGraph.
 
-		edges = [{'v1': item['edge_id'][0],
-				  'v2': item['edge_id'][1],
-				  'strand': key[3],
-				  'edge_id': item['edge_id'],
-				  'edge_type': item['edge_type']} for key, item in edges.items()]
-		edge_df = pd.DataFrame(edges)
+		Parameters:
+			tids (list of str): List of transcript IDs from t_df that were parts
+				of the added annotation
+		"""
 
-		transcripts = [{'tid': key,
-					'gid': item['gid'],
-					'gname': item['gname'],
-					'path': item['path'],
-					'novelty': item['novelty']} for key, item in transcripts.items()]
+		# obtain all unique annotated edges
+		edges = self.t_df.loc[tids, 'path'].tolist()
+		edges = list(set([e for path in edges for e in path]))
 
-		t_df = pd.DataFrame(transcripts)
+		# obtain all unique annotated locations
+		v1_locs = self.edge_df.loc[edges, 'v1'].tolist()
+		v2_locs = self.edge_df.loc[edges, 'v2'].tolist()
+		locs = list(set(v1_locs+v2_locs))
 
-		# final df formatting
-		loc_df = create_dupe_index(loc_df, 'vertex_id')
-		loc_df = set_dupe_index(loc_df, 'vertex_id')
-		edge_df = create_dupe_index(edge_df, 'edge_id')
-		edge_df = set_dupe_index(edge_df, 'edge_id')
-		t_df = create_dupe_index(t_df, 'tid')
-		t_df = set_dupe_index(t_df, 'tid')
-
-		self.loc_df = loc_df
-		self.edge_df = edge_df
-		self.t_df = t_df
-
-	# add node types (internal, TSS, TES) to loc_df
-	def get_loc_types(self):
-
-		self.loc_df['internal'] = False
-		self.loc_df['TSS'] = False
-		self.loc_df['TES'] = False
-
-		# get lists of locations that are used as TSS, TES
-		paths = self.t_df.path.tolist()
-		internal = list(set([n for path in paths for n in path[1:-1]]))
-		tss = [path[0] for path in paths]
-		tes = [path[-1] for path in paths]
-
-		# set node types in t_df
-		self.loc_df.loc[internal, 'internal'] = True
-		self.loc_df.loc[tss, 'TSS'] = True
-		self.loc_df.loc[tes, 'TES'] = True
+		# set the annotated column to True for these tids, edges, and locs
+		self.t_df['annotation'] = False
+		self.t_df.loc[tids, 'annotation'] = True
+		self.edge_df['annotation'] = False
+		self.edge_df.loc[edges, 'annotation'] = True
+		self.loc_df['annotation'] = False
+		self.loc_df.loc[locs, 'annotation'] = True
 
 	##########################################################################
 	######################## Other SwanGraph utilities #####################
 	##########################################################################
+	def subset_on_gene_sg(self, gid=None, datasets=None):
+		"""
+		Subset the swan Graph on a given gene and return the subset graph.
 
-	# order the transcripts by expression of transcript, transcript id,
-	# or start/end nodes
+		Parameters:
+			gid (str): Gene ID to subset on
+			datasets (list of str): List of datasets to keep in the subset
+
+		returns:
+			subset_sg (swan Graph): Swan Graph subset on the input gene.
+		"""
+
+		# didn't ask for either
+		if not gid and not datasets:
+			return self
+
+		# subset on gene
+		if gid:
+			# make sure this gid is even in the Graph
+			self.check_gene(gid)
+
+			# get the strand
+			strand = self.get_strand_from_gid(gid)
+
+			# subset t_df first, it's the easiest
+			tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+			t_df = self.t_df.loc[tids].copy(deep=True)
+			t_df['path'] = self.t_df.loc[tids].apply(
+					lambda x: copy.deepcopy(x.path), axis=1)
+			t_df['loc_path'] = self.t_df.loc[tids].apply(
+					lambda x: copy.deepcopy(x.loc_path), axis=1)
+
+			# subset loc_df based on all the locs that are in the paths from
+			# the already-subset t_df
+			paths = t_df['loc_path'].tolist()
+			locs = [node for path in paths for node in path]
+			locs = np.unique(locs)
+			loc_df = self.loc_df.loc[locs].copy(deep=True)
+
+			# subset edge_df based on all the edges that are in the paths from
+			# the alread-subset t_df
+			paths = t_df['path'].tolist()
+			edges = [node for path in paths for node in path]
+			edges = np.unique(edges)
+			edge_df = self.edge_df.loc[edges].copy(deep=True)
+		if not gid:
+			t_df = self.t_df.copy(deep=True)
+			edge_df = self.edge_df.copy(deep=True)
+			loc_df = self.loc_df.copy(deep=True)
+
+		# also subset anndata
+		# if obs_col and obs_cats:
+		# 	# adatas = [self.adata, self.edge_adata,
+		# 	# 		  self.tss_adata, self.tes_adata]
+		# 	# for adata in adatas:
+		# 	# print(obs_col)
+		# 	# print(obs_cats)
+		# 	obs_vars = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_cats)]
+		# 	obs_vars = obs_vars.index.tolist()
+		# 	# print(obs_vars)
+		# 	# print(tids)
+		# 	adata = self.adata[obs_vars, tids]
+		new_adatas = dict()
+		# adatas = {'iso': self.adata, 'edge': self.edge_adata,
+		# 		  'tss': self.tss_adata, 'tes': self.tes_adata}
+		adatas = {'iso': self.adata}
+		for key, adata in adatas.items():
+			if datasets and gid:
+				new_adatas[key] = adata[datasets, tids]
+			elif gid:
+				new_adatas[key] = adata[:, tids]
+			elif datasets:
+				new_adatas[key] = adata[datasets, :]
+			else:
+				new_adatas[key] = adata
+
+		# create a new graph that's been subset
+		subset_sg = SwanGraph()
+		subset_sg.loc_df = loc_df
+		subset_sg.edge_df = edge_df
+		subset_sg.t_df = t_df
+		subset_sg.adata = new_adatas['iso']
+		# subset_sg.edge_adata = new_adatas['edge']
+		# subset_sg.tss_adata = new_adatas['tss']
+		# subset_sg.tes_adata = new_adatas['tes']
+		subset_sg.datasets = subset_sg.adata.obs.index.tolist()
+		subset_sg.abundance = self.abundance
+		subset_sg.sc = self.sc
+		subset_sg.pg = self.pg
+		subset_sg.annotation = self.annotation
+
+		# renumber locs if using a gene
+		if gid:
+			if strand == '-':
+				id_map = subset_sg.get_ordered_id_map(rev_strand=True)
+				subset_sg.update_ids(id_map)
+			else:
+				subset_sg.update_ids()
+
+			subset_sg.get_loc_types()
+
+		# finally create the graph
+		subset_sg.create_graph_from_dfs()
+
+		return subset_sg
+
+	def order_transcripts_subset(self, t_df, order='tid'):
+		"""
+		Order the transcripts in an input t_df based on an input heuristic.
+		Can order alphabetically by transcript ID, by expression of each
+		transcript, or by the genomic location of the transcripts' TSSs or TESs.
+
+		Parameters:
+			order (str): Method to order transcripts by. Choose from ['tid',
+				'expression', 'tss', 'tes', 'log2tpm']
+
+		Returns:
+			t_df (pandas DataFrame): Transcripts ordered by the input heuristic
+			tids (list of str): List of transcript IDs ordered by the input
+				heuristic
+		"""
+
+		# order by transcript id
+		if order == 'tid':
+			ordered_tids = sorted(t_df.index.tolist())
+			t_df = t_df.loc[ordered_tids]
+
+		# order by expression
+		elif order == 'expression':
+			# make sure there are counts in the graph at all
+			if not self.abundance:
+				raise Exception('Cannot order by expression because '
+								'there is no expression data.')
+
+			t_df['sum'] = t_df.sum(axis=1)
+			t_df.sort_values(by='sum', ascending=False, inplace=True)
+			t_df.drop('sum', axis=1, inplace=True)
+
+		# order by log2tpm expression
+		elif order == 'log2tpm':
+			# make sure there are counts in the graph at all
+			if not self.abundance:
+				raise Exception('Cannot order by expression because '
+								'there is no expression data.')
+
+			t_df['sum'] = np.log2(t_df+1).sum(axis=1)
+			t_df.sort_values(by='sum', ascending=False, inplace=True)
+			t_df.drop('sum', axis=1, inplace=True)
+
+		# order by tss location
+		elif order == 'tss':
+			t_df = t_df.merge(self.t_df[['path', 'loc_path']],
+				how='left', left_index=True, right_index=True)
+			t_df['start_coord'] = t_df.apply(lambda x:
+				self.loc_df.loc[x.loc_path[0], 'coord'], axis=1)
+			t_df['strand'] = t_df.apply(lambda x:
+				self.edge_df.loc[x.path[0], 'strand'], axis=1)
+			fwd = t_df.loc[t_df.strand == '+']
+			rev = t_df.loc[t_df.strand == '-']
+			fwd.sort_values(by='start_coord', ascending=True, inplace=True)
+			# print(fwd[['strand', 'start_coord']])
+			rev.sort_values(by='start_coord', ascending=False, inplace=True)
+			# print(rev[['strand', 'start_coord']])
+			t_df = pd.concat([fwd, rev])
+			# print(t_df[['strand', 'start_coord']])
+			t_df.drop(['start_coord', 'strand', 'path', 'loc_path'], axis=1, inplace=True)
+
+		# order by tes location
+		elif order == 'tes':
+			t_df = t_df.merge(self.t_df[['path', 'loc_path']],
+				how='left', left_index=True, right_index=True)
+			t_df['end_coord'] = t_df.apply(lambda x:
+				self.loc_df.loc[x.loc_path[-1], 'coord'], axis=1)
+			t_df['strand'] = t_df.apply(lambda x:
+				self.edge_df.loc[x.path[-1], 'strand'], axis=1)
+			fwd = t_df.loc[t_df.strand == '+']
+			rev = t_df.loc[t_df.strand == '-']
+			fwd.sort_values(by='end_coord', ascending=True, inplace=True)
+			rev.sort_values(by='end_coord', ascending=False, inplace=True)
+			t_df = pd.concat([fwd, rev])
+			t_df.drop(['end_coord', 'strand', 'path', 'loc_path'], axis=1, inplace=True)
+
+		tids = t_df.index.tolist()
+		return t_df, tids
+
 	def order_transcripts(self, order='tid'):
+		"""
+		Order the transcripts in the SwanGraph t_df based on an input heuristic.
+		Can order alphabetically by transcript ID, by expression of each
+		transcript, or by the genomic location of the transcripts' TSSs or TESs.
+
+		Parameters:
+			order (str): Method to order transcripts by. Choose from ['tid',
+				'expression', 'tss', 'tes']
+		"""
 
 		# order by transcript id
 		if order == 'tid':
@@ -1012,20 +1083,27 @@ class SwanGraph(Graph):
 
 		# order by expression
 		elif order == 'expression':
-			tpm_cols = self.get_tpm_cols()
 
 			# make sure there are counts in the graph at all
-			if tpm_cols:
-				self.t_df['tpm_sum'] = self.t_df[tpm_cols].sum(axis=1)
-				self.t_df.sort_values(by='tpm_sum',
-									  ascending=False,
-									  inplace=True)
-				self.t_df.drop('tpm_sum', axis=1, inplace=True)
-			else:
+			if not self.abundance:
 				raise Exception('Cannot order by expression because '
 								'there is no expression data.')
+			else:
 
-		# order by coordinate of tss in PlottedGraph
+				# find max expressed transcripts
+				data = self.adata.layers['tpm'].sum(axis=0)
+				cols = self.adata.var.index.tolist()
+				temp = pd.DataFrame(index=['tpm'], data=[data], columns=cols).transpose()
+				temp.sort_values(by='tpm', ascending=False, inplace=True)
+				ordered_tids = temp.index.tolist()
+				# print(temp)
+
+				# order t_df and adata
+				self.t_df = self.t_df.loc[ordered_tids]
+				# print(self.t_df)
+				self.adata = self.adata[:, ordered_tids]
+
+		# order by coordinate of tss
 		elif order == 'tss':
 			self.t_df['start_coord'] = self.t_df.apply(lambda x:
 				self.loc_df.loc[x.path[0], 'coord'], axis=1)
@@ -1056,88 +1134,21 @@ class SwanGraph(Graph):
 			self.t_df.drop('end_coord', axis=1, inplace=True)
 
 	##########################################################################
-	######################## Finding "interesting" genes #####################
+	######################## Analysis tools  #################################
 	##########################################################################
 
-	# returns a list of genes that are "interesting"
-	def find_genes_with_novel_isoforms(self):
-
-		# get all the datasets, make sure we're not counting transcripts
-		# that are only in the annotation
-		if 'annotation' not in self.datasets:
-			raise Exception('No annotation data in graph. Cannot ',
-				'determine isoform novelty.')
-		datasets = self.get_dataset_cols(include_annotation=False)
-		t_df = self.t_df.copy(deep=True)
-		t_df = t_df.loc[t_df[datasets].any(axis=1)]
-
-		# how many known and novel isoforms does each gene have
-		t_df['known'] = t_df.annotation
-		t_df['novel'] = [not i for i in t_df.annotation.tolist()]
-		keep_cols = ['annotation', 'known', 'novel', 'gid']
-		g_df = t_df[keep_cols].groupby(['gid']).sum()
-
-		# create 'interestingness' column ranking how many novel
-		# compared to known isoforms there are, also ranked by
-		# number of total isoforms
-		g_df.known = g_df.known.astype('int32')
-		g_df.novel = g_df.novel.astype('int32')
-		g_df['interestingness'] = ((g_df.novel+1)/(g_df.known+1))*(g_df.known+g_df.novel)
-		g_df.sort_values(by='interestingness', ascending=False, inplace=True)
-
-		# top 10 in case the user doesn't care about whole df
-		genes = g_df.index.tolist()[:10]
-
-		return genes, g_df
-
-	# find genes with higher expression in novel than known isoforms
-	def find_genes_with_high_novel_expression(self):
-
-		# get all the datasets, make sure we're not counting transcripts
-		# that are only in the annotation
-		if 'annotation' not in self.datasets:
-			raise Exception('No annotation data in graph. Cannot ',
-				'determine isoform novelty.')
-		datasets = self.get_dataset_cols(include_annotation=False)
-		t_df = self.t_df.copy(deep=True)
-		t_df = t_df.loc[t_df[datasets].any(axis=1)]
-
-		# how much expression do known and novel isoforms have?
-		t_df['known'] = t_df.annotation
-		tpm_cols = self.get_tpm_cols()
-		keep_cols = tpm_cols+['known', 'gid']
-		g_df = t_df[keep_cols].groupby(['gid', 'known']).sum()
-		g_df.reset_index(inplace=True)
-		g_df['total_known_exp'] = 0
-		g_df['total_novel_exp'] = 0
-		g_df.loc[g_df.known == True, 'total_known_exp'] = g_df.loc[g_df.known == True, tpm_cols].sum(axis=1)
-		g_df.loc[g_df.known == False, 'total_novel_exp'] = g_df.loc[g_df.known == False, tpm_cols].sum(axis=1)
-		keep_cols = tpm_cols+['total_known_exp', 'total_novel_exp', 'gid']
-		g_df = g_df[keep_cols].groupby('gid').sum()
-
-		# create 'interestingness' column ranking how much expression
-		# of the gene is attributable to novel isoforms versus known isoforms
-		g_df['interestingness'] = ((g_df.total_novel_exp+1)/(g_df.total_known_exp+1))*np.log2(g_df.total_known_exp+1+g_df.total_novel_exp+1)
-		g_df.sort_values(by='interestingness', ascending=False, inplace=True)
-
-		# top 10 in case the user doesn't care about whole df
-		genes = g_df.index.tolist()[:10]
-
-		return genes, g_df
-
-	def find_ir_genes(self):
+	def find_ir_genes(self, verbose=False):
 		"""
 		Finds all unique genes containing novel intron retention events.
 		Requires that an annotation has been added to the SwanGraph.
 
-			Returns:
+		Parameters:
+			verbose (bool): Display output
 
-				ir_genes (list of str): A list of gene ids from the SwanGraph with
-					at least one novel intron retention event
-				ir_transcripts (list of str): A list of transcript ids from the
-					SwanGraph with at least one novel intron retention event
-				ir_edges (list of tuples): A list of exonic edges in the
-					SwanGraph that retain at least one intronic edge
+		Returns:
+			ir_df (pandas DataFrame): DataFrame detailing discovered novel
+				intron retention edges and the transcripts and genes they
+				come from
 		"""
 
 		# get only novel edges
@@ -1153,16 +1164,32 @@ class SwanGraph(Graph):
 		# get subset of transcripts that are novel to look for ir edges in
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
 
+		# verbose output
+		if verbose:
+			n_progress = len(edge_ids)
+			pbar = tqdm(total=n_progress)
+			pbar.set_description('Testing each novel edge for intron retention')
+
 		# for each edge, see if the subgraph between the edge vertices
 		# contains an exonic edge
 		ir_edges = []
 		ir_genes = []
 		ir_transcripts = []
+		# df for gene+transcript+edge combos
+		ir_df = pd.DataFrame()
 		for i, eid in enumerate(edge_ids):
-			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
+			# subgraph consisting of all nodes between the candidate
+			# intron-retaining edge coords in order and its edges
+			entry = self.edge_df.loc[eid]
+			v1 = entry.v1
+			v2 = entry.v2
+			sub_nodes = [i for i in range(v1+1,v2)]
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
-			sub_edges = self.edge_df.loc[sub_edges]
+			self.edge_df['tuple_edge_id'] = self.edge_df[['v1', 'v2']].apply(tuple, axis=1)
+			sub_edges = self.edge_df.loc[self.edge_df.tuple_edge_id.isin(sub_edges)]
+			self.edge_df.drop('tuple_edge_id', axis=1, inplace=True)
+
 			# find edges that are intronic; if there are none, this is not
 			# an intron-retaining edge
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'intron']
@@ -1170,8 +1197,7 @@ class SwanGraph(Graph):
 			if len(sub_edges.index) > 0:
 
 				# transcripts that contain the exon-skipping edge
-				cand_t_df = nt_df[[eid in vertex_to_edge_path(x) \
-					for x in nt_df.path.values.tolist()]]
+				cand_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
 
 				# circumvent the ISM bug
 				if len(cand_t_df) == 0:
@@ -1189,36 +1215,42 @@ class SwanGraph(Graph):
 					for gid in cand_genes:
 						if gid in ir_genes: continue
 						for cand_eid in sub_edges.index:
-							temp_df = cand_g_df[[cand_eid in vertex_to_edge_path(x) \
-									for x in cand_g_df.path.values.tolist()]]
+							temp_df = cand_g_df[[cand_eid in path for path in cand_g_df.path.values.tolist()]]
 							tids = cand_t_df.tid.tolist()
-							if len(temp_df.index) > 0:
+							for tid in tids:
+								temp = pd.DataFrame(data=[[gid, tid, eid]],
+									columns=['gid', 'tid', 'egde_id'])
+								ir_df = pd.concat([ir_df, temp])
 								ir_edges.append(eid)
 								ir_genes.append(gid)
-								ir_transcripts.extend(tids)
+								ir_transcripts.append(tid)
+			if verbose:
+				pbar.update(1)
 
-		ir_genes = list(set(ir_genes))
-		ir_transcripts = list(set(ir_transcripts))
-		ir_edges = list(set(ir_edges))
-
-		print('Found {} novel ir events from {} transcripts.'.format(len(ir_genes),
+		# ir_genes = list(set(ir_genes))
+		# ir_transcripts = list(set(ir_transcripts))
+		# ir_edges = list(set(ir_edges))
+		ir_transcripts = ir_df.tid.unique().tolist()
+		print('Found {} novel ir events in {} transcripts.'.format(len(ir_df.index),
 			len(ir_transcripts)))
 
-		return ir_genes, ir_transcripts, ir_edges
+		# store in 'ir' field of self.adata.uns
+		self.adata.uns['ir'] = ir_df
 
-	def find_es_genes(self):
+		return ir_df
+
+	def find_es_genes(self, verbose=False):
 		"""
 		Finds all unique genes containing novel exon skipping events.
 		Requires that an annotation has been added to the SwanGraph.
 
-			Returns:
+		Parameters:
+			verbose (bool): Display output
 
-				es_genes (list of str): A list of gene ids from the SwanGraph with
-					at least one novel exon skipping event
-				es_transcripts (list of str): A list of transcript ids from the
-					SwanGraph with at least one novel exon skipping event
-				es_edges (list of tuples): A list of intronic edges in the
-					SwanGraph that skip at least one exonic edge
+		Returns:
+			es_df (pandas DataFrame): DataFrame detailing discovered novel
+				exon-skipping edges and the transcripts and genes they
+				come from
 		"""
 
 		# get only novel edges
@@ -1234,18 +1266,32 @@ class SwanGraph(Graph):
 		# get subset of transcripts that are novel to look for ir edges in
 		nt_df = self.t_df.loc[self.t_df.annotation == False]
 
+		# verbose output
+		if verbose:
+			n_progress = len(edge_ids)
+			pbar = tqdm(total=n_progress)
+			pbar.set_description('Testing each novel edge for exon skipping')
+
 		# for each edge, see if the subgraph between the edge vertices
 		# contains an exonic edge
 		es_edges = []
 		es_genes = []
 		es_transcripts = []
+		# df for gene+transcript+edge combos
+		es_df = pd.DataFrame()
 		for eid in edge_ids:
 			# subgraph consisting of all nodes between the candidate
 			# exon-skipping edge coords in order and its edges
-			sub_nodes = [i for i in range(eid[0]+1,eid[1])]
+			entry = self.edge_df.loc[eid]
+			v1 = entry.v1
+			v2 = entry.v2
+			sub_nodes = [i for i in range(v1+1,v2)]
 			sub_G = self.G.subgraph(sub_nodes)
 			sub_edges = list(sub_G.edges())
-			sub_edges = self.edge_df.loc[sub_edges]
+			self.edge_df['tuple_edge_id'] = self.edge_df[['v1', 'v2']].apply(tuple, axis=1)
+			sub_edges = self.edge_df.loc[self.edge_df.tuple_edge_id.isin(sub_edges)]
+			self.edge_df.drop('tuple_edge_id', axis=1, inplace=True)
+
 			# find edges that are exonic; if there are none, this is not
 			# an exon-skipping edge
 			sub_edges = sub_edges.loc[sub_edges.edge_type == 'exon']
@@ -1253,8 +1299,7 @@ class SwanGraph(Graph):
 			if len(sub_edges.index) > 0:
 
 				# transcripts that contain the candidate exon-skipping edge
-				skip_t_df = nt_df[[eid in vertex_to_edge_path(x) \
-					for x in nt_df.path.values.tolist()]]
+				skip_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
 
 				# circumvent the ISM bug
 				if len(skip_t_df) == 0:
@@ -1273,50 +1318,111 @@ class SwanGraph(Graph):
 						if gid in es_genes: continue
 						for skip_eid in sub_edges.index:
 							# transcripts with the exons that are skipped
-							temp_df = skip_g_df[[skip_eid in vertex_to_edge_path(x) \
-									for x in skip_g_df.path.values.tolist()]]
+							temp_df = skip_g_df[[skip_eid in path for path in skip_g_df.path.values.tolist()]]
 							tids = skip_t_df.tid.tolist()
 							if len(temp_df.index) > 0:
-								es_edges.append(eid)
-								es_genes.append(gid)
-								es_transcripts.extend(tids)
+								for tid in tids:
+									temp = pd.DataFrame(data=[[gid, tid, eid]],
+										columns=['gid', 'tid', 'egde_id'])
+									es_df = pd.concat([es_df, temp])
+									es_edges.append(eid)
+									es_genes.append(gid)
+									es_transcripts.append(tid)
+			if verbose:
+				pbar.update(1)
 
-		es_genes = list(set(es_genes))
-		es_transcripts = list(set(es_transcripts))
-		es_edges = list(set(es_edges))
-
-		print('Found {} novel es events in {} transcripts.'.format(len(es_edges),
+		# es_genes = list(set(es_genes))
+		# es_transcripts = list(set(es_transcripts))
+		# es_edges = list(set(es_edges))
+		es_transcripts = es_df.tid.unique().tolist()
+		print('Found {} novel es events in {} transcripts.'.format(len(es_df.index),
 			len(es_transcripts)))
 
+		# store in 'es' field of self.adata.uns
+		self.adata.uns['es'] = es_df
 
-		return es_genes, es_transcripts, es_edges
+		return es_df
 
-	def de_gene_test(self, dataset_groups):
+	def de_gene_test(self, obs_col, obs_conditions=None):
 		"""
 		Runs a differential expression test on the gene level.
 
-			Parameters:
+		Parameters:
+			obs_col (str): Metadata column from self.adata.obs to perform
+				the test on
+			obs_conditions (list of str, len 2): Categories from 'obs_col' in
+				self.adata.obs to perform the test on.
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets
-					from the SwanGraph to be used in the differential
-					expression test
-					Example: [['data1','data2'],['data3','data4']]
-
-			Returns:
-
-				test (pandas DataFrame): A summary table of the differential
-					expression test, including p and q-values, as well
-					as log fold change.
+		Returns:
+			test (pandas DataFrame): A summary table of the differential
+				expression test, including p and q-values, as well
+				as log fold change.
 		"""
 
-		# format expression data to be used by diffxpy
-		ann = self.create_gene_anndata(dataset_groups)
+		# check if obs_col is even there
+		if obs_col not in self.adata.obs.columns.tolist():
+			raise ValueError('Metadata column {} not found'.format(obs_col))
+
+		# check if there are more than 2 unique values in obs_col
+		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+			raise ValueError('Must provide obs_conditions argument when obs_col has'\
+				' >2 unique values')
+		elif not obs_conditions:
+			obs_conditions = self.adata.obs[obs_col].unique().tolist()
+		elif len(obs_conditions) != 2:
+			raise ValueError('obs_conditions must have exactly 2 values')
+
+		# check if these values of obs_col exist
+		if obs_col and obs_conditions:
+			conds = self.adata.obs[obs_col].unique().tolist()
+			for cond in obs_conditions:
+				if cond not in conds:
+					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+
+		# get an AnnData that's a subset based on obs_conditions
+		if obs_conditions:
+			inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
+			inds = inds.index.tolist()
+			adata = self.adata[inds, :]
+		else:
+			adata = self.adata
+
+		# groupby gene and sum counts
+		data = adata.layers['counts']
+		var = adata.var.index.tolist()
+		obs = adata.obs.index.tolist()
+		df = pd.DataFrame(data=data, columns=var, index=obs)
+		df = df.transpose()
+		df = df.merge(self.t_df['gid'], how='left',
+			left_index=True, right_index=True)
+		df.reset_index(drop=True, inplace=True)
+		df = df.groupby('gid').sum()
+
+		# format as adata and add metadata
+		df = df.transpose()
+		X = df.values
+		var = df.columns.to_frame()
+		obs = df.index.to_frame()
+		obs.rename({0: 'dataset'}, axis=1, inplace=True)
+		adata = anndata.AnnData(X=X, obs=obs, var=var)
+		adata.obs = adata.obs.merge(self.adata.obs, how='left', on='dataset')
+		adata.obs.index = adata.obs.dataset
+		adata.layers['counts'] = adata.X
+
+		# recalculate TPM
+		adata.layers['tpm'] = calc_tpm(adata).to_numpy()
+
+		# set layer to TPM
+		adata.X = adata.layers['tpm']
+
+		formula_loc = "~ 1 + {}".format(obs_col)
+		factor_loc_totest = obs_col
 
 		# test
 		test = de.test.wald(
-			data=ann,
-			formula_loc="~ 1 + condition",
-			factor_loc_totest="condition")
+			data=adata,
+			formula_loc=formula_loc,
+			factor_loc_totest=factor_loc_totest)
 		test = test.summary()
 		test.rename({'gene': 'gid'}, axis=1, inplace=True)
 
@@ -1324,82 +1430,108 @@ class SwanGraph(Graph):
 		gnames = self.t_df[['gid', 'gname']].copy(deep=True)
 		gnames.reset_index(drop=True, inplace=True)
 		test = test.merge(gnames, how='left', on='gid')
-		test.drop_duplicates(inplace=True)
 
 		# sort on log2fc
 		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
 
-		# assign the summary table to the parent object
-		self.deg_test = test
-		self.deg_test_groups = dataset_groups
+		# add summary table to anndata
+		uns_name = make_uns_key(kind='deg',
+					obs_col=obs_col, obs_conditions=obs_conditions)
+
+		self.adata.uns[uns_name] = test
 
 		return test
 
-	def get_de_genes(self, q=0.05, n_genes=None):
+	def get_de_genes(self, obs_col, obs_conditions=None, q=0.05, log2fc=1):
 		"""
 		Subsets the differential gene expression test summary table based
-		on a q-value cutoff. Requires that de_gene_test has already been
-		run.
+		on a q-value and log2fc cutoff. Requires that de_gene_test has
+		already been run.
 
-			Parameters:
+		Parameters:
+			obs_col (str): Column name from self.adata.obs table to group on.
+				Default: 'dataset'
+			obs_conditions (list of str, len 2): Which conditions from obs_col
+				to compare? Required if obs_col has more than 2 unique values.
+			q (float): q-value threshold to declare a gene as significant
+				Default: 0.05
+			log2fc (float): log2fc threshold to declare a gene significant
+				Default: 1
 
-				q (float): q-value threshold to declare a gene as significant
-					Default: 0.05
-				n_genes (int): Number of results to return.
-					Default: None (returns all found significant)
-
-			Returns:
-
-				genes (list of str): List of gene names that pass the
-					significance threshold
-				test (pandas DataFrame): Summary table of genes that pass the
-					significance threshold
+		Returns:
+			test (pandas DataFrame): Summary table of genes that pass the
+				significance threshold
 		"""
 
-		# make sure we have the result of a deg test first!
-		if self.deg_test.empty:
-			raise Exception('Cannot find DE genes without test results. '
-				'Run de_gene_test first.')
+		# check to see if this was even tested
+		uns_name = make_uns_key(kind='deg',
+					obs_col=obs_col, obs_conditions=obs_conditions)
+		try:
+			test = self.adata.uns[uns_name]
+		except:
+			raise Exception('Problem accessing DEG test results for {}, {}'.format(obs_col, obs_conditions))
 
 		# subset on q value
-		test = self.deg_test.loc[self.deg_test.qval <= q].copy(deep=True)
+		test = test.loc[test.qval <= q].copy(deep=True)
+		test = test.loc[test.log2fc >= log2fc]
 
-		# list and the df of the top de genes according qval threshold
-		if not n_genes:
-			genes = test.gname.tolist()
-		else:
-			if n_genes < len(test.index):
-				n_genes = len(test.index)
-				test = test.head(n_genes)
-				genes = test.gname.tolist()
-		return genes, test
+		return test
 
-	def de_transcript_test(self, dataset_groups):
+	def de_transcript_test(self, obs_col, obs_conditions=None):
 		"""
 		Runs a differential expression test on the transcript level.
 
-			Parameters:
+		Parameters:
+			obs_col (str): Metadata column from self.adata.obs to perform
+				the test on
+			obs_conditions (list of str, len 2): Categories from 'obs_col' in
+				self.adata.obs to perform the test on.
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets
-					from the SwanGraph to be used in the differential
-					expression test
-					Example: [['data1','data2'],['data3','data4']]
-
-			Returns:
-
-				test (pandas DataFrame): A summary table of the differential
-					expression test, including p and q-values, as well
-					as log fold change.
+		Returns:
+			test (pandas DataFrame): A summary table of the differential
+				expression test, including p and q-values, as well
+				as log fold change.
 		"""
 
-		# format expression data to be used by diffxpy
-		ann = self.create_transcript_anndata(dataset_groups)
+		# check if obs_col is even there
+		if obs_col not in self.adata.obs.columns.tolist():
+			raise ValueError('Metadata column {} not found'.format(obs_col))
+
+		# check if there are more than 2 unique values in obs_col
+		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+			raise ValueError('Must provide obs_conditions argument when obs_col has'\
+				' >2 unique values')
+		elif not obs_conditions:
+			obs_conditions = self.adata.obs[obs_col].unique().tolist()
+		elif len(obs_conditions) != 2:
+			raise ValueError('obs_conditions must have exactly 2 values')
+
+		# check if these values of obs_col exist
+		if obs_col and obs_conditions:
+			conds = self.adata.obs[obs_col].unique().tolist()
+			for cond in obs_conditions:
+				if cond not in conds:
+					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+
+		# get an AnnData that's a subset based on obs_conditions
+		if obs_conditions:
+			inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
+			inds = inds.index.tolist()
+			adata = self.adata[inds, :]
+		else:
+			adata = self.adata
+
+		# set layer to TPM
+		adata.X = adata.layers['tpm']
+
+		formula_loc = "~ 1 + {}".format(obs_col)
+		factor_loc_totest = obs_col
 
 		# test
 		test = de.test.wald(
-			data=ann,
-			formula_loc="~ 1 + condition",
-			factor_loc_totest="condition")
+			data=adata,
+			formula_loc=formula_loc,
+			factor_loc_totest=factor_loc_totest)
 		test = test.summary()
 		test.rename({'gene': 'tid'}, axis=1, inplace=True)
 
@@ -1411,343 +1543,518 @@ class SwanGraph(Graph):
 		# sort on log2fc
 		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
 
-		# assign the summary table to the parent object
-		self.det_test = test
-		self.det_test_groups = dataset_groups
+		# add summary table to anndata
+		uns_name = make_uns_key(kind='det',
+					obs_col=obs_col, obs_conditions=obs_conditions)
+
+		self.adata.uns[uns_name] = test
 
 		return test
 
-	def get_de_transcripts(self, q=0.05, n_transcripts=None):
+	def get_de_transcripts(self, obs_col, obs_conditions=None, q=0.05, log2fc=1):
 		"""
-		Subsets the differential transcript expression test summary table based
-		on a q-value cutoff. Requires that de_transcript_test has already been
-		run.
+		Subsets the differential gene expression test summary table based
+		on a q-value and log2fc cutoff. Requires that de_gene_test has
+		already been run.
 
-			Parameters:
+		Parameters:
+			obs_col (str): Column name from self.adata.obs table to group on.
+				Default: 'dataset'
+			obs_conditions (list of str, len 2): Which conditions from obs_col
+				to compare? Required if obs_col has more than 2 unique values.
+			q (float): q-value threshold to declare a gene as significant
+				Default: 0.05
+			log2fc (float): log2fc threshold to declare a gene significant
+				Default: 1
 
-				q (float): q-value threshold to declare a transcript as significant
-					Default: 0.05
-				n_transcripts (int): Number of results to return.
-					Default: None (returns all found significant)
-
-			Returns:
-
-				tids (list of str): List of transcript ids that pass the
-					significance threshold
-				test (pandas DataFrame): Summary table of transcripts that pass
-					the significance threshold
+		Returns:
+			test (pandas DataFrame): Summary table of genes that pass the
+				significance threshold
 		"""
 
-		# make sure we have the result of a deg test first!
-		if self.det_test.empty:
-			raise Exception('Cannot find DE transcripts without test results. '
-				'Run de_transcript_test first.')
+		# check to see if this was even tested
+		uns_name = make_uns_key(kind='det',
+					obs_col=obs_col, obs_conditions=obs_conditions)
+		try:
+			test = self.adata.uns[uns_name]
+		except:
+			raise Exception('Problem accessing DET test results for {}, {}'.format(obs_col, obs_conditions))
 
 		# subset on q value
-		test = self.det_test.loc[self.det_test.qval <= q].copy(deep=True)
+		test = test.loc[test.qval <= q].copy(deep=True)
+		test = test.loc[test.log2fc >= log2fc]
 
-		# list and the df of the top de genes according qval threshold
-		if not n_transcripts:
-			tids = test.tid.tolist()
+		return test
+
+	def die_gene_test(self, kind='iso', obs_col='dataset',
+					  obs_conditions=None, rc_thresh=10, verbose=False):
+		"""
+		Finds genes with differential isoform expression between two conditions
+		that are in the obs table. If there are more than 2 unique values in
+		`obs_col`, the specific categories must be specified in `obs_conditions`
+
+		Parameters:
+			obs_col (str): Column name from self.adata.obs table to group on.
+				Default: 'dataset'
+			obs_conditions (list of str, len 2): Which conditions from obs_col
+				to compare? Required if obs_col has more than 2 unqiue values.
+			rc_thresh (int): Number of reads required for each conditions
+				in order to test the gene.
+				Default: 10
+			verbose (bool): Display progress
+
+		Returns:
+			test (pandas DataFrame): A summary table of the differential
+				isoform expression test, including p-values and adjusted
+				p-values, as well as change in percent isoform usage (dpi) for
+				all tested genes.
+		"""
+		# get correct adata
+		if kind == 'iso':
+			adata = self.adata
+			ref_df = self.t_df
+		elif kind == 'tss':
+			adata = self.tss_adata
+			ref_df = self.tss_adata.var
+		elif kind == 'tes':
+			adata = self.tes_adata
+			ref_df = self.tes_adata.var
+
+		# check if obs_col is even there
+		if obs_col not in adata.obs.columns.tolist():
+			raise ValueError('Metadata column {} not found'.format(obs_col))
+
+		# check if there are more than 2 unique values in obs_col
+		if len(adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+			raise ValueError('Must provide obs_conditions argument when obs_col has'\
+				' >2 unique values')
+		elif not obs_conditions:
+			obs_conditions = adata.obs[obs_col].unique().tolist()
+		elif len(obs_conditions) != 2:
+			raise ValueError('obs_conditions must have exactly 2 values')
+
+		# check if these values of obs_col exist
+		if obs_col and obs_conditions:
+			conds = adata.obs[obs_col].unique().tolist()
+			for cond in obs_conditions:
+				if cond not in conds:
+					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+
+		# use calculated values already in the SwanGraph
+		if obs_col == 'dataset' and not self.sc:
+			df = pd.DataFrame(data=adata.layers['pi'],
+								 index=adata.obs.index,
+								 columns=adata.var.index)
+			sums = calc_total_counts(adata, obs_col)
+
+		# recalculate pi and aggregate counts
 		else:
-			if n_transcripts < len(test.index):
-				n_transcripts = len(test.index)
-			n_transcripts = test.head(n_transcripts)
-			tids = test.transcript.tolist()
-		return tids, test
+			df, sums = calc_pi(adata, ref_df, obs_col=obs_col)
+
+		df = df.transpose()
+		sums = sums.transpose()
+
+		# limit to obs_conditions
+		if obs_conditions:
+			if len(obs_conditions) != 2:
+				raise ValueError('obs_conditions must have exactly two values.')
+			df = df[obs_conditions]
+			sums = sums[obs_conditions]
+		else:
+			obs_conditions = adata.obs[obs_col].unique().tolist()
+
+		# add gene id
+		df = df.merge(ref_df['gid'], how='left',
+			left_index=True, right_index=True)
+
+		# add counts and cumulative counts across the samples
+		count_cols = sums.columns
+		sums['total_counts'] = sums[count_cols].sum(axis=1)
+		df = df.merge(sums, how='left', left_index=True, right_index=True, suffixes=(None, '_counts'))
+
+		# construct tables for each gene and test!
+		gids = df.gid.unique().tolist()
+		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
+		gene_de_df.index.name = 'gid'
+
+		# TODO - should parallelize this
+		if verbose:
+			n_genes = len(gids)
+			pbar = tqdm(total=n_genes)
+			pbar.set_description('Testing for DIE for each gene')
+
+		for gene in gids:
+			gene_df = df.loc[df.gid==gene]
+			gene_df = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
+			# if the gene is valid for testing, do so
+			if isinstance(gene_df, pd.DataFrame):
+				p, dpi = test_gene(gene_df, obs_conditions)
+			else:
+				p = dpi = np.nan
+			gene_de_df.loc[gene, 'p_val'] = p
+			gene_de_df.loc[gene, 'dpi'] = dpi
+			if verbose:
+				pbar.update(1)
+
+		# remove untestable genes and perform p value
+		# Benjamini-Hochberg correction
+		gene_de_df.dropna(axis=0, inplace=True)
+		p_vals = gene_de_df.p_val.tolist()
+		if len(p_vals) > 0:
+			_, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
+			gene_de_df['adj_p_val'] = adj_p_vals
+		else:
+			gene_de_df['adj_p_val'] = np.nan
+		gene_de_df.reset_index(inplace=True)
+
+		# add summary table to anndata
+		kind = 'die_{}'.format(kind)
+		uns_name = make_uns_key(kind=kind,
+					obs_col=obs_col, obs_conditions=obs_conditions)
+
+		self.adata.uns[uns_name] = gene_de_df
+
+		return gene_de_df
 
 	# filter differential isoform expression test results based on
 	# both an adjusted p value and dpi cutoff
-	# TODO make this more object-oriented when migration to adata happens
-	def filter_die_results(self, df, p=0.05, dpi=10):
+	def get_die_genes(self, kind='iso',
+							obs_col='dataset',
+							obs_conditions=None,
+							p=0.05,
+							dpi=10):
 		"""
-			Filters differential isoform expression test results based on adj.
-			p-value and change in percent isoform usage (dpi).
+		Filters differential isoform expression test results based on adj.
+		p-value and change in percent isoform usage (dpi).
 
-			Parameters:
-				df (pandas DataFrame): DIE test results, output from
-					get_die_genes
-				p (float): Adj. p-value threshold to declare a gene as isoform
-					switching / having DIE.
-					Default: 0.05
-				dpi (float): DPI (in percent) value to threshold genes with DIE
-					Default: 10
+		Parameters:
+			kind (str): Choose from 'iso', 'tss' or 'tes'
+				Default: 'iso'
+			obs_col (str): Column name from self.adata.obs table to group on.
+				Default: 'dataset'
+			obs_conditions (list of str, len 2): Which conditions from obs_col
+				to compare? Required if obs_col has more than 2 unique values.
+			p (float): Adj. p-value threshold to declare a gene as isoform
+				switching / having DIE.
+				Default: 0.05
+			dpi (float): DPI (in percent) value to threshold genes with DIE
+				Default: 10
 
-			Returns:
-				gids (list of str): List of gene ids that pass the
-					significance thresholds
-				test (pandas DataFrame): Summary table of genes that pass
-					the significance threshold
-		"""
-		df = df.loc[(df.adj_p_val<=p)&(df.dpi>=dpi)]
-		gids = df['index'].tolist()
-		return gids, df
-
-	def get_die_genes(self, dataset_groups, rc_thresh=10):
-		"""
-			Finds genes with differential isoform expression.
-
-			Parameters:
-
-				dataset_groups (list of list of str, len 2): Grouping of datasets
-					from the SwanGraph to be used in the differential
-					expression test
-					Example: [['data1','data2'],['data3','data4']]
-				rc_thresh (int): Number of reads required for each conditions
-					in order to test the gene.
-					Default: 10
-
-			Returns:
-
-				test (pandas DataFrame): A summary table of the differential
-					isoform expression test, including p-values and adjusted
-					p-values, as well as change in percent isoform usage (dpi).
+		Returns:
+			test (pandas DataFrame): Summary table of genes that pass
+				the significance threshold
 		"""
 
-		adata = self.create_transcript_anndata(dataset_groups)
-		adata.var.reset_index(inplace=True)
-		test = get_die(adata, [1, 0], how='iso', rc=rc_thresh)
+		# check to see if this was even tested
+		uns_name = make_uns_key(kind='die',
+					obs_col=obs_col,
+					obs_conditions=obs_conditions,
+					die_kind=kind)
+		try:
+			test = self.adata.uns[uns_name]
+		except:
+			raise Exception('Problem accessing DIE test results for {}, {}'.format(obs_col, obs_conditions))
+
+		test = test.loc[(test.adj_p_val<=p)&(test.dpi>=dpi)]
 
 		return test
 
-	# def find_isoform_switching_genes(self, q=0.05, n_genes=None):
-	# 	""" Finds isoform switching genes; genes that are not differentially
-	# 		expressed but contain at least one transcript that is. Requires
-	# 		that de_gene_test and de_transcript_test have been run.
-	#
-	# 		Parameters:
-	#
-	# 			q (float): q-value threshold to declare a gene/transcript
-	# 				as significant
-	# 				Default: 0.05
-	# 			n_genes (int): Number of results to return.
-	# 				Default: None (returns all found significant)
-	#
-	# 		Returns:
-	#
-	# 			genes (list of str): List of gene names that are categorized as
-	# 				isoform switching
-	# 			switches (pandas DataFrame): Summary table of genes that are
-	# 				categorized as isoform switching
-	# 	"""
-	#
-	# 	# make sure both deg and det tests have been run
-	# 	if self.det_test.empty or self.deg_test.empty:
-	# 		raise Exception('Cannot find isoform switches without test results. '
-	# 			'Run de_gene_test and de_transcript_test first.')
-	#
-	# 	# subset for genes that aren't DE
-	# 	not_degs = self.deg_test.loc[self.deg_test.qval > q]
-	# 	not_degs = not_degs.gid
-	#
-	# 	# subset for dets
-	# 	dets = self.det_test.loc[self.det_test.qval <= q]
-	#
-	# 	# merge on gene id
-	# 	switches = dets.merge(not_degs, how='inner', on='gid')
-	#
-	# 	# list and the df of the top de genes according qval threshold
-	# 	unique_genes = switches.gid.unique().tolist()
-	# 	if not n_genes:
-	# 		genes = unique_genes
-	# 	else:
-	# 		if n_genes < len(unique_genes):
-	# 			n_genes = len(unique_genes)
-	# 		switches = switches.loc[switches.gid.isin(unique_genes[:n_genes])]
-	# 		genes = unique_genes[:n_genes]
-	# 	return genes, switches
-
-	# def get_de_and_not_de_transcripts(self, dataset_groups):
-	# 	ann = self.create_transcript_anndata(dataset_groups)
-	# 	results = de.test.wald(data=ann,
-	# 		formula_loc="~ 1 + condition",
-	# 		factor_loc_totest="condition")
-	# 	test = results.summary()
-	# 	test.rename({'gene': 'transcript'}, axis=1, inplace=True)
-	#
-	# 	gnames = self.t_df[['tid', 'gname']].copy(deep=True)
-	# 	gnames.reset_index(drop=True, inplace=True)
-	# 	test = test.merge(gnames, how='left', left_on='transcript', right_on='tid')
-	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-	#
-	# 	det = test.loc[test.qval < 0.05]
-	# 	not_det = test.loc[test.qval >= 0.05]
-	# 	genes_w_det = det.gname.tolist()
-	# 	not_det = not_det.loc[not_det.gname.isin(genes_w_det)]
-	# 	df = pd.concat([det, not_det])
-	# 	df = df.loc[df.gname.duplicated(keep=False)]
-	#
-	# 	return df
-
-	def create_gene_anndata(self, dataset_groups):
+	def add_multi_groupby(self, groupby):
 		"""
-		Creates a gene-level AnnData object containing TPM that's
-		compatible with diffxpy. Assigns different condition labels
-		to the given dataset groups.
+		Adds a groupby column that is comprised of multiple other columns. For
+		instance, if 'sex' and 'age' are already in the obs table, add an
+		additional column that's comprised of sex and age.
 
-			Parameters:
+		Parameters:
+			groupby (list of str): List of column names to turn into a multi
+				groupby column
 
-				dataset_groups (list of list of str, len 2): Grouping of datasets
-					from the SwanGraph to be used in the differential
-					expression test
-					Example: [['data1','data2'],['data3','data4']]
-
-			Returns:
-				ann (AnnData): AnnData object containing gene-level TPM
-					with different conditions labelled for DE testing
 		"""
 
-		# group t_df into gene df and sum up abundances
-		# both across genes and across datasets
-		t_df = self.t_df.copy(deep=True)
-		dataset_cols = []
-		all_dataset_cols = []
-		for group in dataset_groups:
-			tpm_cols = self.get_tpm_cols(group)
-			dataset_cols.append(tpm_cols)
-			all_dataset_cols.extend(tpm_cols)
+		# determine what to name column
+		col_name = '_'.join(groupby)
 
-		keep_cols = all_dataset_cols+['gid']
-		g_df = t_df[keep_cols].groupby('gid').sum()
+		if col_name in self.adata.obs.columns:
+			col_name += '_1'
+			i = 1
+		while col_name in self.adata.obs.columns:
+			i += 1
+			col_name = col_name[:-1]
+			col_name += str(i)
 
-		# add pseudocounts for each gene
-		g_df[all_dataset_cols] = g_df[all_dataset_cols] + 1
+		adatas = [self.adata, self.tss_adata, \
+				  self.tes_adata, self.edge_adata]
+		for adata in adatas:
+			adata.obs[col_name] = ''
 
-		# create obs, var, and x entries for the anndata object
-		ann_x = g_df.to_numpy().T
-		ann_var = pd.DataFrame(index=g_df.index)
-		ann_obs = pd.DataFrame(columns=['dataset'],
-							   data=all_dataset_cols)
-		ann_obs['condition'] = np.nan
-		for i, group in enumerate(dataset_cols):
-			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
-		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
+		for i, group in enumerate(groupby):
+			for adata in adatas:
+				if i == 0:
+					adata.obs[col_name] = adata.obs[groupby].astype(str)
+				else:
+					adata.obs[col_name] = adata.obs[col_name] + '_' + adata.obs[group].astype(str)
+		return col_name
 
-		return ann
-
-	def create_transcript_anndata(self, dataset_groups, how='counts'):
+	def rm_multi_groupby(self, col_name):
 		"""
-		Creates a transcript-level AnnData object containing TPM that's
-		compatible with diffxpy. Assigns different condition labels
-		to the given dataset groups.
+		Removes given col_name from the AnnDatas in the SwanGraph.
 
-			Parameters:
-
-				dataset_groups (list of list of str, len 2): Grouping of datasets
-					from the SwanGraph to be used in the differential
-					expression test
-					Example: [['data1','data2'],['data3','data4']]
-				how (str): How to calculate expression from each group. Choose
-					from 'tpm' or 'counts'
-
-			Returns:
-				ann (AnnData): AnnData object containing transcript-level TPM
-					with different conditions labelled for DE testing
+		Parameters:
+			col_name (str): Column name
 		"""
 
-		# group t_df
-		t_df = self.t_df.copy(deep=True)
-		dataset_cols = []
-		all_dataset_cols = []
-		for group in dataset_groups:
-			if how == 'tpm':
-				cols = self.get_tpm_cols(group)
-			elif how == 'counts':
-				cols = self.get_count_cols(group)
-			dataset_cols.append(cols)
-			all_dataset_cols.extend(cols)
-
-		if how == 'tpm':
-			# add pseudocounts for each transcript
-			t_df[all_dataset_cols] = t_df[all_dataset_cols] + 1
-
-		# create obs, var, and x entries for the anndata object
-		ann_x = t_df[all_dataset_cols].to_numpy().T
-		ann_var = t_df[['gid', 'gname']]
-		# ann_var['tid'] = ann_var.index
-		# ann_var = pd.DataFrame(index=t_df.index)
-		ann_obs = pd.DataFrame(columns=['dataset'],
-							   data=all_dataset_cols)
-		ann_obs['condition'] = np.nan
-		for i, group in enumerate(dataset_cols):
-			ann_obs.loc[ann_obs.dataset.isin(group),  'condition'] = i
-		ann = anndata.AnnData(X=ann_x, var=ann_var, obs=ann_obs)
-
-		return ann
+		# after we're done, drop this column
+		adatas = [self.adata, self.tss_adata, \
+				  self.tes_adata, self.edge_adata]
+		for adata in adatas:
+			adata.obs.drop(col_name, axis=1, inplace=True)
 
 	##########################################################################
-	######################## Loading/saving SwanGraphs #####################
+	############################ Saving SwanGraphs ###########################
 	##########################################################################
 
 	def save_graph(self, prefix):
 		"""
 		Saves the current SwanGraph in pickle format with the .p extension
 
-			Parameters:
-
-				prefix (str): Path and filename prefix. Resulting file will
-					be saved as prefix.p
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix.p
 		"""
 		print('Saving graph as '+prefix+'.p')
 		picklefile = open(prefix+'.p', 'wb')
 		pickle.dump(self, picklefile)
 		picklefile.close()
 
-	# loads a splice graph object from pickle form
-	def load_graph(self, fname):
+	def save_edge_abundance(self, prefix, kind='counts'):
+		"""
+		Saves edge expression from the current SwanGraph in TSV format with
+		complete information about where edge is.
 
-		picklefile = open(fname, 'rb')
-		graph = pickle.load(picklefile)
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_edge_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+		"""
 
-		# assign SwanGraph fields from file to self
-		self.loc_df = graph.loc_df
-		self.edge_df = graph.edge_df
-		self.t_df = graph.t_df
-		self.datasets = graph.datasets
-		self.counts = graph.counts
-		self.tpm = graph.tpm
-		self.pg = graph.pg
-		self.G = graph.G
+		# add location information to edge_df
+		temp = self.edge_df.merge(self.loc_df[['chrom', 'coord']],
+					how='left', left_on='v1', right_on='vertex_id')
+		temp.rename({'coord': 'start'}, axis=1, inplace=True)
+		temp = temp.merge(self.loc_df[['coord']],
+					how='left', left_on='v2', right_on='vertex_id')
+		temp.rename({'coord': 'stop'}, axis=1, inplace=True)
+		temp.drop(['v1', 'v2', 'edge_id'], axis=1, inplace=True)
 
-		self.deg_test = graph.deg_test
-		self.deg_test_groups = graph.deg_test_groups
-		self.det_test = graph.det_test
-		self.det_test_groups = graph.det_test_groups
+		# get collapsed abundance table from edge_adata
+		columns = self.edge_adata.var.index.tolist()
+		rows = self.edge_adata.obs.index.tolist()
+		if kind == 'counts':
+			data = self.edge_adata.layers['counts']
+		elif kind == 'tpm':
+			data = self.edge_adata.layers['tpm']
 
-		picklefile.close()
+		df = pd.DataFrame(index=rows, columns=columns, data=data)
+		df = df.transpose()
+		df.reset_index(inplace=True)
+		df['index'] = df['index'].astype('int')
 
-		print('Graph from {} loaded'.format(fname))
+		# merge the info together with the abundance
+		df = temp.merge(df, how='right', left_index=True, right_index=True)
+
+		# drop index
+		df.drop('index', axis=1, inplace=True)
+
+		# save file
+		fname = '{}_edge_abundance.tsv'.format(prefix)
+		df.to_csv(fname, sep='\t', index=False)
+
+	def save_tss_abundance(self, prefix, kind='counts'):
+		"""
+		Saves TSS expression from the current SwanGraph in TSV format with
+		complete information about where TSS is.
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_tss_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+		"""
+		self.save_end_abundance(prefix, kind, how='tss')
+
+	def save_tes_abundance(self, prefix, kind='counts'):
+		"""
+		Saves TES expression from the current SwanGraph in TSV format with
+		complete information about where TES is.
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_tes_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+		"""
+		self.save_end_abundance(prefix, kind, how='tes')
+
+	def save_end_abundance(prefix, kind, how='tss'):
+		"""
+		Saves end expression from the current SwanGraph in TSV format with
+		complete information about where end is. Called from save_end_abundance
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_tes_abundance.tsv
+			kind (str): Choose "tpm" or "counts"
+			how (str): Choose "tss" or "tes"
+		"""
+
+		# add location information to end_adata.var
+		if how == 'tss':
+			adata = self.tss_adata
+			temp = self.tss_adata.var.copy(deep=True)
+		elif how == 'tes':
+			adata = self.tes_adata
+			temp = self.tes_adata.var.copy(deep=True)
+		temp.reset_index(inplace=True)
+
+		# add location information to end_adata.var
+		temp = temp.merge(sg.loc_df[['chrom', 'coord']],
+					how='left', on='vertex_id')
+
+		# get abundance table from end_adata
+		columns = adata.var.index.tolist()
+		rows = adata.obs.index.tolist()
+		if kind == 'counts':
+			data = adata.layers['counts']
+		elif kind == 'tpm':
+			data = adata.layers['tpm']
+
+		df = pd.DataFrame(index=rows, columns=columns, data=data)
+		df = df.transpose()
+		df.reset_index(inplace=True)
+
+		# merge the info together with the abundance
+		df = temp.merge(df, how='right', left_index=True, right_index=True)
+
+		# drop index
+		df.drop('index', axis=1, inplace=True)
+
+		# save file
+		fname = '{}_{}_abundance.tsv'.format(prefix, how)
+		df.to_csv(fname, sep='\t', index=False)
 
 	##########################################################################
 	############################ Plotting utilities ##########################
 	##########################################################################
 
+	def set_plotting_colors(self, cmap=None, default=False):
+		"""
+		Set plotting colors for SwanGraph and browser models.
+
+		Parameters:
+			cmap (dict): Dictionary of metadata value : color (hex code with #
+				character or named matplotlib color). Keys should be a subset
+				or all of ['tss', 'tes', 'internal', 'exon', 'intron', 'browser']
+				Default: None
+			default (bool): Whether to revert to default colors
+		"""
+
+		def adjust_lightness(color, amount=0.5):
+		    import colorsys
+		    import matplotlib.colors as mc
+		    try:
+		        c = mc.cnames[color]
+		    except:
+		        c = color
+		    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+		    c = colorsys.hls_to_rgb(c[0], .8, c[2])
+		    c = mc.to_hex(c)
+		    return c
+
+		# user-defined colors
+		if cmap:
+			grays = ['exon', 'intron', 'tss', 'tes']
+			# if colors are named, get hex code
+			for key, item in cmap.items():
+				if '#' not in item:
+					cmap[key] = mc.cnames[item]
+				self.pg.color_dict[key] = item
+				if key in grays:
+					gray_key = '{}_gray'.format(key)
+					gray_color = adjust_lightness(item, 2)
+					self.pg.color_dict[gray_key] = gray_color
+
+		# just get the default colors
+		if default:
+			self.pg.color_dict = self.pg.get_color_dict()
+
+	def set_metadata_colors(self, obs_col, cmap):
+		"""
+		Set plotting colors for datasets based on a column in the metadata
+		table.
+
+		Parameters:
+			obs_col (str): Name of metadata column to set colors for
+			cmap (dict): Dictionary of metadata value : color (hex code with #
+				character or named matplotlib color)
+		"""
+
+		# check if obs_col is even there
+		if obs_col not in self.adata.obs.columns.tolist():
+			raise Exception('Metadata column {} not found'.format(obs_col))
+
+		# TODO check if all values in cmap are in the obs_col
+		# also maybe not my problem lol
+
+		# map values in order specific to
+		self.adata.obs[obs_col] = self.adata.obs[obs_col].astype('category')
+		obs_order = list(self.adata.obs_names)
+		sample_order = self.adata.obs[obs_col].cat.categories.tolist()
+		sample_colors = [cmap[s] for s in sample_order]
+		self.adata.uns['{}_colors'.format(obs_col)] = sample_colors
+
+		# if colors are named, get hex code
+		for key, item in cmap.items():
+			if '#' not in item:
+				cmap[key] = mc.cnames[item]
+
+		# also store rgb values in dict for use with gen_report
+		for key, item in cmap.items():
+			item = item[1:]
+			r,g,b = tuple(int(item[i:i+2], 16) for i in (0, 2, 4))
+			cmap[key] = (r,g,b)
+		self.adata.uns['{}_dict'.format(obs_col)] = cmap
+
+		# also add these to the other adatas
+		self.edge_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.edge_adata.uns['{}_dict'] = cmap
+		self.tss_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.tss_adata.uns['{}_dict'] = cmap
+		self.tes_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.tes_adata.uns['{}_dict'] = cmap
+
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
 				   indicate_novel=False,
-				   prefix=None,
-				   display=False):
+				   prefix=None):
+				   # display=True):
 		"""
 		Plots a gene summary SwanGraph for an input gene.
 		Does not automatically save the figure by default!
 
-			Parameters:
-
-				gid (str): Gene ID to plot for (can also be gene name but
-					we've seen non-unique gene names so use at your own risk!)
-				indicate_dataset (str): Dataset name from SwanGraph to
-					highlight with outlined nodes and dashed edges
-					Incompatible with indicate_novel
-					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by
-					outlining them and dashing them respectively
-					Incompatible with indicate_dataset
-					Default: False
-				prefix (str): Path and file prefix to automatically save
-					the plotted figure
-					Default: None, won't automatically save
-				display (bool): Display the plot during runtime
-					Default: False
+		Parameters:
+			gid (str): Gene ID to plot for (can also be gene name but
+				we've seen non-unique gene names so use at your own risk!)
+			indicate_dataset (str): Dataset name from SwanGraph to
+				highlight with outlined nodes and dashed edges
+				Incompatible with indicate_novel
+				Default: False (no highlighting)
+			indicate_novel (bool): Highlight novel nodes and edges by
+				outlining them and dashing them respectively
+				Incompatible with indicate_dataset
+				Default: False
+			prefix (str): Path and file prefix to automatically save
+				the plotted figure
+				Default: None, won't automatically save
+			display (bool): Display the plot during runtime
+				Default: True
 		"""
 
 		if gid not in self.t_df.gid.tolist():
@@ -1762,9 +2069,9 @@ class SwanGraph(Graph):
 			indicate_novel=indicate_novel)
 		self.pg.plot_graph()
 
-		# display the plot if option is given
-		if display:
-			plt.show()
+		# # display the plot if option is given
+		# if display:
+		# 	plt.show()
 
 		# if the user has provided a place to save
 		if prefix:
@@ -1784,30 +2091,29 @@ class SwanGraph(Graph):
 							 indicate_novel=False,
 							 browser=False,
 							 prefix=None,
-							 display=False):
+							 display=True):
 		"""
 		Plots a path of a single transcript isoform through a gene summary
 		SwanGraph.
 
-			Parameters:
-
-				tid (str): Transcript id of transcript to plot
-				indicate_dataset (str): Dataset name from SwanGraph to
-					highlight with outlined nodes and dashed edges
-					Incompatible with indicate_novel
-					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by
-					outlining them and dashing them respectively
-					Incompatible with indicate_dataset
-					Default: False
-				browser (bool): Plot transcript models in genome browser-
-					style format. Incompatible with indicate_dataset and
-					indicate_novel
-				prefix (str): Path and file prefix to automatically save
-					the plotted figure
-					Default: None, won't automatically save
-				display (bool): Display the plot during runtime
-					Default: False
+		Parameters:
+			tid (str): Transcript id of transcript to plot
+			indicate_dataset (str): Dataset name from SwanGraph to
+				highlight with outlined nodes and dashed edges
+				Incompatible with indicate_novel
+				Default: False (no highlighting)
+			indicate_novel (bool): Highlight novel nodes and edges by
+				outlining them and dashing them respectively
+				Incompatible with indicate_dataset
+				Default: False
+			browser (bool): Plot transcript models in genome browser-
+				style format. Incompatible with indicate_dataset and
+				indicate_novel
+			prefix (str): Path and file prefix to automatically save
+				the plotted figure
+				Default: None, won't automatically save
+			display (bool): Display the plot during runtime
+				Default: True
 		"""
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
@@ -1843,22 +2149,21 @@ class SwanGraph(Graph):
 		"""
 		Plot each input transcript and automatically save figures
 
-			Parameters:
-
-				tids (list of str): List of transcript ids to plot
-				prefix (str): Path and file prefix to automatically save
-					the plotted figures
-				indicate_dataset (str): Dataset name from SwanGraph to
-					highlight with outlined nodes and dashed edges
-					Incompatible with indicate_novel
-					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by
-					outlining them and dashing them respectively
-					Incompatible with indicate_dataset
-					Default: False
-				browser (bool): Plot transcript models in genome browser-
-					style format. Incompatible with indicate_dataset and
-					indicate_novel
+		Parameters:
+			tids (list of str): List of transcript ids to plot
+			prefix (str): Path and file prefix to automatically save
+				the plotted figures
+			indicate_dataset (str): Dataset name from SwanGraph to
+				highlight with outlined nodes and dashed edges
+				Incompatible with indicate_novel
+				Default: False (no highlighting)
+			indicate_novel (bool): Highlight novel nodes and edges by
+				outlining them and dashing them respectively
+				Incompatible with indicate_dataset
+				Default: False
+			browser (bool): Plot transcript models in genome browser-
+				style format. Incompatible with indicate_dataset and
+				indicate_novel
 		"""
 
 		self.check_plotting_args(indicate_dataset, indicate_novel, browser)
@@ -1889,22 +2194,21 @@ class SwanGraph(Graph):
 		"""
 		Plot each transcript in a given gene and automatically save figures
 
-			Parameters:
-
-				gid (str): Gene id or gene name to plot transcripts from
-				prefix (str): Path and file prefix to automatically save
-					the plotted figures
-				indicate_dataset (str): Dataset name from SwanGraph to
-					highlight with outlined nodes and dashed edges
-					Incompatible with indicate_novel
-					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by
-					outlining them and dashing them respectively
-					Incompatible with indicate_dataset
-					Default: False
-				browser (bool): Plot transcript models in genome browser-
-					style format. Incompatible with indicate_dataset and
-					indicate_novel
+		Parameters:
+			gid (str): Gene id or gene name to plot transcripts from
+			prefix (str): Path and file prefix to automatically save
+				the plotted figures
+			indicate_dataset (str): Dataset name from SwanGraph to
+				highlight with outlined nodes and dashed edges
+				Incompatible with indicate_novel
+				Default: False (no highlighting)
+			indicate_novel (bool): Highlight novel nodes and edges by
+				outlining them and dashing them respectively
+				Incompatible with indicate_dataset
+				Default: False
+			browser (bool): Plot transcript models in genome browser-
+				style format. Incompatible with indicate_dataset and
+				indicate_novel
 		"""
 
 		if gid not in self.t_df.gid.tolist():
@@ -1935,145 +2239,166 @@ class SwanGraph(Graph):
 	##########################################################################
 	############################### Report stuff #############################
 	##########################################################################
-	# creates a report for each transcript model for a gene according to user input
 	def gen_report(self,
-				   gids,
+				   gid,
 				   prefix,
-				   datasets='all',
-				   dataset_groups=False,
-				   dataset_group_names=False,
+				   datasets=None,
+				   groupby=None,
+				   metadata_cols=None,
 				   novelty=False,
-				   heatmap=False,
-				   dpi=False,
+   				   layer='tpm', # choose from tpm, pi
 				   cmap='Spectral_r',
-				   tpm=False,
 				   include_qvals=False,
 				   q=0.05,
+				   log2fc=1,
+				   qval_obs_col=None,
+				   qval_obs_conditions=None,
 				   include_unexpressed=False,
-				   indicate_dataset=False,
 				   indicate_novel=False,
+				   display_numbers=False,
+				   transcript_name=False,
 				   browser=False,
-				   order='expression',
-				   threads=1):
+				   order='expression'):
 		"""
 		Generates a PDF report for a given gene or list of genes according
 		to the user's input.
 
-			Parameters:
-
-				gids (str or list of str): Gene ids or names to generate
-					reports for
-				prefix (str): Path and/or filename prefix to save PDF and
-					images used to generate the PDF
-
-				datasets (list of str): Datasets to include in the report
-					Default: Include columns for all datasets
-				dataset_groups (list of list of str): Datasets to average
-					together in the report and display as one column
-					Example: [['group1_1','group1_2'],['group2_1','group2_2']]
-				dataset_group_names (list of str): Names to give each group
-					given by dataset_groups. Must be the same length as
-					dataset_groups
-					Example: ['group1', 'group2']
-					Default: Will assign numbers 1 through length(dataset_group)
-
-				novelty (bool): Include a column to dipslay novelty type of
-					each transcript. Requires that a TALON GTF or DB has
-					been used to load data in
-					Default: False
-
-				heatmap (bool): Display expression values in a heatmap
-					format. Requires that abundance information has been
-					added to the SwanGraph
-					Default: False
-				dpi (bool): Plot proportion isoform usage per condition
-					as opposed to log2(tpm)
-				cmap (str): Matplotlib color map to display heatmap values
-					in.
-					Default: 'Spectral_r'
-				tpm (bool): Display TPM value of each transcript/dataset
-					combination, instead of presence/absence of each
-					transcript. Requires that abundance information has
-					been added to the SwanGraph
-					Default:False
-
-				include_qvals (bool): Display q-val of differential expression
-					for each transcript and bold entries found to be
-					differentially expressed. Requires that de_transcript_test
-					has been run, and that abundance information has been
-					added to the SwanGraph
-					Default: False
-				q (float): Q-value significance threshold to use when
-					bolding transcripts if include_qvals = True.
-					Default: 0.05
-
-				include_unexpressed (bool): Add transcript entries to report
-					that are not expressed in any input dataset.
-					Default: False
-
-				indicate_dataset (str): Dataset name from SwanGraph to
-					highlight with outlined nodes and dashed edges
-					Incompatible with indicate_novel
-					Default: False (no highlighting)
-				indicate_novel (bool): Highlight novel nodes and edges by
-					outlining them and dashing them respectively
-					Incompatible with indicate_dataset
-					Default: False
-				browser (bool): Plot transcript models in genome browser-
-					style format. Incompatible with indicate_dataset and
-					indicate_novel
-
-				order (str): Order to display transcripts in the report.
-					Options are
-						'tid': alphabetically by transcript ID
-						'expression': cumulative expression from high to low
-							Requires that abundance information has been
-							added to the SwanGraph
-						'tss': genomic coordinate of transcription start site
-						'tes': genomic coordinate of transcription end site
-					Default: 'expression' if abundance information is present,
-							 'tid' if not
-
-				threads (int): Number of threads to use. Multithreading is
-					recommended when making a large number of gene reports.
-					Default: 1.
+		Parameters:
+			gid (str): Gene id or name to generate
+				reports for
+			prefix (str): Path and/or filename prefix to save PDF and
+				images used to generate the PDF
+			datasets (dict of lists): Dictionary of {'metadata_col':
+				['metadata_category_1', 'metadata_category_2'...]} to represent
+				datasets and their order to include in the report.
+				Default: Include columns for all datasets / groupby category
+			groupby (str): Column in self.adata.obs to group expression
+				values by
+				Default: None
+			metadata_cols (list of str): Columns from metadata tables to include
+				as colored bars. Requires that colors have been set using
+				set_metadata_colors
+			novelty (bool): Include a column to dipslay novelty type of
+				each transcript. Requires that a TALON GTF or DB has
+				been used to load data in
+				Default: False
+			layer (str): Layer to plot expression from. Choose 'tpm' or 'pi'
+			cmap (str): Matplotlib color map to display heatmap values
+				in.
+				Default: 'Spectral_r'
+			include_qvals (bool): Display q-val of differential expression
+				for each transcript and bold entries found to be
+				differentially expressed. Requires that de_transcript_test
+				has been run, and that abundance information has been
+				added to the SwanGraph
+				Default: False
+			q (float): Q-value significance threshold to use when
+				bolding transcripts if include_qvals = True.
+				Default: 0.05
+			log2fc (float): Log2fc significance threshold to use when
+				bolding transcripts if include_qvals = True
+			qval_obs_col (str): Metadata column from self.adata
+			include_unexpressed (bool): Add transcript entries to report
+				that are not expressed in any input dataset.
+				Default: False
+			indicate_novel (bool): Emphasize novel nodes and edges by
+				outlining them and dashing them respectively
+				Incompatible with indicate_dataset
+				Default: False
+			browser (bool): Plot transcript models in genome browser-
+				style format. Incompatible with indicate_dataset and
+				indicate_novel
+			display_numbers (bool): Display TPM or pi values atop each cell
+				Default: False
+			order (str): Order to display transcripts in the report.
+				Options are
+					'tid': alphabetically by transcript ID
+					'expression': cumulative expression from high to low
+						Requires that abundance information has been
+						added to the SwanGraph
+					'tss': genomic coordinate of transcription start site
+					'tes': genomic coordinate of transcription end site
+				Default: 'expression' if abundance information is present,
+						 'tid' if not
 		"""
 
-		# check to see if input genes are in the graph
-		if type(gids) != list:
-			gids = [gids]
-		for i, gid in enumerate(gids):
-			if gid not in self.t_df.gid.tolist():
-				gid = self.get_gid_from_gname(gid)
-				gids[i] = gid
-			self.check_gene(gid)
+		# check if groupby column is present
+		multi_groupby = False
+		indicate_dataset = False
+		if groupby:
+			# grouping by more than one column
+			if type(groupby) == list and len(groupby) > 1:
+				for g in groupby:
+					if g not in self.adata.obs.columns.tolist():
+						raise Exception('Groupby column {} not found'.format(g))
+				groupby = self.add_multi_groupby(groupby)
+				multi_groupby = True
+			elif groupby not in self.adata.obs.columns.tolist():
+				raise Exception('Groupby column {} not found'.format(groupby))
+
+
+		# check if metadata columns are present
+		if metadata_cols:
+			for c in metadata_cols:
+				if c not in self.adata.obs.columns.tolist():
+					raise Exception('Metadata column {} not found'.format(c))
+
+				# if we're grouping by a certain variable, make sure
+				# the other metadata cols we plan on plotting have unique
+				# mappings to the other columns. if just grouping by dataset,
+				# since each dataset is unique, that's ok
+				if groupby and groupby != 'dataset':
+					if groupby == c:
+						continue
+
+					temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
+					temp = temp.groupby([groupby, c]).count().reset_index()
+					temp = temp.loc[~temp.dataset.isnull()]
+
+					# if there are duplicates from the metadata column, throw exception
+					if temp[groupby].duplicated().any():
+							raise Exception('Metadata column {} '.format(c)+\
+								'not compatible with groupby column {}. '.format(groupby)+\
+								'Groupby column has more than 1 unique possible '+\
+								'value from metadata column.')
+
+		# check to see if input gene is in the graph
+		if gid not in self.t_df.gid.tolist():
+			gid = self.get_gid_from_gname(gid)
+		self.check_gene(gid)
 
 		# check to see if these plotting settings will play together
 		self.check_plotting_args(indicate_dataset,
 			indicate_novel, browser)
 
-		# make sure all input datasets are present in graph
-		if datasets == 'all':
-			datasets = self.get_dataset_cols(include_annotation=False)
-		elif not datasets:
-			datasets = []
+		# get the list of columns to include from the input datasets dict
+		if datasets:
+			# get a df that is subset of metadata
+			# also sort the datasets based on the order they appear in "datasets"
+			i = 0
+			sorters = []
+			for meta_col, meta_cats in datasets.items():
+				if meta_col not in self.adata.obs.columns.tolist():
+					raise Exception('Metadata column {} not found'.format(meta_col))
+				if type(meta_cats) == str:
+					meta_cats = [meta_cats]
+				if i == 0:
+					temp = self.adata.obs.loc[self.adata.obs[meta_col].isin(meta_cats)]
+				else:
+					temp = temp.loc[temp[meta_col].isin(meta_cats)]
+				sort_ind = dict(zip(meta_cats, range(len(meta_cats))))
+				sort_col = '{}_sort'.format(meta_col)
+				temp[sort_col] = temp[meta_col].map(sort_ind).astype(int)
+				sorters.append(sort_col)
+				i += 1
+
+			# sort the df based on the order that different categories appear in "datasets"
+			temp.sort_values(by=sorters, inplace=True, ascending=True)
+			temp.drop(sorters, axis=1, inplace=True)
+			columns = temp.dataset.tolist()
+			del temp
 		else:
-			self.check_datasets(datasets)
-
-		# if we have dataset groupings make sure that they are a subset
-		# of the datasets already requested
-		if dataset_groups:
-			if not datasets:
-				raise Exception('Cannot group datasets as none were requested.')
-			else:
-				all_dgs = [j for i in dataset_groups for j in i]
-				self.check_datasets(all_dgs)
-
-				subsumed_datasets = [True if i in datasets else False for i in all_dgs]
-				if False in subsumed_datasets:
-					bad_dataset = all_dgs[subsumed_datasets.index(False)]
-					raise Exception("Grouping dataset {} not present in "
-						"datasets {}.".format(bad_dataset, datasets))
+			columns = None
 
 		# if we've asked for novelty first check to make sure it's there
 		if novelty:
@@ -2081,103 +2406,249 @@ class SwanGraph(Graph):
 				raise Exception('No novelty information present in the graph. '
 					'Add it or do not use the "novelty" report option.')
 
-		# check to make sure abundance data is there for the
-		# query columns, if user is asking
-		if dpi or tpm or heatmap:
-			self.check_abundances(datasets)
+		# abundance info to calculate TPM on - subset on datasets that will
+		# be included
+		if columns or datasets:
+			subset_adata = self.subset_on_gene_sg(datasets=columns).adata
+		else:
+			subset_adata = self.adata
+
+		# small SwanGraph with only this gene's data
+		sg = self.subset_on_gene_sg(gid=gid, datasets=columns)
+
+		# if we're grouping data, calculate those new numbers
+		# additionally order transcripts
+		if groupby:
+			if layer == 'tpm':
+				# use whole adata to calc tpm
+				t_df = tpm_df = calc_tpm(subset_adata, sg.t_df, obs_col=groupby).transpose()
+			elif layer == 'pi':
+				# calc tpm just so we can order based on exp
+				tpm_df = calc_tpm(subset_adata, self.t_df, obs_col=groupby).transpose()
+				t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col=groupby)
+				t_df = t_df.transpose()
+		else:
+			if layer == 'tpm':
+				# use whole adata to calc tpm
+				t_df = tpm_df = self.get_tpm().transpose()
+				t_df = t_df[subset_adata.obs.dataset.tolist()]
+				# t_df = tpm_df = calc_tpm(subset_adata, sg.t_df).transpose()
+			elif layer == 'pi':
+				# calc tpm just so we can order based on exp
+				# tpm_df = calc_tpm(subset_adata, self.t_df).transpose()
+				t_df = tpm_df = self.get_tpm().transpose()
+				t_df = t_df[subset_adata.obs.dataset.tolist()]
+				t_df, _ = calc_pi(sg.adata, sg.t_df)
+				t_df = t_df.transpose()
+			# if layer == 'tpm':
+			# 	t_df = tpm_df = self.get_tpm().transpose()
+			# elif layer == 'pi':
+			# 	# calc tpm just so we can order based on exp
+			# 	t_df = tpm_df = self.get_tpm().transpose()
+			# 	t_df, _ = calc_pi(sg.adata, sg.t_df, obs_col='dataset')
+			# 	t_df = t_df.transpose()
 
 		# order transcripts by user's preferences
-		if order == 'expression' and not self.get_count_cols():
+		if order == 'expression' and self.abundance == False:
 			order = 'tid'
-		self.order_transcripts(order)
+		elif order == 'expression':
+			order = 'log2tpm'
+		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+		tpm_df = tpm_df.loc[tids]
+		_, tids = sg.order_transcripts_subset(tpm_df, order=order)
+		del tpm_df
+		t_df = t_df.loc[tids]
 
-		# subset t_df based on relevant tids and expression requirements
-		t_df = self.t_df[self.t_df.gid.isin(gids)].copy(deep=True)
+		# # order/exclude columns by user's preferences
+		# t_df = t_df[columns]
+
+		# remove unexpressed transcripts if desired
+		if not include_unexpressed:
+			t_df = t_df.loc[t_df.any(axis=1)]
 
 		# make sure de has been run if needed
 		if include_qvals:
-			if not self.check_de('transcript'):
-				raise Exception('Differential transcript expression test needed '
-					'to use include_qvals. Run de_transcript_test.')
-			de_df = self.det_test.copy(deep=True)
-			t_df = reset_dupe_index(t_df, 'tid')
-			t_df['significant'] = False
-			t_df = t_df.merge(de_df[['tid', 'qval']], how='left', on='tid')
-			t_df['significant'] = t_df.qval <= q
-			t_df = set_dupe_index(t_df, 'tid')
-
-		# if user doesn't care about datasets, just show all transcripts
-		if not datasets:
-			include_unexpressed = True
-
-		# user only wants transcript isoforms that appear in their data
-		if not include_unexpressed:
-			counts_cols = self.get_count_cols(datasets)
-			t_df = t_df[t_df[counts_cols].sum(axis=1)>0]
-
-		# if we're grouping things switch up the datasets
-		# and how t_df is formatted
-		if dataset_groups:
-
-			# no grouped dataset names were given - generate names
-			if not dataset_group_names:
-				print('No group names given. Will just use Group_#.')
-				dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
-
-			# check if we have the right number of group names
-			if len(dataset_groups) != len(dataset_group_names):
-				print('Not enough group names given. Will just use Group_#.')
-				dataset_group_names = ['Group_{}'.format(i) for i in range(len(dataset_groups))]
-
-			for i in range(len(dataset_groups)):
-				group = dataset_groups[i]
-				group_name = dataset_group_names[i]
-
-				# true or false
-				if not heatmap and not tpm:
-					t_df[group_name] = t_df[group].any(axis=1)
-				# tpm values
-				else:
-					group_name += '_counts'
-					count_group_cols = self.get_count_cols(group)
-					t_df[group_name] = t_df[count_group_cols].mean(axis=1)
-			datasets = dataset_group_names
-			# report_cols = dataset_group_names
-
-		# determine report type
-		if heatmap:
-			data_type = 'heatmap'
-		elif tpm:
-			data_type = 'tpm'
+			uns_key = make_uns_key(kind='det',
+								   obs_col=qval_obs_col,
+					   			   obs_conditions=qval_obs_conditions)
+			qval_df = self.adata.uns[uns_key].copy(deep=True)
+			qval_df['significant'] = (qval_df.qval <= q)&(qval_df.log2fc >= log2fc)
 		else:
-			data_type = None
+			qval_df = None
 
-		# determine report type
-		if not browser:
-			report_type = 'swan'
-		else:
+		# get tids in this report
+		report_tids = t_df.index.tolist()
+
+		# plot each transcript with these settings
+		print()
+		print('Plotting transcripts for {}'.format(gid))
+		sg.plot_each_transcript(report_tids, prefix,
+								  indicate_dataset,
+								  indicate_novel,
+								  browser=browser)
+
+		# get a different prefix for saving colorbars and scales
+		gid_prefix = prefix+'_{}'.format(gid)
+
+		# if we're plotting tracks, we need a scale as well
+		# also set what type of report this will be, 'swan' or 'browser'
+		if browser:
+			sg.pg.plot_browser_scale()
+			save_fig(gid_prefix+'_browser_scale.png')
 			report_type = 'browser'
-
-		# make sure number of threads is compatible with the system
-		max_cores = multiprocessing.cpu_count()
-		if threads > max_cores:
-			threads = max_cores
-
-		# if there are fewer than 10 genes, the overhead for multiprocessing
-		# takes longer
-		if len(gids) < 10:
-			for gid in gids:
-				_create_gene_report(gid, self, t_df, datasets, data_type,
-					prefix, indicate_dataset, indicate_novel, browser,
-					report_type, novelty, heatmap, dpi, cmap, include_qvals)
 		else:
-			# launch report jobs on different threads
-			with multiprocessing.Pool(threads) as pool:
-				pool.starmap(_create_gene_report, zip(gids, repeat(self), repeat(t_df),
-					repeat(datasets), repeat(data_type), repeat(prefix), repeat(indicate_dataset),
-					repeat(indicate_novel), repeat(browser), repeat(report_type),
-					repeat(novelty), repeat(heatmap), repeat(dpi),
-					repeat(cmap), repeat(include_qvals)))
+			report_type = 'swan'
+
+		# plot colorbar for either tpm or pi
+		if layer == 'tpm':
+
+			# take log2(tpm) (add pseudocounts)
+			t_df = np.log2(t_df+1)
+
+			# min and max tpm vals
+			g_max = t_df.max().max()
+			g_min = t_df.min().min()
+
+			# create a colorbar
+			plt.rcParams.update({'font.size': 30})
+			fig, ax = plt.subplots(figsize=(14, 1.5))
+			fig.subplots_adjust(bottom=0.5)
+			fig.patch.set_visible(False)
+			ax.patch.set_visible(False)
+
+			try:
+				cmap = plt.get_cmap(cmap)
+			except:
+				raise ValueError('Colormap {} not found'.format(cmap))
+
+			norm = mpl.colors.Normalize(vmin=g_min, vmax=g_max)
+
+			cb = mpl.colorbar.ColorbarBase(ax,
+								cmap=cmap,
+								norm=norm,
+								orientation='horizontal')
+			cb.set_label('log2(TPM)')
+			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
+				bbox_inches='tight', dpi=200)
+			plt.clf()
+			plt.close()
+
+		elif layer == 'pi':
+
+			# min and max pi vals
+			g_max = 100
+			g_min = 0
+
+			# create a colorbar between 0 and 1
+			plt.rcParams.update({'font.size': 30})
+			fig, ax = plt.subplots(figsize=(14, 1.5))
+			fig.subplots_adjust(bottom=0.5)
+			fig.patch.set_visible(False)
+			ax.patch.set_visible(False)
+
+			try:
+				cmap = plt.get_cmap(cmap)
+			except:
+				raise ValueError('Colormap {} not found'.format(cmap))
+
+			norm = mpl.colors.Normalize(vmin=0, vmax=100)
+
+			cb = mpl.colorbar.ColorbarBase(ax,
+								cmap=cmap,
+								norm=norm,
+								orientation='horizontal')
+			cb.set_label('Percent of isoform use (' +'$\pi$'+')')
+			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png',
+				bbox_inches='tight', dpi=200)
+			plt.clf()
+			plt.close()
+
+		# merge with sg.t_df to get additional columns
+		datasets = t_df.columns
+		cols = ['novelty', 'tname']
+		t_df = t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
+
+		# create report
+		print('Generating report for {}'.format(gid))
+		pdf_name = create_fname(prefix,
+					 indicate_dataset,
+					 indicate_novel,
+					 browser,
+					 ftype='report',
+					 gid=gid)
+		if transcript_name:
+			t_disp = 'Transcript Name'
+		else:
+			t_disp = 'Transcript ID'
+		report = Report(gid_prefix,
+						report_type,
+						sg.adata.obs,
+						sg.adata.uns,
+						datasets=datasets,
+						groupby=groupby,
+						metadata_cols=metadata_cols,
+						novelty=novelty,
+						layer=layer,
+						cmap=cmap,
+						g_min=g_min,
+						g_max=g_max,
+						include_qvals=include_qvals,
+						qval_df=qval_df,
+						display_numbers=display_numbers,
+						t_disp=t_disp)
+		report.add_page()
+
+		# loop through each transcript and add it to the report
+		for ind, entry in t_df.iterrows():
+			tid = ind
+
+			# display name for transcript
+			if transcript_name:
+				t_disp = entry['tname']
+			else:
+				t_disp = tid
+			fname = create_fname(prefix,
+								 indicate_dataset,
+								 indicate_novel,
+								 browser,
+								 ftype='path',
+								 tid=tid)
+			report.add_transcript(entry, fname, t_disp)
+		report.write_pdf(pdf_name)
+
+		# remove multi groupby column if necessary
+		if multi_groupby:
+			self.rm_multi_groupby(groupby)
+
+##########################################################################
+############################# Data retrieval #############################
+##########################################################################
+	def get_tpm(self, kind='transcript'):
+		"""
+		Retrieve TPM per dataset.
+
+		Parameters:
+			kind (str): Choose from ['transcript', 'edge', 'tss', 'tes']
+
+		Returns:
+			df (pandas DataFrame): Pandas datafrom where rows are the different
+				conditions from `dataset` and the columns are ids in the
+				SwanGraph, and values represent the TPM value per
+				isoform/edge/tss/tes per dataset.
+		"""
+		if kind == 'transcript':
+			adata = self.adata
+		elif kind == 'edge':
+			adata = self.edge_adata
+		elif kind == 'tss':
+			adata = self.tss_adata
+		elif kind == 'tes':
+			adata = self.tes_adata
+
+		adata.X = adata.layers['tpm']
+		df = pd.DataFrame(data=adata.X, index=adata.obs['dataset'].tolist(), \
+			columns=adata.var.index.tolist())
+		return df
 
 	##########################################################################
 	############################# Error handling #############################
@@ -2197,10 +2668,10 @@ class SwanGraph(Graph):
 
 		# if indicate_dataset or indicate_novel are chosen, make sure
 		# the dataset or annotation data exists in the SwanGraph
-		if indicate_novel and 'annotation' not in self.get_dataset_cols():
+		if indicate_novel and not self.annotation:
 			raise Exception('Annotation data not present in graph. Use '
 							'add_annotation before using indicate_novel')
-		if indicate_dataset and indicate_dataset not in self.get_dataset_cols():
+		if indicate_dataset and indicate_dataset not in self.datasets:
 			raise Exception('Dataset {} not present in the graph. '
 							''.format(indicate_dataset))
 
@@ -2209,135 +2680,3 @@ class SwanGraph(Graph):
 			if indicate_novel or indicate_dataset:
 				raise Exception('Cannot indicate_novel or indicate_dataset '
 								'with browser option.')
-
-##########################################################################
-################################## Extras ################################
-##########################################################################
-
-# generate a report for one gene; used for parallelization
-def _create_gene_report(gid, sg, t_df,
-	datasets, data_type,
-	prefix,
-	indicate_dataset, indicate_novel,
-	browser,
-	report_type, novelty, heatmap,
-	dpi, cmap,
-	include_qvals):
-
-	report_tids = t_df.loc[t_df.gid == gid, 'tid'].tolist()
-
-	# plot each transcript with these settings
-	print()
-	print('Plotting transcripts for {}'.format(gid))
-	sg.plot_each_transcript(report_tids, prefix,
-							  indicate_dataset,
-							  indicate_novel,
-							  browser=browser)
-
-	# get a different prefix for saving colorbars and scales
-	gid_prefix = prefix+'_{}'.format(gid)
-
-	# if we're plotting tracks, we need a scale as well
-	if browser:
-		sg.pg.plot_browser_scale()
-		save_fig(gid_prefix+'_browser_scale.png')
-
-	# subset on gene
-	gid_t_df = t_df.loc[t_df.gid == gid].copy(deep=True)
-
-	if heatmap:
-
-		if not dpi:
-			# take log2(tpm) and gene-normalize
-			count_cols = ['{}_counts'.format(d) for d in datasets]
-			log_cols = ['{}_log_tpm'.format(d) for d in datasets]
-			norm_log_cols = ['{}_norm_log_tpm'.format(d) for d in datasets]
-			gid_t_df[log_cols] = np.log2(gid_t_df[count_cols]+1)
-			max_val = max(gid_t_df[log_cols].max().tolist())
-			min_val = min(gid_t_df[log_cols].min().tolist())
-			gid_t_df[norm_log_cols] = (gid_t_df[log_cols]-min_val)/(max_val-min_val)
-
-			# create a colorbar
-			plt.rcParams.update({'font.size': 20})
-			fig, ax = plt.subplots(figsize=(14, 1.5))
-			fig.subplots_adjust(bottom=0.5)
-			fig.patch.set_visible(False)
-			ax.patch.set_visible(False)
-
-			try:
-				cmap = plt.get_cmap(cmap)
-			except:
-				raise ValueError('Colormap {} not found'.format(cmap))
-
-			norm = mpl.colors.Normalize(vmin=min_val, vmax=max_val)
-
-			cb = mpl.colorbar.ColorbarBase(ax,
-											cmap=cmap,
-											norm=norm,
-											orientation='horizontal')
-			cb.set_label('log2(TPM)')
-			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
-			plt.clf()
-			plt.close()
-
-		# calculate % isoform for each dataset group
-		elif dpi:
-			count_cols = ['{}_counts'.format(d) for d in datasets]
-			dpi_cols = ['{}_dpi'.format(d) for d in datasets]
-			gid_t_df[dpi_cols] = gid_t_df[count_cols].div(gid_t_df[count_cols].sum(axis=0), axis=1)
-
-			# create a colorbar
-			plt.rcParams.update({'font.size': 20})
-			fig, ax = plt.subplots(figsize=(14, 1.5))
-			fig.subplots_adjust(bottom=0.5)
-			fig.patch.set_visible(False)
-			ax.patch.set_visible(False)
-
-			try:
-				cmap = plt.get_cmap(cmap)
-			except:
-				raise ValueError('Colormap {} not found'.format(cmap))
-
-			norm = mpl.colors.Normalize(vmin=0, vmax=1)
-
-			cb = mpl.colorbar.ColorbarBase(ax,
-											cmap=cmap,
-											norm=norm,
-											orientation='horizontal')
-			cb.set_label('Proportion of isoform use')
-			plt.savefig(gid_prefix+'_colorbar_scale.png', format='png', dpi=200)
-			plt.clf()
-			plt.close()
-
-	# create report
-	print('Generating report for {}'.format(gid))
-	pdf_name = create_fname(prefix,
-				 indicate_dataset,
-				 indicate_novel,
-				 browser,
-				 ftype='report',
-				 gid=gid)
-	report = Report(gid_prefix,
-					report_type,
-					datasets,
-					data_type,
-					novelty=novelty,
-					heatmap=heatmap,
-					dpi=dpi,
-					cmap=cmap,
-					include_qvals=include_qvals)
-	report.add_page()
-
-	# loop through each transcript and add it to the report
-	for tid in report_tids:
-		entry = gid_t_df.loc[tid]
-		## TODO would be faster if I didn't have to compute these names twice....
-		## ie once in plot_each_transcript and once here
-		fname = create_fname(prefix,
-							 indicate_dataset,
-							 indicate_novel,
-							 browser,
-							 ftype='path',
-							 tid=entry.tid)
-		report.add_transcript(entry, fname)
-	report.write_pdf(pdf_name)

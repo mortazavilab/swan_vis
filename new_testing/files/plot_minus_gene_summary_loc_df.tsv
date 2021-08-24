@@ -1,0 +1,8 @@
+vertex_id	chrom	coord	internal	TSS	TES	old_vertex_id	color	edgecolor	linewidth
+0	chr2	100	FALSE	TRUE	FALSE	12	TSS	None	None
+1	chr2	80	TRUE	FALSE	FALSE	11	internal	None	None
+2	chr2	75	TRUE	FALSE	FALSE	10	internal	None	None
+3	chr2	65	TRUE	FALSE	FALSE	9	internal	None	None
+4	chr2	60	TRUE	FALSE	FALSE	8	internal	None	None
+5	chr2	50	TRUE	FALSE	TRUE	7	TES	None	None
+6	chr2	45	FALSE	FALSE	TRUE	6	TES	None	None

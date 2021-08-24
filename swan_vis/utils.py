@@ -1,131 +1,147 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
+import pickle
 from statsmodels.stats.multitest import multipletests
 import scipy.stats as st
 import matplotlib.pyplot as plt
 import os
 import copy
 from collections import defaultdict
+from tqdm import tqdm
+from swan_vis.talon_utils import *
 
-# creates the duplicate index
+pd.options.mode.chained_assignment = None
+
 def create_dupe_index(df, ind_name):
+	"""
+	Creates a duplicate column in the input DataFrame from the input column name
+
+	Parameters:
+		df (pandas DataFrame): DataFrame to create duplicate column
+		ind_name (str): Name of column to duplicate
+
+	Returns:
+		df (pandas DataFrame): DataFrame with new duplicate column
+	"""
 	df[ind_name+'_back'] = df[ind_name]
 	return df
 
-# renames old index dupe column in df and resets the index
 def reset_dupe_index(df, ind_name):
+	"""
+	Reset index and rename duplicate index column
+
+	Parameters:
+		df (pandas DataFrame): DataFrame to reset index
+		ind_name (str): Name of column to reset
+
+	Returns:
+		df (pandas DataFrame): DataFrame with reset duplicate index
+	"""
 	df.rename({ind_name: ind_name+'_back'}, inplace=True, axis=1)
 	df.reset_index(inplace=True)
 	return(df)
 
 # set index, rename dupe index in df
 def set_dupe_index(df, ind_name):
+	"""
+	Set duplicated column from create_dupe_index as the index and rename the
+	duplicated column
+
+	Parameters:
+		df (pandas DataFrame): DataFrame to set index
+		ind_name (str): Name of column to set as index
+
+	Returns:
+		df (pandas DataFrame): DataFrame with set duplicate index
+	"""
 	df.set_index(ind_name, inplace=True)
 	df.rename({ind_name+'_back': ind_name}, inplace=True, axis=1)
 	return(df)
 
-# partner function to label_edges
-def set_edge_attrs(x, G, f_df, f_e):
-	attr = {(x.v1, x.v2): {f_e: x[f_df]}}
-	nx.set_edge_attributes(G, attr)
-	return G
+def make_uns_key(kind, obs_col, obs_conditions, die_kind='iso'):
+	"""
+	Make a key name to reference die, det, or deg results in the .uns part of
+	SwanGraph.adata.
 
-# label edges in G based on fields of edge_df
-def label_edges(G, edge_df, f_df, f_e):
-	edge_df.apply(lambda x: set_edge_attrs(x, G, f_df, f_e), axis=1)
-	return G
+	Parameters:
+		kind (str): Choose 'det', 'die', 'deg' (for differential transcript,
+			isoform switching / differential isoform expression,
+			differential gene expression respectively)
+		obs_col (str): Column name from self.adata.obs table to group on.
+		obs_conditions (list of str, len 2): Which conditions from obs_col
+			to compare? Required if obs_col has more than 2 unique values.
+		die_kind (str): Which DIE test results. Choose from 'iso', 'tss', 'tes'
+			Default: 'tss'
 
-# parter function to label_nodes
-def set_node_attrs(x, G, f_df, f_n):
-	attr = {x.vertex_id: {f_n: x[f_df]}}
-	nx.set_node_attributes(G, attr)
-	return G
+	Returns:
+		uns_name (str): Name of .uns key
+	"""
+	if kind == 'die':
+		kind = 'die_{}'.format(die_kind)
 
-# label nodes in G based on fields of loc_df
-def label_nodes(G, loc_df, f_df, f_n):
-	loc_df.apply(lambda x: set_node_attrs(x, G, f_df, f_n), axis=1)
-	return G
+	uns_name = '{}_{}'.format(kind, obs_col)
+	if obs_conditions:
+		# sort arbitrarily for reproducibility regardless
+		# of order conditions were passed in
+		obs_conditions = sorted(obs_conditions)
+		for cond in obs_conditions:
+			uns_name += '_{}'.format(cond)
+	return uns_name
 
-# get value associated with keyword in the 9th column of gtf
-def get_field_value(key, fields):
-    if key not in fields:
-        return None
-    else:
-        return fields.split(key+' "')[1].split()[0].replace('";','')
-
-# creates a dictionary of the last field of a gtf
-# adapted from Dana Wyman
 def get_fields(fields):
+	"""
+	From the last column of a GTF, return a dictionary mapping each value.
 
-    attributes = {}
+	Parameters:
+		fields (str): The last column of a GTF
 
-    description = fields.strip()
-    description = [x.strip() for x in description.split(";")]
-    for pair in description:
-        if pair == "": continue
+	Returns:
+		attributes (dict): Dictionary created from fields.
+	"""
 
-        pair = pair.replace('"', '')
-        key, val = pair.split()
-        attributes[key] = val
+	attributes = {}
 
-    # put in placeholders for important attributes (such as gene_id) if they
-    # are absent
-    if 'gene_id' not in attributes:
-        attributes['gene_id'] = 'NULL'
+	description = fields.strip()
+	description = [x.strip() for x in description.split(";")]
+	for pair in description:
+		if pair == "": continue
 
-    return attributes
+		pair = pair.replace('"', '')
+		key, val = pair.split()
+		attributes[key] = val
 
-# check to see if a file save location is valid
+	# put in placeholders for important attributes (such as gene_id) if they
+	# are absent
+	if 'gene_id' not in attributes:
+		attributes['gene_id'] = 'NULL'
+
+	return attributes
+
 def check_dir_loc(loc):
+	"""
+	Check if a directory exists. Raise an error if not.
+
+	Parameters:
+		loc (str): Directory name
+	"""
 	if '/' in loc:
 		d = '/'.join(loc.split('/')[:-1])
 		if not os.path.isdir(d):
 			raise Exception('Directory {} is not found. '
 				'Try a different save location'.format(d))
 
-# check to see if a file exists
 def check_file_loc(loc, ftype):
+	"""
+	Check if a file exists. Raises an error if not.
+
+	Parameters:
+	 	loc (str): File name
+		ftype (str): File type
+	"""
 	if not os.path.isfile(loc):
 		raise Exception('{} file not found at {}. '
 			'Check path.'.format(ftype, loc))
-
-# return a table indexed by transcript id with the appropriate
-# abundance
-def process_abundance_file(file, cols, tid_col):
-
-	if type(cols) != list: cols = [cols]
-
-	df = pd.read_csv(file, sep='\t')
-
-	# make sure that tid_col is even in the table
-	if tid_col not in df.columns:
-		raise Exception('Column {} not found in abundance file.'.format(tid_col))
-
-	# make sure that cols are also in the table
-	for col in cols:
-		if col not in df.columns:
-			raise Exception('Dataset column {} not found in abundance file.'.format(col))
-
-	keep_cols = [tid_col]+cols
-	df = df[keep_cols]
-
-	# get the counts
-	df['counts'] = df[cols].sum(axis=1)
-
-	# get tpms
-	for col in cols:
-		total_counts = df[col].sum()
-		df['{}_tpm'.format(col)] = (df[col]*1000000)/total_counts
-	tpm_cols = ['{}_tpm'.format(col) for col in cols]
-	df['tpm'] = df[tpm_cols].mean(axis=1)
-
-	# set up for merging
-	cols += tpm_cols
-	df.drop(cols, axis=1, inplace=True)
-	df.rename({tid_col: 'tid'}, inplace=True, axis=1)
-
-	return df
 
 # creates a file name based on input plotting arguments
 def create_fname(prefix, indicate_dataset,
@@ -150,8 +166,16 @@ def create_fname(prefix, indicate_dataset,
 		fname += '_report.pdf'
 	return fname
 
-# checks if a file is a gtf or a db
 def gtf_or_db(fname):
+	"""
+	Determine if a file is GTF or TALON DB.
+
+	Parameters:
+		fname (str): File name / location
+
+	Returns:
+		ftype (str): 'gtf' or 'db' depending on results
+	"""
 	ext = fname.split('.')[-1]
 	if ext == 'gtf': return 'gtf'
 	elif ext == 'db': return 'db'
@@ -196,21 +220,22 @@ def validate_gtf(fname):
 	if missing_fields:
 		raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
 
-	# fields = df.loc[df.entry_type=='exon', 'fields'].tolist()[0]
-	# missing_field = False
-	# missing_fields = []
-	# if not get_field_value('gene_id', fields):
-	# 	missing_field = True
-	# 	missing_fields.append('gene_id')
-	# if not get_field_value('transcript_id', fields):
-	# 	missing_field = True
-	# 	missing_fields.append('transcript_id')
-	# if missing_field:
-	# 	raise Exception('Last column of GTF is missing entry types {}'.format(missing_fields))
-
 # depending on the strand, determine the start and stop
 # coords of an intron or exon
 def find_edge_start_stop(v1, v2, strand):
+	"""
+	Depending on the input strandedness, determine the start and stop
+	coordinates of an edge
+
+	Parameters:
+		v1 (int): Coordinate of edge vertex
+		v2 (int): Coordinate of edge vertex
+		strand (str): Strand of edge
+
+	Returns:
+		start (int): Start coordinate of edge
+		stop (int): Stop coordinate of edge
+	"""
 	if strand == '-':
 		start = max([v1, v2])
 		stop = min([v1, v2])
@@ -219,8 +244,17 @@ def find_edge_start_stop(v1, v2, strand):
 		stop = max([v1, v2])
 	return start, stop
 
-# reorder exon ids from create_dfs_gtf
 def reorder_exons(exon_ids):
+	"""
+	Reorder exons if they were out of order.
+
+	Parameters:
+		exon_ids (list of str): List of exons 'chrom_coord1_coord2_strand_exon'
+
+	Returns:
+		exons (list of str): List of same exon IDs ordered based on strand
+			and genomic location
+	"""
 	strand = exon_ids[0].split('_')[-2]
 	coords = [int(i.split('_')[-4]) for i in exon_ids]
 	exons = sorted(zip(exon_ids, coords), key=lambda x: x[1])
@@ -229,94 +263,548 @@ def reorder_exons(exon_ids):
 		exons.reverse()
 	return exons
 
-# # reorder the locations in a transcript's path based on
-# # chromosomal coordinate
-# def reorder_locs(path, strand, locs):
-# 	coords = [locs[i] for i in path]
-# 	path_coords = sorted(zip(path, coords), key=lambda x: x[1])
-# 	path = [i[0] for i in path_coords]
-# 	coords = [i[1][1] for i in path_coords]
-# 	if strand == '-':
-# 		path.reverse()
-# 	return path
+def get_ends(t_df, kind):
+	"""
+	From the transcript dataframe, return one with transcript id and tss / tes.
 
-################################################################################
-########################### Analysis-related ###################################
-################################################################################
+	Parameters:
+		kind (str): Choose 'tss' or 'tes'
+	"""
+	if kind == 'tss':
+		ind = 1
+	elif kind == 'tes':
+		ind = -1
 
-# adata: adata with TSS or iso expression
-# conditions: len 2 list of strings of conditions to compare
-# col: string, which column the condition labels are in
-# how: 'tss' or 'iso'
-def get_die(adata, conditions, how='tss', rc=15):
+	df = pd.DataFrame([[tid, path[ind]] for tid, path in \
+		zip(t_df.index, t_df.loc_path)])
+	df.columns = ['tid', 'vertex_id']
+	df.set_index('tid', inplace=True)
+	return df
 
-    if how == 'tss':
-        id_col = 'tss_id'
-    elif how == 'iso':
-        id_col = 'tid'
+def pivot_path_list(t_df, path_col):
+	"""
+	From the transcript dataframe, return a DataFrame with transcript id and
+	edge/location ID for each edge/location in the path of that transcript.
 
-    # make df that we can groupby
-    col = 'condition'
-    colnames = adata.var[id_col].tolist()
-    rownames = adata.obs.dataset.tolist()
-    raw = adata.X
-    df = pd.DataFrame(data=raw, index=rownames, columns=colnames)
-    df.reset_index(inplace=True)
-    df.rename({'index':'dataset'}, axis=1, inplace=True)
-    samp = adata.obs[['dataset', col]]
-    df = df.merge(samp, how='left', on='dataset')
+	Parameters:
+		t_df (pandas DataFrame): Transcript datafram from SwanGraph
+		path_col (str): Which path to pull from. Choose from 'path' or 'loc_path'
+	"""
+	df = pd.DataFrame([[tid, x] for tid, path in zip(t_df.index, t_df[path_col]) \
+		for x in path])
+	if path_col == 'path':
+		df.columns = ['tid', 'edge_id']
+	elif path_col == 'loc_path':
+		df.columns = ['tid', 'vertex_id']
+	df.set_index('tid', inplace=True)
+	return df
 
-    # limit to only the samples that we want in this condition
-#     df[col] = df[col].astype('str')
-    df = df.loc[df[col].isin(conditions)]
+##########################################################################
+############### Related to calculating abundance values ##################
+##########################################################################
+def calc_total_counts(adata, obs_col='dataset', layer='counts'):
+	"""
+	Calculate cumulative expression per adata entry based on condition given
+	by `obs_col`. Default column to use is `adata.obs` index column, `dataset`.
 
-    # groupby sample type and sum over gen
-    df.drop('dataset', axis=1, inplace=True)
-    df = df.groupby(col).sum().reset_index()
+	Parameters:
+		adata (anndata AnnData): Annotated data object from the SwanGraph
+		obs_col (str): Column name from adata.obs table to group on.
+			Default: 'dataset'
+		layer (str): Layer of AnnData to pull from. Default = 'counts'
 
-    # melty df
-    var_cols = df.columns.tolist()[1:]
-    df = df.melt(id_vars=col, value_vars=var_cols)
+	Returns:
+		df (pandas DataFrame): Pandas DataFrame where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the cumulative counts per isoform
+			per condition.
 
-    # rename some cols
-    df.rename({'variable':id_col,'value':'counts'}, axis=1, inplace=True)
+	"""
+	adata.X = adata.layers[layer]
+	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
+		columns=adata.var.index.tolist())
 
-    # merge with gene names
-    df = df.merge(adata.var, how='left', on=id_col)
+	# add up values on condition (row)
+	df = df.groupby(level=0).sum()
 
-#     # get total number of tss or iso / gene
-#     bop = df[['gid', id_col]].groupby('gid').count().reset_index()
+	# df = df.transpose()
 
-    # construct tables for each gene and test!
-    gids = df.gid.unique().tolist()
-    gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
-    for gene in gids:
-        gene_df = df.loc[df.gid==gene]
-        p, dpi = test_gene(gene_df, conditions, col, id_col, rc=rc)
-        gene_de_df.loc[gene, 'p_val'] = p
-        gene_de_df.loc[gene, 'dpi'] = dpi
+	return df
 
-    # correct p values
-    gene_de_df.dropna(axis=0, inplace=True)
-    p_vals = gene_de_df.p_val.tolist()
-    _, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
-    gene_de_df['adj_p_val'] = adj_p_vals
+def calc_pi(adata, t_df, obs_col='dataset'):
+	"""
+	Calculate the percent isoform per gene per condition given by `obs_col`.
+	Default column to use is `adata.obs` index column, `dataset`.
 
-    gene_de_df.reset_index(inplace=True)
+	Parameters:
+		adata (anndata AnnData): Annotated data object from the SwanGraph
+		t_df (pandas DataFrame): Pandas Dataframe that has index to
+			gene id mapping
+		obs_col (str): Column name from adata.obs table to group on.
+			Default: 'dataset'
 
-    return gene_de_df
+	Returns:
+		df (pandas DataFrame): Pandas DataFrame where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the percent isoform usage per gene
+			per condition.
+		sums (pandas DataFrame): Pandas DataFrame where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the cumulative counts per isoform
+			per condition.
+	"""
 
-# gene_df: pandas dataframe with expression values in each condition for
-# each TSS or isoform in a gene
-# conditions: list of str of condition names
-# rc: threshold of read count per gene in each condition necessary to test
-def test_gene(gene_df, conditions, col, id_col, rc=10):
+	# calculate cumulative counts across obs_col
+	id_col = adata.var.index.name
+	conditions = adata.obs[obs_col].unique().tolist()
+	df = calc_total_counts(adata, obs_col=obs_col)
+	df = df.transpose()
+	# we use ints to index edges and locs
+	if id_col == 'vertex_id' or id_col == 'edge_id':
+		df.index = df.index.astype('int')
 
-	gene_df = gene_df.pivot(index=col, columns=id_col, values='counts')
-	gene_df = gene_df.transpose()
+	sums = df.copy(deep=True)
+	sums = sums[conditions]
+	sums = sums.transpose()
 
-	groups = gene_df.columns.tolist()
-	gene_df['total_counts'] = gene_df[groups].sum(axis=1)
+	# add gid
+	df = df.merge(t_df['gid'], how='left', left_index=True, right_index=True)
+
+	# calculate total number of reads per gene per condition
+	temp = df.copy(deep=True)
+	temp.reset_index(drop=True, inplace=True)
+	totals = temp.groupby('gid').sum().reset_index()
+
+	# merge back in
+	df.reset_index(inplace=True)
+	df.rename({'index':id_col}, axis=1, inplace=True)
+	df = df.merge(totals, on='gid', suffixes=(None, '_total'))
+	del totals
+
+	# calculate percent iso exp for each gene / transcript / condition
+	pi_cols = []
+	for c in conditions:
+		cond_col = '{}_pi'.format(c)
+		total_col = '{}_total'.format(c)
+		df[cond_col] = (df[c]/df[total_col])*100
+		pi_cols.append(cond_col)
+
+	# cleanup: fill nans with 0, set indices, rename cols
+	df.fillna(0, inplace=True)
+
+	# formatting
+	df.set_index(id_col, inplace=True)
+	df = df[pi_cols]
+	for col in pi_cols:
+		new_col = col[:-3]
+		df.rename({col: new_col}, axis=1, inplace=True)
+
+	# reorder columns like adata.obs
+	df = df[adata.obs[obs_col].unique().tolist()]
+	df = df.transpose()
+	# df.index.name = obs_col # maybe put this back in ?
+
+	# reorder in adata.var / t_df order
+	if id_col != 'tss_id' and id_col != 'tes_id':
+		df = df[t_df[id_col].tolist()]
+
+	return df, sums
+
+def calc_tpm(adata, sg_df=None, obs_col='dataset'):
+	"""
+	Calculate the TPM per condition given by `obs_col`.
+	Default column to use is `adata.obs` index column, `dataset`.
+
+	Parameters:
+		adata (anndata AnnData): Annotated data object from the SwanGraph
+		sg_df (pandas DataFrame): Pandas DataFrame from SwanGraph that will
+			be used to order the rows of resultant TPM DataFrame
+		obs_col (str or list of str): Column name from adata.obs table to group on.
+			Default: 'dataset'
+
+	Returns:
+		df (pandas DataFrame): Pandas datafrom where rows are the different
+			conditions from `obs_col` and the columns are transcript ids in the
+			SwanGraph, and values represent the TPM value per isoform per
+			condition.
+	"""
+
+	# calculate cumulative counts across obs_col
+	id_col = adata.var.index.name
+	conditions = adata.obs[obs_col].unique().tolist()
+	df = calc_total_counts(adata, obs_col=obs_col)
+	df = df.transpose()
+
+	# we use ints to index edges and locs
+	if id_col == 'vertex_id' or id_col == 'edge_id':
+		df.index = df.index.astype('int')
+
+	# calculate tpm per isoform per condition
+	tpm_cols = []
+	for c in conditions:
+		cond_col = '{}_tpm'.format(c)
+		total_col = '{}_total'.format(c)
+		df[total_col] = df[c].sum()
+		df[cond_col] = (df[c]*1000000)/df[total_col]
+		tpm_cols.append(cond_col)
+
+	# formatting
+	df.index.name = id_col
+	df = df[tpm_cols]
+	for col in tpm_cols:
+		new_col = col[:-4]
+		df.rename({col: new_col}, axis=1, inplace=True)
+
+	# reorder columns like adata.obs
+	df = df[adata.obs[obs_col].unique().tolist()]
+	df = df.transpose()
+
+	# reorder in adata.var / t_df order
+	if not isinstance(sg_df, type(None)):
+		df = df[sg_df[id_col].tolist()]
+
+	return df
+
+##########################################################################
+####################### Related to file parsing ##########################
+##########################################################################
+
+def parse_db(database, pass_list, observed, include_isms, verbose):
+	"""
+	Get the unique transcripts and exons that are present in a TALON DB
+	transcriptome.
+
+	Parameters:
+		database (str): Path to database file
+		pass_list (str): Path to TALON pass list files
+		observed (bool): Whether or not to only use observed transcripts
+		include_isms (bool): Whether to include ISMs or not
+		verbose (bool): Display progress
+
+	Returns:
+		t_df (pandas DataFrame): DataFrame of transcripts in TALON db. Index
+			is transcript ids. Columns are gene id, gene name,
+			transcript id (same as key), transcript name, strand, and exons
+			belonging to the transcript.
+		exon_df (pandas DataFrame): DataFrame of exons in TALON db. Index is exon ids
+			which consist of chromosome_v1_v2_strand_exon. Columns are edge id
+			(same as key), chromosome, v1, v2, strand, and edge type
+			(all exon in this case) of each exon.
+	"""
+
+	# make sure files exist
+	if pass_list:
+		check_file_loc(pass_list, 'pass list')
+
+	# annot = check_annot_validity(annot, database)
+
+	pass_list = handle_filtering(database, observed, pass_list)
+
+	# create separate gene and transcript pass_lists
+	gene_pass_list = []
+	transcript_pass_list = []
+	for key,group in itertools.groupby(pass_list,operator.itemgetter(0)):
+		gene_pass_list.append(key)
+		for id_tuple in list(group):
+			transcript_pass_list.append(id_tuple[1])
+
+	# get gene, transcript, and exon annotations
+	gene_annotations = get_annotations(database, "gene",
+									   pass_list = gene_pass_list)
+	transcript_annotations = get_annotations(database, "transcript",
+											 pass_list = transcript_pass_list)
+	exon_annotations = get_annotations(database, "exon")
+
+	# get transcript data from the database
+	gene_2_transcripts = get_gene_2_transcripts(database,
+						 transcript_pass_list)
+
+	# get exon location info from database
+	exon_ID_2_location = fetch_exon_locations(database)
+
+	transcripts = {}
+	exons = {}
+
+	if verbose:
+		n_transcripts = len(transcript_pass_list)
+		pbar = tqdm(total=n_transcripts)
+		pbar.set_description('Processing transcripts')
+
+	# loop through genes, transcripts, and exons
+	for gene_ID, transcript_tuples in gene_2_transcripts.items():
+		curr_annot = gene_annotations[gene_ID]
+		gene_annotation_dict = {}
+		for annot in curr_annot:
+			attribute = annot[3]
+			value = annot[4]
+			gene_annotation_dict[attribute] = value
+
+		# check if there's a gene name field and add one if not
+		if 'gene_name' not in gene_annotation_dict:
+			gene_annotation_dict['gene_name'] = gene_annotation_dict['gene_id']
+
+		# get transcript entries
+		for transcript_entry in transcript_tuples:
+			transcript_ID = transcript_entry["transcript_ID"]
+
+			curr_transcript_annot = transcript_annotations[transcript_ID]
+
+			transcript_annotation_dict = {}
+			for annot in curr_transcript_annot:
+				attribute = annot[3]
+				value = annot[4]
+				transcript_annotation_dict[attribute] = value
+
+
+			if 'transcript_name' not in transcript_annotation_dict:
+				transcript_annotation_dict['transcript_name'] = transcript_annotation_dict['transcript_id']
+			tid = transcript_annotation_dict['transcript_id']
+			tname = transcript_annotation_dict['transcript_name']
+			gid = gene_annotation_dict['gene_id']
+			gname = gene_annotation_dict['gene_name']
+			strand = transcript_entry['strand']
+			novelty = get_transcript_novelties(transcript_annotation_dict)
+
+			# add transcript to dictionary
+			entry = {'gid': gid,
+					 'gname': gname,
+					 'tid': tid,
+					 'tname': tname,
+					 'strand': strand,
+					 'novelty': novelty,
+					 'exons': []}
+			transcript = {tid: entry}
+			transcripts.update(transcript)
+
+			if verbose:
+				pbar.update(1)
+
+			if transcript_entry["n_exons"] != 1:
+				transcript_edges = [str(transcript_entry["start_exon"])] + \
+								   str(transcript_entry["jn_path"]).split(",")+ \
+								   [str(transcript_entry["end_exon"])]
+			else:
+				transcript_edges = [transcript_entry["start_exon"]]
+
+			# get exon entries
+			for exon_ID in transcript_edges[::2]:
+				exon_ID = int(exon_ID)
+				curr_exon_annot = exon_annotations[exon_ID]
+
+				exon_annotation_dict = {}
+				for annot in curr_exon_annot:
+					attribute = annot[3]
+					value = annot[4]
+					exon_annotation_dict[attribute] = value
+
+				e_tuple = exon_ID_2_location[exon_ID]
+				chrom = e_tuple[0]
+				start = e_tuple[1]
+				stop = e_tuple[2]
+				strand = e_tuple[3]
+				start, stop = find_edge_start_stop(start, stop, strand)
+				eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
+
+				# add novel exon to dictionary
+				if eid not in exons:
+					edge = {eid: {'eid': eid,
+								  'chrom': chrom,
+								  'v1': start,
+								  'v2': stop,
+								  'strand': strand}}
+					exons.update(edge)
+
+				# add this exon to the transcript's list of exons
+				if tid in transcripts:
+					transcripts[tid]['exons'].append(eid)
+
+	t_df = pd.DataFrame(transcripts).transpose()
+	exon_df = pd.DataFrame(exons).transpose()
+	return t_df, exon_df
+
+def parse_gtf(gtf_file, include_isms, verbose):
+	"""
+	Get the unique transcripts and exons that are present in a GTF
+	transcriptome.
+
+	Parameters:
+		gtf_file (str): File path of GTF
+		include_isms (bool): Whether to include ISMs or not
+		verbose (bool): Display progress
+
+	Returns:
+		t_df (pandas DataFrame): DataFrame of transcripts in GTF. Index
+			is transcript ids. Columns are gene id, gene name,
+			transcript id (same as key), transcript name, strand, and exons
+			belonging to the transcript.
+		exon_df (pandas DataFrame): DataFrame of exons in GTF. Index is exon ids
+			which consist of chromosome_v1_v2_strand_exon. Columns are edge id
+			(same as key), chromosome, v1, v2, strand, and edge type
+			(all exon in this case) of each exon.
+		from_talon (bool): Whether or not the GTF was determined to be
+			from TALON
+	"""
+
+	# counts the number of transcripts in a given GTF
+	# so that we can track progress
+	def count_transcripts(gtf_file):
+		df = pd.read_csv(gtf_file, sep='\t', usecols=[2],
+			names=['entry_type'], comment='#')
+		df = df.loc[df.entry_type == 'transcript']
+		n = len(df.index)
+		return n
+
+	# get the number of transcripts in the file
+	n_transcripts = count_transcripts(gtf_file)
+
+	# dictionaries to hold unique edges and transcripts
+	transcripts = {}
+	exons = {}
+	from_talon = False
+	ism_tids = []
+
+	# display progess
+	if verbose:
+		pbar = tqdm(total=n_transcripts)
+		counter = 0
+
+	with open(gtf_file) as gtf:
+		for line in gtf:
+
+			# ignore header lines
+			if line.startswith('#'):
+				continue
+
+			# split each entry
+			line = line.strip().split('\t')
+
+			# get some fields from gtf that we care about
+			chrom = line[0]
+			entry_type = line[2]
+			start = int(line[3])
+			stop = int(line[4])
+			strand = line[6]
+			fields = line[-1]
+
+			# transcript entry
+			if entry_type == "transcript":
+
+				# update progress bar
+				if verbose:
+					counter+=1
+					if counter % 100 == 0:
+						pbar.update(100)
+						pbar.set_description('Processing transcripts')
+
+				attributes = get_fields(fields)
+
+				# check if this gtf has transcript novelty vals
+				# for the first transcript entry
+				if not transcripts:
+					if 'talon_transcript' in attributes:
+						from_talon = True
+
+				tid = attributes['transcript_id']
+				gid = attributes['gene_id']
+
+				# check if there's a gene/transcript name field and
+				# add one if not
+				if 'gene_name' not in attributes:
+					attributes['gene_name'] = attributes['gene_id']
+				if 'transcript_name' not in attributes:
+					attributes['transcript_name'] = attributes['transcript_id']
+
+				gname = attributes['gene_name']
+				tname = attributes['transcript_name']
+
+				# add transcript to dictionary
+				entry = {'gid': gid,
+						 'gname': gname,
+						 'tid': tid,
+						 'tname': tname,
+						 'strand': strand,
+						 'exons': []}
+
+				# if we're using a talon gtf, add a novelty field
+				if from_talon:
+					novelty = get_transcript_novelties(attributes)
+					entry['novelty'] = novelty
+
+				# do not include ISM transcripts
+				if not include_isms and from_talon:
+					if novelty == 'ISM':
+						ism_tids += [tid]
+				# else:
+					# transcript = {tid: entry}
+					# transcripts.update(transcript)
+				transcript = {tid: entry}
+				transcripts.update(transcript)
+
+			# exon entry
+			elif entry_type == "exon":
+				attributes = get_fields(fields)
+				start, stop = find_edge_start_stop(start, stop, strand)
+				eid = '{}_{}_{}_{}_exon'.format(chrom, start, stop, strand)
+				tid = attributes['transcript_id']
+
+				# add novel exon to dictionary
+				if eid not in exons:
+					edge = {eid: {'eid': eid,
+								  'chrom': chrom,
+								  'v1': start,
+								  'v2': stop,
+								  'strand': strand,
+								  'edge_type': 'exon'}}
+
+					# don't include exons that come from ISM transcripts
+					if not include_isms and from_talon:
+						if transcripts[tid]['novelty'] == 'ISM':
+							pass
+						else:
+							exons.update(edge)
+					else:
+						exons.update(edge)
+
+				# add this exon to the transcript's list of exons
+				if tid in transcripts:
+					transcripts[tid]['exons'].append(eid)
+
+	t_df = pd.DataFrame(transcripts).transpose()
+	exon_df = pd.DataFrame(exons).transpose()
+
+	# remove ISMs that we've recorded
+	if not include_isms:
+		t_df = t_df.loc[~t_df.tid.isin(ism_tids)]
+
+	return t_df, exon_df, from_talon
+
+##########################################################################
+######################## Related to DIE testing ##########################
+##########################################################################
+
+def get_die_gene_table(gene_df, conditions, rc):
+	"""
+	Creates a length n (max 11) table ready for DIE testing for a given gene.
+	Returns None for genes deemed untestable if there aren't enough reads per
+	condition or if the gene only has one isoform. Removes isoforms that are
+	unexpressed in both conditions. Aggregates the counts for the
+	lowest-expressed isoforms (11+). Calculates dpi (change in percent isoform
+	usage) between conditions.
+
+	Parameters:
+		gene_df (pandas DataFrame): DataFrame of transcript counts and percent
+			isoform expression per isoform of one gene.
+		conditions (list of str, len 2): Names of 2 conditions being tested
+		rc (int): Number of reads needed per gene per condition for testing
+
+	Returns:
+		gene_df (pandas DataFrame): :ength n table of counts per isoform per
+			condition, percent isoform per gene per condition, and change in
+			percent isoform across conditions IF the gene is testable
+		gene_df (None): Returns None if the gene was deemed untestable.
+	"""
+
+	id_col = 'tid'
 	gene_df.sort_values(by='total_counts', ascending=False, inplace=True)
 
 	# limit to just isoforms with > 0 expression in at least one condition
@@ -326,13 +814,16 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 
 	# limit to genes with more than 1 isoform expressed
 	if len(gene_df.index) <= 1:
-		return np.nan, np.nan
+		return None
 
+	# if there are more than 11 isoforms, agg. the n - 11 least expressed
+	# isoforms into one
 	if len(gene_df.index) > 11:
 		gene_df.reset_index(inplace=True)
 
 		temp = gene_df.iloc[10:].sum()
 		temp[id_col] = 'all_other'
+		temp['gid'] = gene_df.gid.unique().tolist()[0]
 		temp.index.name = None
 		temp = pd.DataFrame(temp).transpose()
 
@@ -341,32 +832,61 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 
 	# does this gene reach the desired read count threshold?
 	for cond in conditions:
-		if gene_df[cond].sum() < rc:
-			return np.nan, np.nan
+		counts_col = cond+'_counts'
+		if gene_df[counts_col].sum() < rc:
+			return None
 
-	# only do the rest if there's nothing left
+	# only do the rest if there's something left
 	if gene_df.empty:
-		return np.nan, np.nan
-
-	# calculate the percent of each sample each TSS accounts for
-	cond_pis = []
-	for cond in conditions:
-		total_col = '{}_total'.format(cond)
-		pi_col = '{}_pi'.format(cond)
-		total_count = gene_df[cond].sum()
-
-		cond_pis.append(pi_col)
-
-		gene_df[total_col] = total_count
-		gene_df[pi_col] = (gene_df[cond]/gene_df[total_col])*100
+		return None
 
 	# compute isoform-level and gene-level delta pis
-	gene_df['dpi'] = gene_df[cond_pis[0]] - gene_df[cond_pis[1]]
-	gene_df['abs_dpi'] = gene_df.dpi.abs()
-	gene_dpi = gene_df.iloc[:2].abs_dpi.sum()
+	gene_df['dpi'] = gene_df[cond1] - gene_df[cond2]
+
+	return gene_df
+
+def test_gene(gene_df, conditions):
+	"""
+	Performs a chi-squared test between two conditions on their read counts.
+	Also calculates the gene's DPI, or change in percent isoform as the sum of
+	either the top two positive changes or top two negative changes (whichever
+	is greater in magnitude).
+
+	Parameters:
+		gene_df (pandas DataFrame): Output from get_die_gene_table.
+		conditions (list of str, len 2): Name of condition columns
+
+	Returns:
+		p (float): P-value result of chi-squared test on gene
+		dpi (float): Overall change in isoform expression
+	"""
+
+	counts_cols = [c+'_counts' for c in conditions]
+
+	# get highest 2 positive dpis
+	temp = gene_df.sort_values(by='dpi', ascending=False)
+	temp = temp.loc[temp.dpi > 0]
+
+	# if there are fewer than 2 isoforms
+	if len(temp.index) >= 2:
+		pos_dpi = temp.iloc[:2].dpi.sum(axis=0)
+	else:
+		pos_dpi = temp.dpi.sum(axis=0)
+
+	# get highest 2 negative dpis
+	temp = gene_df.sort_values(by='dpi', ascending=True)
+	temp = temp.loc[temp.dpi < 0]
+
+	# if there are fewer than 2 isoforms
+	if len(temp.index) >= 2:
+		neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
+	else:
+		neg_dpi = abs(temp.dpi.sum(axis=0))
+
+	gene_dpi = max(pos_dpi, neg_dpi)
 
 	# chi squared test
-	chi_table = gene_df[conditions].to_numpy()
+	chi_table = gene_df[counts_cols].to_numpy()
 	chi2, p, dof, exp = st.chi2_contingency(chi_table)
 
 	return p, gene_dpi
@@ -374,14 +894,14 @@ def test_gene(gene_df, conditions, col, id_col, rc=10):
 # turn a list of dataset groups and names for those groups into a
 # dictionary
 def make_cond_map(groups, group_names):
-    cond_map = dict()
-    for group, group_name in zip(groups, group_names):
-        if type(group) == list:
-            for group_item in group:
-                cond_map[group_item] = group_name
-        else:
-            cond_map[group] = group_name
-    return cond_map
+	cond_map = dict()
+	for group, group_name in zip(groups, group_names):
+		if type(group) == list:
+			for group_item in group:
+				cond_map[group_item] = group_name
+		else:
+			cond_map[group] = group_name
+	return cond_map
 
 # get novelty types associated with each transcript
 def get_transcript_novelties(fields):
@@ -400,12 +920,50 @@ def get_transcript_novelties(fields):
 	elif 'genomic_transcript' in fields:
 		return 'Genomic'
 
+# reformat talon abundance file for the generic format expected by swan
+def reformat_talon_abundance(fname, ofile=None):
+	"""
+	Reformat TALON abundance file into the format expected by add_abundance.
+	Removes all columns but the annot_transcript_id column and counts columns.
+
+	Parameters:
+		fname (str): Name / path to TALON abundance file
+		ofile (str): Filename to save output to, if any.
+			Default: None
+
+	Returns:
+		df (pandas DataFrame): DataFrame of abundance values indexed by
+			transcript ID
+	"""
+	check_file_loc(fname, 'TALON abundance')
+
+	df = pd.read_csv(fname, sep='\t')
+	drop_cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_gene_name',
+		'annot_transcript_name', 'n_exons', 'length', 'gene_novelty',
+		'transcript_novelty', 'ISM_subtype']
+	df.drop(drop_cols, axis=1, inplace=True)
+
+	# if not writing output file just return df
+	if not ofile:
+		return df
+
+	# otherwise dump to output file
+	df.to_csv(ofile, sep='\t', index=False)
+
+def read(file):
+	check_file_loc(file, 'SwanGraph')
+	picklefile = open(file, 'rb')
+	sg = pickle.load(picklefile)
+
+	print('Read in graph from {}'.format(file))
+	return sg
+
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
 def save_fig(oname):
 	check_dir_loc(oname)
 	plt.axis('off')
-	plt.tight_layout()
-	plt.savefig(oname, format='png', dpi=200)
+	# plt.tight_layout()
+	plt.savefig(oname, format='png', dpi=300, bbox_inches='tight')
 	plt.clf()
 	plt.close()

@@ -1,0 +1,6 @@
+tid_index	tname	gid	gname	edge_path	tid	loc_path	novelty
+test1	test1_tname	test1_gid	test1_gname	"0,1,2,3,4"	test1	"0,1,2,3,4,5"	Known
+test2	test2_tname	test2_gid	test2_gname	"5,6,7,8,9"	test2	"6,7,8,9,10,11"	Known
+test3	test3_tname	test2_gid	test2_gname	"5,6,10,11,9"	test3	"6,7,8,12,10,11"	NIC
+test4	test4_tname	test4_gid	test4_gname	12	test4	"11,10"	Known
+test5	test5_tname	test2_gid	test2_gname	"5,13,14"	test5	"6,7,9,10"	ISM

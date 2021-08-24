@@ -124,7 +124,7 @@ talon_filter_transcripts \
 	--maxFracA 0.5 \
 	--minCount 5 \
 	--minDatasets 2 \
-	--o hepg2_whitelist.csv
+	--o hepg2_pass_list.csv
 
 talon_filter_transcripts \
 	--db talon.db \
@@ -133,63 +133,31 @@ talon_filter_transcripts \
 	--maxFracA 0.5 \
 	--minCount 5 \
 	--minDatasets 2 \
-	--o hffc6_whitelist.csv
+	--o hffc6_pass_list.csv
+    
+cat hepg2_pass_list.csv > temp.csv
+cat hffc6_pass_list.csv >> temp.csv 
+cat temp.csv | uniq > all_pass_list.csv
+rm temp.csv
 ```
 
-## Create a GTF of annotated transcripts for each replicate
+## Create a GTF of annotated transcripts for all observed transcripts that passed filtering
 ```bash
-printf "hepg2_1" > dataset_hepg2_1
 talon_create_GTF \
 	--db talon.db \
 	-b hg38 \
 	-a gencode_v29 \
-	--whitelist hepg2_whitelist.csv \
-	--datasets dataset_hepg2_1 \
-	--o hepg2_1
-printf "hepg2_2" > dataset_hepg2_2
-talon_create_GTF \
-	--db talon.db \
-	-b hg38 \
-	-a gencode_v29 \
-	--whitelist hepg2_whitelist.csv \
-	--datasets dataset_hepg2_2 \
-	--o hepg2_2
-
-printf "hffc6_1" > dataset_hffc6_1
-talon_create_GTF \
-	--db talon.db \
-	-b hg38 \
-	-a gencode_v29 \
-	--whitelist hffc6_whitelist.csv \
-	--datasets dataset_hffc6_1 \
-	--o hffc6_1
-printf "hffc6_2" > dataset_hffc6_2
-talon_create_GTF \
-	--db talon.db \
-	-b hg38 \
-	-a gencode_v29 \
-	--whitelist hffc6_whitelist.csv \
-	--datasets dataset_hffc6_2 \
-	--o hffc6_2
-printf "hffc6_3" > dataset_hffc6_3
-talon_create_GTF \
-	--db talon.db \
-	-b hg38 \
-	-a gencode_v29 \
-	--whitelist hffc6_whitelist.csv \
-	--datasets dataset_hffc6_3 \
-	--o hffc6_3
+	--whitelist all_pass_list.csv \
+	--observed \
+	--o all
 ```
 
-## Obtain a filtered abundance file of each transcript that passed filtering in either of the cell lines
+## Obtain a filtered abundance file of each transcript that passed filtering
 ```bash
-cat hepg2_whitelist.csv > all_whitelist.csv
-cat hffc6_whitelist.csv >> all_whitelist.csv 
-sort all_whitelist.csv | uniq > whitelist.csv
 talon_abundance \
 	--db talon.db \
 	-a gencode_v29 \
 	-b hg38 \
-	--whitelist whitelist.csv \
+	--whitelist all_pass_list.csv \
 	--o all
 ```

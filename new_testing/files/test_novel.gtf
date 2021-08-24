@@ -1,0 +1,7 @@
+chr2	test_gtf	transcript	50	100	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test5"; transcript_name "test5_tname"; transcript_status "NOVEL"; ISM_transcript "TRUE";
+chr2	test_gtf	exon	80	100	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test5"; transcript_name "test5_tname"; transcript_status "NOVEL"; ISM_transcript "TRUE";
+chr2	test_gtf	exon	50	60	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test5"; transcript_name "test5_tname"; transcript_status "NOVEL"; ISM_transcript "TRUE";
+chr2	test_gtf	transcript	45	100	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test3"; transcript_name "test3_tname"; transcript_status "NOVEL"; NIC_transcript "TRUE";
+chr2	test_gtf	exon	80	100	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test3"; transcript_name "test3_tname"; transcript_status "NOVEL"; NIC_transcript "TRUE";
+chr2	test_gtf	exon	45	50	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test3"; transcript_name "test3_tname"; transcript_status "NOVEL"; NIC_transcript "TRUE";
+chr2	test_gtf	exon	65	75	.	-	.	gene_id "test2_gid"; gene_name "test2_gname"; transcript_id "test3"; transcript_name "test3_tname"; transcript_status "NOVEL"; NIC_transcript "TRUE";
