@@ -11,7 +11,7 @@ import pandas as pd
 ###########################################################################
 class TestSGAnalysis(object):
 
-# tests find_ir_genes, find_es_genes, get_die_genes, get_die_gene_table, test_gene
+# tests find_ir_genes, find_es_genes, die_gene_test, get_die_gene_table, test_gene
 
 # TODO - add update_ids() call before running both find_ir/es_genes to make sure
 # the subgraph shit works -
@@ -151,24 +151,24 @@ class TestSGAnalysis(object):
         pval, gene_dpi = swan.test_gene(df, conditions)
         assert gene_dpi == ctrl_gene_dpi
 
-    # test get_die_genes - obs col doesn't exist
-    def test_get_die_genes_5(self):
+    # test die_gene_test - obs col doesn't exist
+    def test_die_gene_test_5(self):
         sg = get_die_test_sg()
         print(sg.adata.obs)
         obs_col = 'condition'
         obs_conditions = ['PB65_B017', 'PB65_B018']
         id_col = 'tid'
         with pytest.raises(Exception) as e:
-            test = sg.get_die_genes(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
+            test = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
         assert 'Metadata column' in str(e.value)
 
-    # tests get_die_genes - b/w  dataset conditions
-    def test_get_die_genes_4(self):
+    # tests die_gene_test - b/w  dataset conditions
+    def test_die_gene_test_4(self):
         sg = get_die_test_sg()
         obs_col = 'dataset'
         obs_conditions = ['PB65_B017', 'PB65_B018']
         id_col = 'tid'
-        test = sg.get_die_genes(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
+        test = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
         # don't test p vals cause that's tough
         test.drop(['p_val', 'adj_p_val'], axis=1, inplace=True)
         ctrl = pd.read_csv('files/chr11_and_Tcf3_PB65_B017_B018_dpi.tsv', sep='\t')
@@ -179,12 +179,12 @@ class TestSGAnalysis(object):
         print(test == ctrl)
         assert test.equals(ctrl)
 
-    # tests get_die_genes - b/w non dataset conditions
-    def test_get_die_genes_3(self):
+    # tests die_gene_test - b/w non dataset conditions
+    def test_die_gene_test_3(self):
         sg = get_die_test_sg()
         obs_col = 'cluster'
         id_col = 'tid'
-        test = sg.get_die_genes(obs_col=obs_col, rc_thresh=1)
+        test = sg.die_gene_test(obs_col=obs_col, rc_thresh=1)
 
         # don't test p vals cause that's tough
         test.drop(['p_val', 'adj_p_val'], axis=1, inplace=True)
@@ -196,25 +196,25 @@ class TestSGAnalysis(object):
         print(ctrl == test)
         assert ctrl.equals(test)
 
-    # tests get_die_genes - obs_col has more than 2 values and obs_conditions
+    # tests die_gene_test - obs_col has more than 2 values and obs_conditions
     # not provided
-    def test_get_die_genes_2(self):
+    def test_die_gene_test_2(self):
         sg = get_die_test_sg()
         obs_col = 'dataset'
         id_col = 'tid'
         with pytest.raises(Exception) as e:
-            test = sg.get_die_genes(obs_col=obs_col, rc_thresh=1)
+            test = sg.die_gene_test(obs_col=obs_col, rc_thresh=1)
         assert 'Must provide obs_conditions' in str(e.value)
 
-    # tests get_die_genes - obs_col has more than 2 values and obs_conditions
+    # tests die_gene_test - obs_col has more than 2 values and obs_conditions
     # does not have 2 values
-    def test_get_die_genes_1(self):
+    def test_die_gene_test_1(self):
         sg = get_die_test_sg()
         obs_col = 'dataset'
         id_col = 'tid'
         obs_conditions = ['D12']
         with pytest.raises(Exception) as e:
-            test = sg.get_die_genes(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
+            test = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
         assert 'exactly 2 values' in str(e.value)
 
     # tests find_es_genes - requires edges to be in order
