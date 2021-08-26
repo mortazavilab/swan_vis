@@ -17,7 +17,7 @@ The main workflow to get started with Swan consists of:
 
 Other sections:
 * [Example data download](getting_started.md#download-example-data)
-* [Saving and loading your SwanGraph](https://freese.gitbook.io/swan/tutorials/getting_started.md#saving-and-loading-your-swangraph)
+* [Saving and loading your SwanGraph](getting_started.md#saving-and-loading-your-swangraph)
 
 This page can also be read from top to bottom, just know that you may be running things more than once!
 
