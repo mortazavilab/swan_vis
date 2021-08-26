@@ -10,7 +10,7 @@ Swan now comes with several utilities that can be used fo compute and output var
 * [Obtaining TSS/TES abundance information](utilities.md#obtaining-tss-tes-abundance-information)
 
 
-We'll be using the same SwanGraph as the rest of the tutorial pages to demonstrate these utilites. Load it using the following code:
+We'll be using the same SwanGraph as the rest of the tutorial pages to demonstrate these utilities. Load it using the following code:
 
 
 ```python
