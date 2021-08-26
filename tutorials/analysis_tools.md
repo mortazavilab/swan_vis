@@ -288,7 +288,7 @@ Similarly, Swan can run tests to find differentially expressed transcript isofor
 
 The differential expression test that is run is [diffxpy's Wald test](https://diffxpy.readthedocs.io/en/latest/api/diffxpy.api.test.wald.html#diffxpy.api.test.wald), which checks if a "a certain coefficient introduces a significant difference in the expression of a transcript". This test is performed on the normalized TPM for each transcript.
 
-For individuals wanting to run a different diffxpy differential test, see [this section](#more_de)
+<!-- For individuals wanting to run a different diffxpy differential test, see [this section](#more_de) -->
 
 
 ```python
