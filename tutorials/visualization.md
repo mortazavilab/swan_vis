@@ -38,7 +38,7 @@ sg.plot_graph('ADRM1')
 
 
 
-![png](../.gitbook/assets/vis/output_5_0.png)
+![png](../.gitbook/assets/vis_output_5_0.png)
 
 
 
@@ -55,7 +55,7 @@ sg.plot_graph('ADRM1', indicate_novel=True)
 
 
 
-![png](../.gitbook/assets/vis/output_8_0.png)
+![png](../.gitbook/assets/vis_output_8_0.png)
 
 
 
@@ -81,7 +81,7 @@ sg.plot_transcript_path('TALONT000301961')
 
 
 
-![png](../.gitbook/assets/vis/output_13_0.png)
+![png](../.gitbook/assets/vis_output_13_0.png)
 
 
 
@@ -98,7 +98,7 @@ sg.plot_transcript_path('TALONT000301961', indicate_novel=True)
 
 
 
-![png](../.gitbook/assets/vis/output_15_0.png)
+![png](../.gitbook/assets/vis_output_15_0.png)
 
 
 
@@ -122,7 +122,7 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 
 
 
-![png](../.gitbook/assets/vis/output_18_0.png)
+![png](../.gitbook/assets/vis_output_18_0.png)
 
 
 
@@ -145,7 +145,7 @@ sg.plot_transcript_path('TALONT000301961')
 
 
 
-![png](../.gitbook/assets/vis/output_21_0.png)
+![png](../.gitbook/assets/vis_output_21_0.png)
 
 
 
@@ -163,7 +163,7 @@ sg.plot_transcript_path('TALONT000301961')
 
 
 
-![png](../.gitbook/assets/vis/output_23_0.png)
+![png](../.gitbook/assets/vis_output_23_0.png)
 
 
 
@@ -179,7 +179,7 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 
 
 
-![png](../.gitbook/assets/vis/output_25_0.png)
+![png](../.gitbook/assets/vis_output_25_0.png)
 
 
 
@@ -194,13 +194,13 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 
 
 
-![png](../.gitbook/assets/vis/output_27_0.png)
+![png](../.gitbook/assets/vis_output_27_0.png)
 
 
 
 
 
-![png](../.gitbook/assets/vis/output_27_1.png)
+![png](../.gitbook/assets/vis_output_27_1.png)
 
 
 
@@ -226,7 +226,7 @@ display(Image(filename='figures/my_gene_summary.png'))
 
 
 
-![png](../.gitbook/assets/vis/output_32_0.png)
+![png](../.gitbook/assets/vis_output_32_0.png)
 
 
 
@@ -250,7 +250,7 @@ display(Image(filename='figures/adrm1_novel_ENSG00000130706.12_summary.png'))
 
 
 
-![png](../.gitbook/assets/vis/output_35_0.png)
+![png](../.gitbook/assets/vis_output_35_0.png)
 
 
 
@@ -292,7 +292,7 @@ display(Image(filename='figures/adrm1_paper_novel_ENSG00000130706.12_report.png'
 
 
 
-![png](../.gitbook/assets/vis/output_40_0.png)
+![png](../.gitbook/assets/vis_output_40_0.png)
 
 
 
@@ -336,7 +336,7 @@ display(Image(filename='figures/adrm1_paper_novel_qval_ENSG00000130706.12_report
 
 
 
-![png](../.gitbook/assets/vis/output_43_0.png)
+![png](../.gitbook/assets/vis_output_43_0.png)
 
 
 
@@ -380,7 +380,7 @@ display(Image(filename='figures/nipal3_novel_ENSG00000001461.16_report.png'))
 
 
 
-![png](../.gitbook/assets/vis/output_46_0.png)
+![png](../.gitbook/assets/vis_output_46_0.png)
 
 
 
@@ -427,7 +427,7 @@ display(Image(filename='figures/nipal3_novel_cell_line_ENSG00000001461.16_report
 
 
 
-![png](../.gitbook/assets/vis/output_50_0.png)
+![png](../.gitbook/assets/vis_output_50_0.png)
 
 
 
@@ -490,7 +490,7 @@ display(Image(filename='figures/adrm1_browser_color_cell_line_ENSG00000130706.12
 
 
 
-![png](../.gitbook/assets/vis/output_56_0.png)
+![png](../.gitbook/assets/vis_output_56_0.png)
 
 
 
@@ -540,7 +540,7 @@ display(Image(filename='figures/adrm1_browser_color_replicate_cell_line_ENSG0000
 
 
 
-![png](../.gitbook/assets/vis/output_60_0.png)
+![png](../.gitbook/assets/vis_output_60_0.png)
 
 
 
@@ -644,6 +644,8 @@ As you can see here, the data displayed is limited to those belonging to hffc6 r
 display(Image(filename='figures/nipal3_ENSG00000001461.16_report.png'))
 ```
 
+![png](../.gitbook/assets/vis_srf_ENSMUSG00000015605.6_report.png)
+
 And here I'll show all the hffc6 replicates ordered by tes.
 
 
@@ -668,3 +670,5 @@ sg.gen_report('NIPAL3',
 ```python
 display(Image(filename='figures/nipal3_browser_hffc6_ENSG00000001461.16_report.png'))
 ```
+
+![png](../.gitbook/assets/vis_nipal3_browser_hffc6_ENSG00000001461.16_report.png)
