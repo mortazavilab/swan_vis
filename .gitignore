@@ -12,6 +12,13 @@ testing/dana_driver.py
 
 # whatever I ever put in here
 visual_tests/
+faqs/test_tss_abundance.tsv
+swan_vis/requirements.txt
+testing/files/test_ab_2.txt
+tutorials/210816_test_dev.ipynb
+tutorials/test.ipynb
+tutorials/test_exon_path.tsv
+tutorials/test_tss_abundance.tsv
 
 # tutorials data
 tutorials/data/
