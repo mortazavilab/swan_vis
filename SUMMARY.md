@@ -19,3 +19,4 @@
 ## Code documentation
 
 * [swan\_vis.SwanGraph\(\)](code-documentation/swangraph.md)
+* [swan\_vis.utils](code-documentation/utils.md)

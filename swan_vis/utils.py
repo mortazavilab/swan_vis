@@ -185,6 +185,12 @@ def gtf_or_db(fname):
 
 # validate that a gtf has the correct fields and info in it
 def validate_gtf(fname):
+	"""
+	Validates that the input GTF is valid input to Swan.
+
+	Parameters:
+		fname (str): Path / name of GTF file
+	"""
 	df = pd.read_csv(fname, sep='\t', usecols=[2,8], comment='#',
 		names=['entry_type', 'fields'])
 	if df.empty:
@@ -951,6 +957,15 @@ def reformat_talon_abundance(fname, ofile=None):
 	df.to_csv(ofile, sep='\t', index=False)
 
 def read(file):
+	"""
+	Read a SwanGraph from a saved pickle file.
+
+	Parameters:
+		file (str): Name / path to saved Swan file
+
+	Returns:
+		sg (SwanGraph): SwanGraph stored in file
+	"""
 	check_file_loc(file, 'SwanGraph')
 	picklefile = open(file, 'rb')
 	sg = pickle.load(picklefile)
@@ -961,6 +976,12 @@ def read(file):
 # saves current figure named oname. clears the figure space so additional
 # plotting can be done
 def save_fig(oname):
+	"""
+	Save the current figure as a png with a given file prefix.
+
+	Parameters:
+		oname (str): Path / prefix to saved image
+	"""
 	check_dir_loc(oname)
 	plt.axis('off')
 	# plt.tight_layout()

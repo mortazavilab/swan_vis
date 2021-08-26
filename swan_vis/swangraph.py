@@ -34,8 +34,6 @@ class SwanGraph(Graph):
 
 		datasets (list of str):
 			Names of datasets in the Graph
-		counts (list of str):
-			Names of columns holding counts in the Graph
 		loc_df (pandas DataFrame):
 			DataFrame of all unique observed genomic
 			coordinates in the transcriptome
@@ -104,8 +102,7 @@ class SwanGraph(Graph):
 		include_isms=False, verbose=False):
 
 		"""
-		Adds a whole transcriptome from a set of samples. No abundance is
-		included here!
+		Adds a whole transcriptome from a set of samples.
 
 		Parameters:
 			fname (str): Path to GTF or TALON db
