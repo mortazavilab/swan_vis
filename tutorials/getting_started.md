@@ -7,17 +7,17 @@ Then, download the data and the reference transcriptome annotation from [here](h
 
 The main workflow to get started with Swan consists of:
 
-0. [Starting up Swan and initializing your SwanGraph](getting_started#starting-up-swan-and-initializing-your-swangraph)
-1. [Adding a reference transcriptome (optional)](getting_started#adding-a-reference-transcriptome)
+0. [Starting up Swan and initializing your SwanGraph](getting_started.md#starting-up-swan-and-initializing-your-swangraph)
+1. [Adding a reference transcriptome (optional)](getting_started.md#adding-a-reference-transcriptome)
 2. Adding a transcriptome for your samples
-    * [From a GTF](getting_started#adding-transcript-models-from-a-gtf)
-    * [From a TALON db](getting_started#adding-transcript-models-from-a-talon-db)
-3. [Adding datasets and their expression values](getting_started#adding-datasets-and-their-abundance)
-4. [Adding metadata to your datasets](getting_started#adding-metadata)
+    * [From a GTF](getting_started.md#adding-transcript-models-from-a-gtf)
+    * [From a TALON db](getting_started.md#adding-transcript-models-from-a-talon-db)
+3. [Adding datasets and their expression values](getting_started.md#adding-datasets-and-their-abundance)
+4. [Adding metadata to your datasets](getting_started.md#adding-metadata)
 
 Other sections:
-* [Example data download](getting_started#download-example-data)
-* [Saving and loading your SwanGraph](https://freese.gitbook.io/swan/tutorials/getting_started#saving-and-loading-your-swangraph)
+* [Example data download](getting_started.md#download-example-data)
+* [Saving and loading your SwanGraph](https://freese.gitbook.io/swan/tutorials/getting_started.md#saving-and-loading-your-swangraph)
 
 This page can also be read from top to bottom, just know that you may be running things more than once!
 
