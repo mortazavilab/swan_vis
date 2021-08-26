@@ -2,11 +2,11 @@
 
 ![](.gitbook/assets/swan_logo.png)
 
-Swan is a Python library designed for the analysis and visualization of transcriptomes, especially with long-read transcriptomes in mind. Users can merge transcriptomes from different datasets and explore distinct splicing and expression patterns across datasets. 
+Swan is a Python library designed for the analysis and visualization of transcriptomes, especially with long-read transcriptomes in mind. Users can add transcriptomes from different datasets and explore distinct splicing and expression patterns across datasets.
 
 Please visit the [Swan repository](https://github.com/mortazavilab/swan_vis) to download and view the source code
 
-Also see the [Swan manuscript repository](https://github.com/fairliereese/swan_paper) for the exact commands used to do the analysis in our [manuscript](https://www.biorxiv.org/content/10.1101/2020.06.09.143024v1).
+Also see the [Swan manuscript repository](https://github.com/fairliereese/swan_paper) for the exact commands used to do the analysis in our [publication](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btaa836/5912931).
 
 Also see our [website](https://freese.gitbook.io/swan/) for in-depth tutorials and documentation
 
@@ -24,9 +24,9 @@ Alternatively, the most recent commits can be installed by git cloning [the Swan
 
 `pip install .`
 
-After installation with pip, to enable visualizations using dashed edges, run the following command from anywhere in the terminal
+<!-- After installation with pip, to enable visualizations using dashed edges, run the following command from anywhere in the terminal
 
-`swan_patch_networkx`
+`swan_patch_networkx` -->
 
 ## Tutorials
 
@@ -45,4 +45,3 @@ After installation with pip, to enable visualizations using dashed edges, run th
 For full documentaion, please visit [our website](https://freese.gitbook.io/swan/)
 
 Logo by the wonderful [Eamonn Casey](https://www.instagram.com/designsbyeamonn/)
-
