@@ -4,10 +4,10 @@ Swan now comes with several utilities that can be used fo compute and output var
 
 ## Table of contents
 
-* [Calculating TPM values](https://freese.gitbook.io/swan/faqs/utilities#calculating-tpm-values)
-* [Calculating pi values](https://freese.gitbook.io/swan/faqs/utilities#calculating-pi-values)
-* [Obtaining edge abundance information](https://freese.gitbook.io/swan/faqs/utilities#obtaining-edge-abundance-information)
-* [Obtaining TSS/TES abundance information](https://freese.gitbook.io/swan/faqs/utilities#obtaining-tss-tes-abundance-information)
+* [Calculating TPM values](utilities.mdcalculating-tpm-values)
+* [Calculating pi values](utilities.mdcalculating-pi-values)
+* [Obtaining edge abundance information](utilities.mdobtaining-edge-abundance-information)
+* [Obtaining TSS/TES abundance information](utilities.mdobtaining-tss-tes-abundance-information)
 
 
 We'll be using the same SwanGraph as the rest of the tutorial pages to demonstrate these utilites. Load it using the following code:
