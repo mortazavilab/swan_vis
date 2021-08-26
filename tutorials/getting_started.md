@@ -6,19 +6,22 @@ After installing, you'll be able to run Swan from Python.
 Then, download the data and the reference transcriptome annotation from [here](http://crick.bio.uci.edu/freese/swan_files_example/). The bash commands to do so are given below.
 
 The main workflow to get started with Swan consists of:
-1. [Adding a reference transcriptome (optional)](#add_trans)
+
+0. [Starting up Swan and initializing your SwanGraph](https://freese.gitbook.io/swan/tutorials/getting_started#starting-up-swan-and-initializing-your-swangraph)
+1. [Adding a reference transcriptome (optional)](https://freese.gitbook.io/swan/tutorials/getting_started#adding-a-reference-transcriptome)
 2. Adding a transcriptome for your samples
-    * [From a GTF](#add_gtf)
-    * [From a TALON db](#add_db)
-3. [Adding datasets and their expression values](#add_ab)
-4. [Adding metadata to your datasets](#add_meta)
+    * [From a GTF](https://freese.gitbook.io/swan/tutorials/getting_started#adding-transcript-models-from-a-gtf)
+    * [From a TALON db](https://freese.gitbook.io/swan/tutorials/getting_started#adding-transcript-models-from-a-talon-db)
+3. [Adding datasets and their expression values](https://freese.gitbook.io/swan/tutorials/getting_started#adding-datasets-and-their-abundance)
+4. [Adding metadata to your datasets](https://freese.gitbook.io/swan/tutorials/getting_started#adding-metadata)
 
 Other sections:
-* [Example data download](#data_download)
-* [Starting and initializing your SwanGraph](#init)
-* [Saving and loading your SwanGraph](#save_load)
+* [Example data download](https://freese.gitbook.io/swan/tutorials/getting_started#download-example-data)
+* [Saving and loading your SwanGraph](https://freese.gitbook.io/swan/tutorials/getting_started#saving-and-loading-your-swangraph)
 
 This page can also be read from top to bottom, just know that you may be running things more than once!
+
+For information on the file formats needed to use Swan, please read the [file format specifications FAQ](https://freese.gitbook.io/swan/faqs/file_formats).
 
 <!-- Running this tutorial (with only one of the dataset addition options) on my laptop took around 7 minutes and 5 GB of RAM.  -->
 
