@@ -2,8 +2,9 @@
 
 Swan offers many different visualization options to understand your transcriptomes. This tutorial includes instructions on the following:
 
-* [Gene summary graphs](#gene_summary)
-* [Transcript path graphs](#transcript_path)
+* [Gene summary graphs](https://freese.gitbook.io/swan/tutorials/visualization#gene-summary-graphs)
+* [Transcript path graphs](https://freese.gitbook.io/swan/tutorials/visualization#transcript-path-graphs)
+* [Changing colors](#change_colors)
 * [Saving a figure](#save_fig)
 * [Swan reports](#swan_report)
 
@@ -122,9 +123,10 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 
 ![png](../.gitbook/assets/vis_output_18_0.png)
 
+## <a name="change_colors"></a>Changing colors
 
 
-Finally, if you are unhappy with the default color scheme for the transcript models (both browser and Swan style), Swan now includes an option to change the colors. Use the `set_plotting_colors()` function using a dictionary that maps the different components of the transcript model (tss, tes, internal, exon, intron, browser) to either a [named Matplotlib colors](https://matplotlib.org/stable/gallery/color/named_colors.html) or hex code.
+If you are unhappy with the default color scheme for the transcript models (both browser and Swan style), Swan now includes an option to change the colors. Use the `set_plotting_colors()` function using a dictionary that maps the different components of the transcript model (tss, tes, internal, exon, intron, browser) to either a [named Matplotlib colors](https://matplotlib.org/stable/gallery/color/named_colors.html) or hex code.
 
 The user doesn't have to supply colors for all of the components. For instance, say we just want to change the color of the introns to purple instead of pink.
 
