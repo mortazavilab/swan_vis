@@ -589,6 +589,141 @@ brain_sg.set_metadata_colors('age', c_dict)
 brain_sg.adata.obs
 ```
 
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>dataset</th>
+      <th>brain_region</th>
+      <th>age</th>
+      <th>sex</th>
+    </tr>
+    <tr>
+      <th>index</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>hipp_2mo_f_1</th>
+      <td>hipp_2mo_f_1</td>
+      <td>hippocampus</td>
+      <td>2mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>hipp_2mo_f_2</th>
+      <td>hipp_2mo_f_2</td>
+      <td>hippocampus</td>
+      <td>2mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>hipp_2mo_m_1</th>
+      <td>hipp_2mo_m_1</td>
+      <td>hippocampus</td>
+      <td>2mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>hipp_2mo_m_2</th>
+      <td>hipp_2mo_m_2</td>
+      <td>hippocampus</td>
+      <td>2mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>hipp_18-20mo_f_1</th>
+      <td>hipp_18-20mo_f_1</td>
+      <td>hippocampus</td>
+      <td>18-20mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>hipp_18-20mo_f_2</th>
+      <td>hipp_18-20mo_f_2</td>
+      <td>hippocampus</td>
+      <td>18-20mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>hipp_18-20mo_m_1</th>
+      <td>hipp_18-20mo_m_1</td>
+      <td>hippocampus</td>
+      <td>18-20mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>hipp_18-20mo_m_2</th>
+      <td>hipp_18-20mo_m_2</td>
+      <td>hippocampus</td>
+      <td>18-20mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>cortex_2mo_m_1</th>
+      <td>cortex_2mo_m_1</td>
+      <td>cortex</td>
+      <td>2mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>cortex_2mo_m_2</th>
+      <td>cortex_2mo_m_2</td>
+      <td>cortex</td>
+      <td>2mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>cortex_2mo_f_1</th>
+      <td>cortex_2mo_f_1</td>
+      <td>cortex</td>
+      <td>2mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>cortex_2mo_f_2</th>
+      <td>cortex_2mo_f_2</td>
+      <td>cortex</td>
+      <td>2mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>cortex_18-20mo_f_1</th>
+      <td>cortex_18-20mo_f_1</td>
+      <td>cortex</td>
+      <td>18-20mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>cortex_18-20mo_f_2</th>
+      <td>cortex_18-20mo_f_2</td>
+      <td>cortex</td>
+      <td>18-20mo</td>
+      <td>female</td>
+    </tr>
+    <tr>
+      <th>cortex_18-20mo_m_1</th>
+      <td>cortex_18-20mo_m_1</td>
+      <td>cortex</td>
+      <td>18-20mo</td>
+      <td>male</td>
+    </tr>
+    <tr>
+      <th>cortex_18-20mo_m_2</th>
+      <td>cortex_18-20mo_m_2</td>
+      <td>cortex</td>
+      <td>18-20mo</td>
+      <td>male</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
 Say we want to group replicates belonging to the same brain region and age together in the report. We can do this by using `groupby=['brain_region', 'age']` as input to `gen_report()`.
 
 
@@ -625,7 +760,7 @@ Here I've also demonstrated the `order` option, where you can order the transcri
 ```python
 # generate a report for the given gene
 # save it with the given filepath prefix
-# use the virids color way
+# use the viridis color way
 # color cell lines by metadata colors
 # restrict data shown to just the hffc6 cell line and replicates 3 and 2
 # order transcripts based on genomic location of TSS
@@ -652,7 +787,7 @@ And here I'll show all the hffc6 replicates ordered by tes.
 ```python
 # generate a report for the given gene
 # save it with the given filepath prefix
-# use the virids color way
+# use the viridis color way
 # color cell lines and replicates by metadata colors
 # restrict data shown to just the hffc6 datasets
 # order transcripts based on genomic location of TES
