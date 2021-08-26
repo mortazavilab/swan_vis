@@ -7,8 +7,6 @@ Swan offers many different visualization options to understand your transcriptom
 * [Saving a figure](#save_fig)
 * [Swan reports](#swan_report)
 
-<!-- Running this tutorial on my laptop took under a minute and 3 GB of RAM. -->
-
 
 ```python
 # this is just to display saved images
