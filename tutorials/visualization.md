@@ -340,7 +340,7 @@ display(Image(filename='figures/adrm1_paper_novel_qval_ENSG00000130706.12_report
 
 
 
-You can also plot transcripts based on their percent isoform (pi) values using `layer=pi`, which help illustrate the basis on which isoform switches are called in Swan. Here I'm choosing to plot it in a separate color using the `cmap` argument to make it clear that the metric being plotted is different, and overlaying each cell with the pi value using `display_numbers=True`.
+You can also plot transcripts based on their percent isoform (pi) values using `layer='pi'`, which help illustrate the basis on which isoform switches are called in Swan. Here I'm choosing to plot it in a separate color using the `cmap` argument to make it clear that the metric being plotted is different, and overlaying each cell with the pi value using `display_numbers=True`.
 
 For this example, I'll plot a gene that was called as isoform switching by the Swan isoform switching module, NIPAL3.
 
