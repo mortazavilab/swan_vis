@@ -97,7 +97,7 @@ pass_list = 'data/all_pass_list.csv'
 meta = 'data/metadata.tsv'
 ```
 
-## <a name="add_trans"></a>Adding transcript models from a GTF
+## <a name="add_trans"></a>Adding a reference transcriptome
 
 
 ```python
@@ -200,20 +200,6 @@ sg.add_metadata(meta)
 sg.adata.obs
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
