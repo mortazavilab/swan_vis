@@ -1,11 +1,11 @@
 # Analysis tools
 
 Swan has several analysis options to use.
-* [Differential gene expression](#deg)
-* [Differential transcript expression](#det)
-* [Isoform switching / differential isoform expression](#is)
-* [Combining metadata columns](#multi_gb)
-* [Exon skipping and intron retention](#es_ir)
+* [Differential gene expression](analysis_tools.md#differential-gene-expression-tests)
+* [Differential transcript expression](analysis_tools.md#differential-transcript-expression-tests)
+* [Isoform switching / differential isoform expression](analysis_tools.md#isoform-switching-differential-isoform-expression-testing)
+* [Combining metadata columns](analysis_tools.md#combining-metadata-columns)
+* [Exon skipping and intron retention](analysis_tools.md#exon-skipping-and-intron-retention)
 <!-- * [More differential expression](#more_de) -->
 
 <!-- Running this tutorial on my laptop took around 30 minutes and 3 GB of RAM. The longest steps by far are running the differential gene and transcript expression tools. The diffxpy tools are multithreaded, and my laptop has 8 cores. -->
