@@ -2,11 +2,11 @@
 
 Swan offers many different visualization options to understand your transcriptomes. This tutorial includes instructions on the following:
 
-* [Gene summary graphs](https://freese.gitbook.io/swan/tutorials/visualization#gene-summary-graphs)
-* [Transcript path graphs](https://freese.gitbook.io/swan/tutorials/visualization#transcript-path-graphs)
-* [Changing colors](#change_colors)
-* [Saving a figure](#save_fig)
-* [Swan reports](#swan_report)
+* [Gene summary graphs](visualization.md#gene-summary-graphs)
+* [Transcript path graphs](visualization.md#transcript-path-graphs)
+* [Changing colors](visualization.md#changing-colors)
+* [Saving a figure](visualization.md#saving-a-figure)
+* [Swan reports](visualization.md#swan-reports)
 
 
 ```python
