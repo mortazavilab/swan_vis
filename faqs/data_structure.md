@@ -6,11 +6,11 @@ A SwanGraph consists of several different parts that can be used individually. T
 
 ## Table of contents
 
-* [Genomic location information](data_structure.md#loc_df)
-* [Intron / exon information](data_structure#edge_df)
-* [Transcript information](data_structure#t_df)
-* [AnnData](data_structure#anndata)
-* [Current plotted graph information](data_structure#pg)
+* [Genomic location information](data_structure.md#genomic-location-information)
+* [Intron / exon information](data_structure.md#intron-exon-location-information)
+* [Transcript information](data_structure.md#transcript-information)
+* [AnnData](data_structure.md#anndata)
+* [Current plotted graph information](data_structure.md#current-plotted-graph-information)
 
 
 We'll be using the same SwanGraph from the rest of the tutorial to examine how data is stored in the SwanGraph. Load it using the following code:
