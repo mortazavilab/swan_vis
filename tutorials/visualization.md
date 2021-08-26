@@ -752,6 +752,9 @@ brain_sg.gen_report('Srf',
 display(Image(filename='figures/srf_ENSMUSG00000015605.6_report.png'))
 ```
 
+![png](../.gitbook/assets/vis_srf_ENSMUSG00000015605.6_report.png)
+
+
 You can choose which datasets and the order in which they display in the report using the `datasets` option combined with different metadata. Suppose we want to restrict the datasets in the report to just the HFFc6 datasets, and we want to display the replicates 2 and 3 only, in descending order. Specify which categories from the relevant metadata columns you wish to include using a dictionary with the format `{metadata_column: [metadata_category1, metadata_category2 ...]}`. The output report will include the intersection of datasets that satisfy each condition.
 
 Here I've also demonstrated the `order` option, where you can order the transcripts based on transcript ID, expression level (default), or genomic location of TSS / TES (`[tid', 'expression', 'tss', 'tes']` respectively).
@@ -779,7 +782,7 @@ As you can see here, the data displayed is limited to those belonging to hffc6 r
 display(Image(filename='figures/nipal3_ENSG00000001461.16_report.png'))
 ```
 
-![png](../.gitbook/assets/vis_srf_ENSMUSG00000015605.6_report.png)
+![png](../.gitbook/assets/vis_nipal3_ENSG00000001461.16_report.png)
 
 And here I'll show all the hffc6 replicates ordered by tes.
 
