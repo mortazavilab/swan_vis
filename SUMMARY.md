@@ -12,6 +12,7 @@
 ## FAQs
 
 * [Understanding Swan visualizations](faqs/understanding_swan_vis.md)
+* [Additional utilities](faqs/utilities.md)
 * [SwanGraph data structure](faqs/data_structure.md)
 * [File format specifications](faqs/file_formats.md)
 

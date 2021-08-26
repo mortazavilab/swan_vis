@@ -2,7 +2,7 @@
 # compliation
 __pycache__/
 */__pycache__/
-
+*ipynb_checkpoint*
 # figures
 # figures/
 
