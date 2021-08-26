@@ -1826,15 +1826,20 @@ class SwanGraph(Graph):
 		pickle.dump(self, picklefile)
 		picklefile.close()
 
-	def save_edge_abundance(self, prefix, kind='counts'):
+	def get_edge_abundance(self, prefix=None, kind='counts'):
 		"""
-		Saves edge expression from the current SwanGraph in TSV format with
+		Gets edge expression from the current SwanGraph in a DataFrame
 		complete information about where edge is.
 
 		Parameters:
 			prefix (str): Path and filename prefix. Resulting file will
 				be saved as prefix_edge_abundance.tsv
+				Default: None (will not save)
 			kind (str): Choose "tpm" or "counts"
+
+		Returns:
+			df (pandas DataFrame): Abundance and metadata information about
+				each edge.
 		"""
 
 		# add location information to edge_df
@@ -1866,43 +1871,61 @@ class SwanGraph(Graph):
 		df.drop('index', axis=1, inplace=True)
 
 		# save file
-		fname = '{}_edge_abundance.tsv'.format(prefix)
-		df.to_csv(fname, sep='\t', index=False)
+		if prefix:
+			fname = '{}_edge_abundance.tsv'.format(prefix)
+			df.to_csv(fname, sep='\t', index=False)
 
-	def save_tss_abundance(self, prefix, kind='counts'):
+		return df
+
+	def get_tss_abundance(self, prefix=None, kind='counts'):
 		"""
-		Saves TSS expression from the current SwanGraph in TSV format with
+		Gets TSS expression from the current SwanGraph in a DataFrame with
 		complete information about where TSS is.
 
 		Parameters:
 			prefix (str): Path and filename prefix. Resulting file will
 				be saved as prefix_tss_abundance.tsv
 			kind (str): Choose "tpm" or "counts"
-		"""
-		self.save_end_abundance(prefix, kind, how='tss')
 
-	def save_tes_abundance(self, prefix, kind='counts'):
+		Returns:
+			df (pandas DataFrame): Abundance and metadata information about
+				each TSS.
 		"""
-		Saves TES expression from the current SwanGraph in TSV format with
+		df = self.get_end_abundance(prefix, kind, how='tss')
+		return df
+
+	def get_tes_abundance(self, prefix=None, kind='counts'):
+		"""
+		Gets TES expression from the current SwanGraph in a DataFrame
 		complete information about where TES is.
 
 		Parameters:
 			prefix (str): Path and filename prefix. Resulting file will
 				be saved as prefix_tes_abundance.tsv
+				Default: None (will not save)
 			kind (str): Choose "tpm" or "counts"
-		"""
-		self.save_end_abundance(prefix, kind, how='tes')
 
-	def save_end_abundance(prefix, kind, how='tss'):
+		Returns:
+			df (pandas DataFrame): Abundance and metadata information about
+				each TSS.
 		"""
-		Saves end expression from the current SwanGraph in TSV format with
-		complete information about where end is. Called from save_end_abundance
+		df = self.get_end_abundance(prefix, kind, how='tes')
+		return df
+
+	def get_end_abundance(self, prefix, kind, how='tss'):
+		"""
+		Gets end expression from the current SwanGraph in TSV format with
+		complete information about where end is. Called from get_end_abundance
 
 		Parameters:
 			prefix (str): Path and filename prefix. Resulting file will
 				be saved as prefix_tes_abundance.tsv
 			kind (str): Choose "tpm" or "counts"
 			how (str): Choose "tss" or "tes"
+
+		Returns:
+			df (pandas DataFrame): Abundance and metadata information about
+				each end.
 		"""
 
 		# add location information to end_adata.var
@@ -1915,7 +1938,7 @@ class SwanGraph(Graph):
 		temp.reset_index(inplace=True)
 
 		# add location information to end_adata.var
-		temp = temp.merge(sg.loc_df[['chrom', 'coord']],
+		temp = temp.merge(self.loc_df[['chrom', 'coord']],
 					how='left', on='vertex_id')
 
 		# get abundance table from end_adata
@@ -1937,8 +1960,10 @@ class SwanGraph(Graph):
 		df.drop('index', axis=1, inplace=True)
 
 		# save file
-		fname = '{}_{}_abundance.tsv'.format(prefix, how)
-		df.to_csv(fname, sep='\t', index=False)
+		if prefix:
+			fname = '{}_{}_abundance.tsv'.format(prefix, how)
+			df.to_csv(fname, sep='\t', index=False)
+		return df
 
 	##########################################################################
 	############################ Plotting utilities ##########################
