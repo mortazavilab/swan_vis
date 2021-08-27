@@ -34,10 +34,13 @@ Alternatively, the most recent commits can be installed by git cloning [the Swan
 * [Getting started](tutorials/getting_started.md): how to load data into Swan
 * [Visualization tools](tutorials/visualization.md): make gene and transcript-level plots to visualize the complexity of alternative splicing
 * [Analysis tools](tutorials/analysis_tools.md): find differentially expressed genes and transcripts; find isoform-switching genes, discover novel intron retention and exon skipping events
+* [Scanpy compatibility](tutorials/scanpy_compatibility.md): Some brief examples of how to use external Scanpy plotting functions on Swan objects
 
 ## FAQs
 
 * [Understanding Swan visualizations](faqs/understanding_swan_vis.md)
+* [Additional utilities](faqs/utilities.md)
+* [SwanGraph data structure](faqs/data_structure.md)
 * [Input file format specifications](faqs/file_formats.md)
 
 ## Comprehensive Documentation
