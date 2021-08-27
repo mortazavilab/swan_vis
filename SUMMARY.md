@@ -8,7 +8,7 @@
 * [Getting started](tutorials/getting_started.md)
 * [Analysis](tutorials/analysis_tools.md)
 * [Visualization](tutorials/visualization.md)
-* [Scanpy integration](tutorials/scanpy_compatibility.md)
+* [Scanpy compatibility](tutorials/scanpy_compatibility.md)
 
 ## FAQs
 
