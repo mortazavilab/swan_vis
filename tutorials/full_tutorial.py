@@ -1,7 +1,7 @@
 # Getting started
 import swan_vis as swan
 sg = swan.SwanGraph()
-annot_gtf = 'data/gencode.v29.annotation.gtf'
+annot_gtf = '/dfs6/pub/freese/mortazavi_lab/ref/gencode.v29/gencode.v29.annotation.gtf'
 data_gtf = 'data/all_talon_observedOnly.gtf'
 ab_file = 'data/all_talon_abundance_filtered.tsv'
 talon_db = 'data/talon.db'
@@ -17,6 +17,7 @@ sg = swan.SwanGraph()
 
 sg.add_annotation(annot_gtf)
 sg.add_transcriptome(talon_db, pass_list=pass_list)
+sg.add_abundance(ab_file)
 sg.add_metadata(meta)
 sg.save_graph('data/swan')
 
