@@ -1216,7 +1216,7 @@ class SwanGraph(Graph):
 							tids = cand_t_df.tid.tolist()
 							for tid in tids:
 								temp = pd.DataFrame(data=[[gid, tid, eid]],
-									columns=['gid', 'tid', 'egde_id'])
+									columns=['gid', 'tid', 'edge_id'])
 								ir_df = pd.concat([ir_df, temp])
 								ir_edges.append(eid)
 								ir_genes.append(gid)
@@ -1320,7 +1320,7 @@ class SwanGraph(Graph):
 							if len(temp_df.index) > 0:
 								for tid in tids:
 									temp = pd.DataFrame(data=[[gid, tid, eid]],
-										columns=['gid', 'tid', 'egde_id'])
+										columns=['gid', 'tid', 'edge_id'])
 									es_df = pd.concat([es_df, temp])
 									es_edges.append(eid)
 									es_genes.append(gid)

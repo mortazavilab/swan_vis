@@ -1309,7 +1309,7 @@ es_df.head()
       <th></th>
       <th>gid</th>
       <th>tid</th>
-      <th>egde_id</th>
+      <th>edge_id</th>
     </tr>
   </thead>
   <tbody>
@@ -1379,7 +1379,7 @@ ir_df.head()
       <th></th>
       <th>gid</th>
       <th>tid</th>
-      <th>egde_id</th>
+      <th>edge_id</th>
     </tr>
   </thead>
   <tbody>
