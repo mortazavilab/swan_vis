@@ -277,7 +277,7 @@ def get_ends(t_df, kind):
 		kind (str): Choose 'tss' or 'tes'
 	"""
 	if kind == 'tss':
-		ind = 1
+		ind = 0
 	elif kind == 'tes':
 		ind = -1
 
@@ -820,7 +820,8 @@ def get_die_gene_table(gene_df, conditions, rc):
 
 	# limit to genes with more than 1 isoform expressed
 	if len(gene_df.index) <= 1:
-		return None
+		test_result = '1_iso'
+		return None, test_result
 
 	# if there are more than 11 isoforms, agg. the n - 11 least expressed
 	# isoforms into one
@@ -840,16 +841,19 @@ def get_die_gene_table(gene_df, conditions, rc):
 	for cond in conditions:
 		counts_col = cond+'_counts'
 		if gene_df[counts_col].sum() < rc:
-			return None
+			test_result = 'below_rc'
+			return None, test_result
 
 	# only do the rest if there's something left
 	if gene_df.empty:
-		return None
+		test_result = 'both_0_exp'
+		return None, test_result
 
 	# compute isoform-level and gene-level delta pis
 	gene_df['dpi'] = gene_df[cond1] - gene_df[cond2]
+	test_result = 'testable'
 
-	return gene_df
+	return gene_df, test_result
 
 def test_gene(gene_df, conditions):
 	"""

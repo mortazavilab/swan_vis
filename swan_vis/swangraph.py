@@ -1425,6 +1425,7 @@ class SwanGraph(Graph):
 
 		# add gene name column
 		gnames = self.t_df[['gid', 'gname']].copy(deep=True)
+		gnames.drop_duplicates(inplace=True)
 		gnames.reset_index(drop=True, inplace=True)
 		test = test.merge(gnames, how='left', on='gid')
 
@@ -1605,6 +1606,8 @@ class SwanGraph(Graph):
 				isoform expression test, including p-values and adjusted
 				p-values, as well as change in percent isoform usage (dpi) for
 				all tested genes.
+			test_results (pandas DataFrame): A table indicating the test outcome
+				for each gene regardless of whether it was actually tested.
 		"""
 		# get correct adata
 		if kind == 'iso':
@@ -1680,9 +1683,14 @@ class SwanGraph(Graph):
 			pbar = tqdm(total=n_genes)
 			pbar.set_description('Testing for DIE for each gene')
 
+		test_results = pd.DataFrame(columns=['gene', 'test_result'])
 		for gene in gids:
 			gene_df = df.loc[df.gid==gene]
-			gene_df = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
+			gene_df, test_result = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
+			data = [[gene, test_result]]
+			test_result = pd.DataFrame(data=data, columns=['gene', 'test_result'])
+			test_results = pd.concat((test_results, test_result))
+
 			# if the gene is valid for testing, do so
 			if isinstance(gene_df, pd.DataFrame):
 				p, dpi = test_gene(gene_df, obs_conditions)
@@ -1711,7 +1719,7 @@ class SwanGraph(Graph):
 
 		self.adata.uns[uns_name] = gene_de_df
 
-		return gene_de_df
+		return gene_de_df, test_results
 
 	# filter differential isoform expression test results based on
 	# both an adjusted p value and dpi cutoff
@@ -1846,7 +1854,7 @@ class SwanGraph(Graph):
 		temp = temp.merge(self.loc_df[['coord']],
 					how='left', left_on='v2', right_on='vertex_id')
 		temp.rename({'coord': 'stop'}, axis=1, inplace=True)
-		temp.drop(['v1', 'v2', 'edge_id'], axis=1, inplace=True)
+		temp.drop(['v1', 'v2'], axis=1, inplace=True)
 
 		# get collapsed abundance table from edge_adata
 		columns = self.edge_adata.var.index.tolist()

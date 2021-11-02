@@ -9,6 +9,7 @@ setup(
   author = 'Fairlie Reese',
   author_email = 'fairlie.reese@gmail.com',
   url = 'https://github.com/mortazavilab/swan_vis/',
+  download_url='https://github.com/mortazavilab/swan_vis/archive/refs/tags/v2.0.tar.gz',
   keywords = ['swan', 'transcription', 'isoform', 'visualization'],
   python_requires='>=3.6',
   install_requires=[
