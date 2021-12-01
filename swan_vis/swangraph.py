@@ -1831,6 +1831,41 @@ class SwanGraph(Graph):
 		pickle.dump(self, picklefile)
 		picklefile.close()
 
+	def get_transcript_abundance(self, prefix=None, kind='counts'):
+		"""
+		Gets transcript expression from the current SwanGraph in a DataFrame.
+
+		Parameters:
+			prefix (str): Path and filename prefix. Resulting file will
+				be saved as prefix_transcript_abundance.tsv
+				Default: None (will not save)
+			kind (str): Choose "tpm" or "counts"
+
+		Returns:
+			df (pandas DataFrame): Abundance and metadata information about
+				each transcript.
+		"""
+
+		# get collapsed abundance table from edge_adata
+		columns = self.adata.var.index.tolist()
+		rows = self.adata.obs.index.tolist()
+		if kind == 'counts':
+		    data = self.adata.layers['counts']
+		elif kind == 'tpm':
+		    data = self.adata.layers['tpm']
+
+		df = pd.DataFrame(index=rows, columns=columns, data=data)
+		df = df.transpose()
+		df.reset_index(inplace=True)
+		df.rename({'index': 'tid'}, axis=1, inplace=True)
+
+		# save file
+		if prefix:
+		    fname = '{}_transcript_abundance.tsv'.format(prefix)
+		    df.to_csv(fname, sep='\t', index=False)
+
+		return df
+
 	def get_edge_abundance(self, prefix=None, kind='counts'):
 		"""
 		Gets edge expression from the current SwanGraph in a DataFrame
