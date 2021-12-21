@@ -1697,6 +1697,11 @@ class SwanGraph(Graph):
 			test_result = pd.DataFrame(data=data, columns=['gene', 'test_result'])
 			test_results = pd.concat((test_results, test_result))
 
+			# if gene == 'ENSMUSG00000063889.16':
+			# # if gene == 'ENSMUSG00000023764.18':
+			# 	print(gene_df)
+			# 	return gene_df
+
 			# if the gene is valid for testing, do so
 			if isinstance(gene_df, pd.DataFrame):
 				entry = test_gene(gene_df, obs_conditions)

@@ -836,6 +836,7 @@ def get_die_gene_table(gene_df, conditions, rc):
 
 		gene_df = gene_df.iloc[:10]
 		gene_df = pd.concat([gene_df, temp])
+		gene_df.set_index('tid', inplace=True)
 
 	# does this gene reach the desired read count threshold?
 	for cond in conditions:
