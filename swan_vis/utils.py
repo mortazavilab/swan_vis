@@ -878,20 +878,30 @@ def test_gene(gene_df, conditions):
 	temp = temp.loc[temp.dpi > 0]
 
 	# if there are fewer than 2 isoforms
-	if len(temp.index) >= 2:
-		pos_dpi = temp.iloc[:2].dpi.sum(axis=0)
+	temp_len = len(temp.index)
+	if temp_len >= 2:
+	    pos_dpi = temp.iloc[:2].dpi.sum(axis=0)
+	    pos_isos = temp.iloc[:2].index.tolist()
+	    pos_dpis = temp.iloc[:2].dpi.tolist()
 	else:
-		pos_dpi = temp.dpi.sum(axis=0)
+	    pos_dpi = temp.dpi.sum(axis=0)
+	    pos_isos = temp.index.tolist()+[np.nan for i in range(temp_len, 2)]
+	    pos_dpis = temp.dpi.tolist()+[np.nan for i in range(temp_len, 2)]
 
 	# get highest 2 negative dpis
 	temp = gene_df.sort_values(by='dpi', ascending=True)
 	temp = temp.loc[temp.dpi < 0]
 
 	# if there are fewer than 2 isoforms
-	if len(temp.index) >= 2:
-		neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
+	temp_len = len(temp.index)
+	if temp_len >= 2:
+	    neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
+	    neg_isos = temp.iloc[:2].index.tolist()
+	    neg_dpis = temp.iloc[:2].dpi.tolist()
 	else:
-		neg_dpi = abs(temp.dpi.sum(axis=0))
+	    neg_dpi = abs(temp.dpi.sum(axis=0))
+	    neg_isos = temp.index.tolist()+[np.nan for i in range(temp_len, 2)]
+	    neg_dpis = temp.dpi.tolist()+[np.nan for i in range(temp_len, 2)]
 
 	gene_dpi = max(pos_dpi, neg_dpi)
 
@@ -899,7 +909,9 @@ def test_gene(gene_df, conditions):
 	chi_table = gene_df[counts_cols].to_numpy()
 	chi2, p, dof, exp = st.chi2_contingency(chi_table)
 
-	return p, gene_dpi
+	entry = [p, gene_dpi]+pos_isos+pos_dpis+neg_isos+neg_dpis
+
+	return entry
 
 # turn a list of dataset groups and names for those groups into a
 # dictionary

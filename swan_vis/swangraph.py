@@ -1674,7 +1674,13 @@ class SwanGraph(Graph):
 
 		# construct tables for each gene and test!
 		gids = df.gid.unique().tolist()
-		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi'], data=[[np.nan for i in range(2)] for j in range(len(gids))])
+		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi',
+                                               'pos_iso_1', 'pos_iso_2',
+                                               'pos_iso_1_dpi', 'pos_iso_2_dpi',
+                                               'neg_iso_1', 'neg_iso_2',
+                                               'neg_iso_1_dpi', 'neg_iso_2_dpi'],
+                          data=[[np.nan for i in range(10)] \
+                                for j in range(len(gids))])
 		gene_de_df.index.name = 'gid'
 
 		# TODO - should parallelize this
@@ -1693,11 +1699,16 @@ class SwanGraph(Graph):
 
 			# if the gene is valid for testing, do so
 			if isinstance(gene_df, pd.DataFrame):
-				p, dpi = test_gene(gene_df, obs_conditions)
+				entry = test_gene(gene_df, obs_conditions)
 			else:
-				p = dpi = np.nan
-			gene_de_df.loc[gene, 'p_val'] = p
-			gene_de_df.loc[gene, 'dpi'] = dpi
+				entry = [np.nan for i in range(len(gene_de_df.columns))]
+			try:
+				gene_de_df.loc[gene] = entry
+			except:
+				print(entry)
+				print(len(entry))
+				print(len(gene_de_df.columns))
+				assert 1==0
 			if verbose:
 				pbar.update(1)
 
@@ -1839,7 +1850,7 @@ class SwanGraph(Graph):
 			prefix (str): Path and filename prefix. Resulting file will
 				be saved as prefix_transcript_abundance.tsv
 				Default: None (will not save)
-			kind (str): Choose "tpm" or "counts"
+			kind (str): Choose "tpm", "counts", or "pi"
 
 		Returns:
 			df (pandas DataFrame): Abundance and metadata information about
@@ -1853,6 +1864,9 @@ class SwanGraph(Graph):
 		    data = self.adata.layers['counts']
 		elif kind == 'tpm':
 		    data = self.adata.layers['tpm']
+		elif kind == 'pi':
+			print('mellow!')
+			data = self.adata.layers['pi']
 
 		df = pd.DataFrame(index=rows, columns=columns, data=data)
 		df = df.transpose()
@@ -2155,8 +2169,8 @@ class SwanGraph(Graph):
 							 indicate_dataset=False,
 							 indicate_novel=False,
 							 browser=False,
-							 prefix=None,
-							 display=True):
+							 prefix=None):
+							 # display=True):
 		"""
 		Plots a path of a single transcript isoform through a gene summary
 		SwanGraph.
@@ -2191,9 +2205,9 @@ class SwanGraph(Graph):
 			browser=browser)
 		self.pg.plot_graph()
 
-		# display the plot if option is given
-		if display:
-			plt.show()
+		# # display the plot if option is given
+		# if display:
+		# 	plt.show()
 
 		# if the user has provided a place to save
 		if prefix:
