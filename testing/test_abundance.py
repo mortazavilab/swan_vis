@@ -27,29 +27,30 @@ class TestAbundance(object):
 
         assert set(sg.datasets) == set(['dataset1', 'dataset2'])
 
-        print(sg.t_df.index)
+        ctrl_tids = ['test1', 'test2', 'test3', 'test4', 'test5']
+        print(ctrl_tids)
         print(sg.adata.var.index)
-        assert sg.t_df.index.tolist() == sg.adata.var.index.tolist()
+        assert set(ctrl_tids) == set(sg.adata.var.index.tolist())
 
-        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5],[0,0]])).astype(np.float)
+        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5]])).astype(np.float)
         print('test')
         print(sg.adata.X)
-        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index, data=sg.adata.layers['counts'])
+        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index,
+            data=sg.adata.layers['counts'].toarray())
         print(df.head())
         print('control')
         print(ctrl_X)
-        assert np.array_equal(sg.adata.X, ctrl_X)
+        assert np.array_equal(sg.adata.X.toarray(), ctrl_X)
 
         ctrl_tpm = [[166666.6667, 166666.6667],
                     [333333.3333, 0],
                     [0, 333333.3333],
                     [333333.3333, 333333.3333],
-                    [166666.6667, 166666.6667],
-                    [0, 0]]
+                    [166666.6667, 166666.6667]]
 
         ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
         ctrl_tpm = np.around(ctrl_tpm)
-        test_tpm = np.around(sg.adata.layers['tpm'])
+        test_tpm = np.around(sg.adata.layers['tpm'].toarray())
         print('tpm')
         print('test')
         print(test_tpm)
@@ -58,10 +59,10 @@ class TestAbundance(object):
         print(np.array_equal(ctrl_tpm, test_tpm))
         assert np.array_equal(ctrl_tpm, test_tpm)
 
-        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333],[0,0]]
+        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333]]
         ctrl_pi = np.transpose(np.array(ctrl_pi)).astype(np.float)
         ctrl_pi = np.around(ctrl_pi)
-        test_pi = np.around(sg.adata.layers['pi'])
+        test_pi = np.around(sg.adata.layers['pi'].toarray())
         print('pi')
         print('test')
         print(test_pi)
@@ -81,29 +82,31 @@ class TestAbundance(object):
 
         assert set(sg.datasets) == set(['dataset1', 'dataset2'])
 
-        print(sg.t_df.index)
+        ctrl_tids = ['test1', 'test2', 'test3', 'test4', 'test5']
+        print(ctrl_tids)
         print(sg.adata.var.index)
-        assert sg.t_df.index.tolist() == sg.adata.var.index.tolist()
+        assert set(ctrl_tids) == set(sg.adata.var.index.tolist())
 
-        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5],[0,0]])).astype(np.float)
+        # need to remove 0s
+        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5]])).astype(np.float)
         print('test')
         print(sg.adata.X)
-        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index, data=sg.adata.layers['counts'])
+        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index,
+            data=sg.adata.layers['counts'].toarray())
         print(df.head())
         print('control')
         print(ctrl_X)
-        assert np.array_equal(sg.adata.X, ctrl_X)
+        assert np.array_equal(sg.adata.X.toarray(), ctrl_X)
 
         ctrl_tpm = [[166666.6667, 166666.6667],
                     [333333.3333, 0],
                     [0, 333333.3333],
                     [333333.3333, 333333.3333],
-                    [166666.6667, 166666.6667],
-                    [0, 0]]
+                    [166666.6667, 166666.6667]]
 
         ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
         ctrl_tpm = np.around(ctrl_tpm)
-        test_tpm = np.around(sg.adata.layers['tpm'])
+        test_tpm = np.around(sg.adata.layers['tpm'].toarray())
         print('tpm')
         print('test')
         print(test_tpm)
@@ -112,10 +115,10 @@ class TestAbundance(object):
         print(np.array_equal(ctrl_tpm, test_tpm))
         assert np.array_equal(ctrl_tpm, test_tpm)
 
-        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333],[0,0]]
+        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333]]
         ctrl_pi = np.transpose(np.array(ctrl_pi)).astype(np.float)
         ctrl_pi = np.around(ctrl_pi)
-        test_pi = np.around(sg.adata.layers['pi'])
+        test_pi = np.around(sg.adata.layers['pi'].toarray())
         print('pi')
         print('test')
         print(test_pi)
@@ -136,27 +139,31 @@ class TestAbundance(object):
 
         print(sg.t_df.index)
         print(sg.adata.var.index)
-        assert sg.t_df.index.tolist() == sg.adata.var.index.tolist()
 
-        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5],[0,0]])).astype(np.float)
+        ctrl_tids = ['test1', 'test2', 'test3', 'test4', 'test5']
+        print(ctrl_tids)
+        print(sg.adata.var.index)
+        assert set(ctrl_tids) == set(sg.adata.var.index.tolist())
+
+        ctrl_X = np.transpose(np.array([[5,5],[10,0],[0,10],[10,10],[5,5]])).astype(np.float)
         print('test')
         print(sg.adata.X)
-        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index, data=sg.adata.layers['counts'])
+        df = pd.DataFrame(index=sg.adata.obs.index, columns=sg.adata.var.index,
+            data=sg.adata.layers['counts'].toarray())
         print(df.head())
         print('control')
         print(ctrl_X)
-        assert np.array_equal(sg.adata.X, ctrl_X)
+        assert np.array_equal(sg.adata.X.toarray(), ctrl_X)
 
         ctrl_tpm = [[166666.6667, 166666.6667],
                     [333333.3333, 0],
                     [0, 333333.3333],
                     [333333.3333, 333333.3333],
-                    [166666.6667, 166666.6667],
-                    [0, 0]]
+                    [166666.6667, 166666.6667]]
 
         ctrl_tpm = np.transpose(np.array(ctrl_tpm)).astype(np.float)
         ctrl_tpm = np.around(ctrl_tpm)
-        test_tpm = np.around(sg.adata.layers['tpm'])
+        test_tpm = np.around(sg.adata.layers['tpm'].toarray())
         print('tpm')
         print('test')
         print(test_tpm)
@@ -165,10 +172,10 @@ class TestAbundance(object):
         print(np.array_equal(ctrl_tpm, test_tpm))
         assert np.array_equal(ctrl_tpm, test_tpm)
 
-        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333],[0,0]]
+        ctrl_pi = [[100,100],[66.6666667,0],[0,66.6666667],[100,100],[33.3333333,33.3333333]]
         ctrl_pi = np.transpose(np.array(ctrl_pi)).astype(np.float)
         ctrl_pi = np.around(ctrl_pi)
-        test_pi = np.around(sg.adata.layers['pi'])
+        test_pi = np.around(sg.adata.layers['pi'].toarray())
         print('pi')
         print('test')
         print(test_pi)
@@ -189,6 +196,7 @@ class TestLowLevel(object):
         sg.add_abundance('files/test_ab_1.tsv')
         sg.adata.obs['cluster'] = 'c1'
         test_df, test_sums = swan.calc_pi(sg.adata, sg.t_df, obs_col='cluster')
+        test_df = test_df.sparse.to_dense()
         test_df = test_df.transpose()
         test_df[['c1']] = test_df[['c1']].round()
 
@@ -214,6 +222,7 @@ class TestLowLevel(object):
         sg.add_transcriptome('files/test_full.gtf')
         sg.add_abundance('files/test_ab_1.tsv')
         test_df, test_sums = swan.calc_pi(sg.adata, sg.t_df, obs_col='dataset')
+        test_df = test_df.sparse.to_dense()
         test_df = test_df.transpose()
         test_df[['dataset1', 'dataset2']] = test_df[['dataset1', 'dataset2']].round()
 
@@ -242,7 +251,8 @@ class TestLowLevel(object):
         sg.add_transcriptome('files/test_full.gtf')
         sg.add_abundance('files/test_ab_1.tsv')
         sg.adata.obs['cluster'] = ['c1', 'c1']
-        test_df = swan.calc_tpm(sg.adata, sg.t_df, obs_col='cluster')
+        test_df = swan.calc_tpm(sg.adata, obs_col='cluster')
+        test_df = test_df.sparse.to_dense()
         test_df = test_df.transpose()
         test_df[['c1']] = test_df[['c1']].round()
 
@@ -270,7 +280,8 @@ class TestLowLevel(object):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
         sg.add_abundance('files/test_ab_1.tsv')
-        test_df = swan.calc_tpm(sg.adata, sg.t_df, obs_col='dataset')
+        test_df = swan.calc_tpm(sg.adata, obs_col='dataset')
+        test_df = test_df.sparse.to_dense()
         test_df = test_df.transpose()
         test_df[['dataset1', 'dataset2']] = test_df[['dataset1', 'dataset2']].round()
 

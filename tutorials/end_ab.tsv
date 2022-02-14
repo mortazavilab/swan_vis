@@ -1,0 +1,45 @@
+	tss 	gid	tid	dataset 1 tid counts	dataset 2 tid counts	dataset 1 tss counts	dataset 2 tss counts	dataset 1 tpm	dataset 2 tpm	dataset 1 pi	dataset 2 pi		
+	0	1	test1	5	5	5	5	166666.6667	166666.6667	100	100		
+	12	2	test2	10	0	15	15	500000	500000	100	100		
+	12	2	test3	0	10	15	15	500000	500000	100	100		
+	12	2	test5	5	5	15	15	500000	500000	100	100		
+	6	1	test4	10	10	10	10	333333.3333	333333.3333	100	100		
+													
+													
+tes_id	tes_vertex	gid	tids	dataset 1 tid counts	dataset 2 tid counts	dataset 1 tes counts	dataset 2 tes counts	dataset 1 tpm	dataset 2 tpm	dataset 1 gene count	dataset 2 gene count	dataset 1 pi	dataset 2 pi
+test1_gid_1	5	test1	test1	5	5	5	5	166666.6667	166666.6667	5	5	100	100
+test2_gid_2	6	test2	"test2,test3,test6"	10	10	10	10	333333.3333	333333.3333	15	15	66.66666667	66.66666667
+test2_gid_2	7	test2	test5	5	5	5	5	166666.6667	166666.6667	15	15	33.33333333	33.33333333
+test4_gid_1	7	test4	test4	10	10	10	10	333333.3333	333333.3333	10	10	100	100
+													
+													
+													
+													
+numerical					wonky order in adata								
+edge id	tids	dataset1 counts	dataset 2 counts		edge id	tids	dataset1 counts	dataset 2 counts	dataset 1 tpm	dataset 2 tpm	dataset 1 pi	dataset 2 pi	
+0	test1	5	5		0	test1	5	5	50000	50000	5	5	
+1	test1	5	5		1	test1	5	5	50000	50000	5	5	
+2	test1	5	5		2	test1	5	5	50000	50000	5	5	
+3	test1	5	5		3	test1	5	5	50000	50000	5	5	
+4	test1	5	5		4	test1	5	5	50000	50000	5	5	
+5	"test1,test3"	5	15		10	test4	10	10	100000	100000	10	10	
+6	"test2,test3,test4,test6"	20	20		9	"test2,test3,test6"	10	10	100000	100000	10	10	
+7	"test2,test6"	10	0		8	"test2,test6"	10	0	100000	0	10	0	
+8	"test2,test6"	10	0		12	test5	5	5	50000	50000	5	5	
+9	"test2,test3,test6"	10	10		15	test3	0	10	0	100000	0	10	
+10	test4	10	10		7	"test2,test6"	10	0	100000	0	10	0	
+11	test5	5	5		14	test3	0	10	0	100000	0	10	
+12	test5	5	5		11	test5	5	5	50000	50000	5	5	
+13	test6	0	0		6	"test2,test3"	10	10	100000	100000	10	10	
+14	test3	0	10		5	"test2,test3,test5"	15	15	150000	150000	15	15	
+15	test3	0	10		13	test6	0	0	0	0	0	0	
+						total counts	100	100					
+													
+													
+tid	dataset1 counts	dataset2 counts											
+test1	5	5											
+test2	10	0											
+test3	0	10											
+test4	10	10											
+test5	5	5											
+test6	0	0											

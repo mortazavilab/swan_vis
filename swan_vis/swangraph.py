@@ -17,6 +17,9 @@ from itertools import repeat
 from tqdm import tqdm
 import matplotlib.colors as mc
 import colorsys
+from scipy import sparse
+import scanpy as sc
+
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
 from swan_vis.graph import *
@@ -259,7 +262,7 @@ class SwanGraph(Graph):
 
 		# check if abundance matrix is a talon abundance matrix
 		cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
-		 	'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
+			'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
 			'gene_novelty', 'transcript_novelty', 'ISM_subtype']
 		if df.columns.tolist()[:11] == cols:
 			df = reformat_talon_abundance(counts_file)
@@ -271,16 +274,11 @@ class SwanGraph(Graph):
 		# limit to just the transcripts already in the graph
 		sg_tids = self.t_df.tid.tolist()
 		ab_tids = df.tid.tolist()
+		tids = list(set(sg_tids)&set(ab_tids))
+		df = df.loc[df.tid.isin(tids)]
 
-		# right merge to keep everything in the t_df already
-		df = df.merge(self.t_df['tid'].to_frame(), how='right', left_on='tid', right_index=True)
-		df.drop(['tid_x', 'tid_y'], axis=1, inplace=True)
-
-		# fill NaNs with 0 counts
-		df.fillna(0, inplace=True)
+		# transpose to get adata format
 		df.set_index('tid', inplace=True)
-
- 		# transpose to get adata format
 		df = df.T
 
 		# get adata components - obs, var, and X
@@ -288,10 +286,16 @@ class SwanGraph(Graph):
 		var.columns = ['tid']
 		obs = df.index.to_frame()
 		obs.columns = ['dataset']
-		X = df.to_numpy()
+		X = sparse.csr_matrix(df.to_numpy())
+
+		# create transcript-level adata object and filter out unexpressed transcripts
+		adata = anndata.AnnData(var=var, obs=obs, X=X)
+		genes, _  = sc.pp.filter_genes(adata, min_counts=1, inplace=False)
+		adata = adata[:, genes]
+		adata.layers['counts'] = adata.X
 
 		# add each dataset to list of "datasets", check if any are already there!
-		datasets = obs.dataset.tolist()
+		datasets = adata.obs.dataset.tolist()
 		for d in datasets:
 			if d in self.datasets:
 				raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
@@ -310,41 +314,42 @@ class SwanGraph(Graph):
 		if not self.has_abundance():
 
 			# create transcript-level adata object
-			self.adata = anndata.AnnData(var=var, obs=obs, X=X)
+			self.adata = adata
 
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
-			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
+			print('Calculating transcript TPM...')
+			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata).to_numpy())
 
-			# could probably parallelize calc_pi
 			if not self.sc:
-				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+				print('Calculating PI...')
+				self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
 		else:
-			# concatenate the raw, tpm, and pi data
-			X = np.concatenate((self.adata.layers['counts'], X), axis=0)
 
-			# concatenate obs
-			obs = pd.concat([self.adata.obs, obs], axis=0)
+			# first set current layer to be counts
+			self.adata.X = self.adata.layers['counts']
 
-			# construct a new adata from the concatenated objects
-			adata = anndata.AnnData(var=var, obs=obs, X=X)
-			adata.layers['counts'] = X
-
-			# some cleanup for unstructured data
-			adata.uns = self.adata.uns
-
-			# set anndata to new guy
-			self.adata = adata
+			# concatenate existing adata with new one
+			# outer join to add all new transcripts (that are from added
+			# annotation or transcriptome) to the abundance
+			uns = self.adata.uns
+			self.adata = self.adata.concatenate(adata, join='outer', index_unique=None)
+			self.adata.uns = uns
 
 			# recalculate pi and tpm
-			self.adata.layers['tpm'] = calc_tpm(self.adata, self.t_df).to_numpy()
+			print('Calculating transcript TPM...')
+			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata).to_numpy())
 
 			if not self.sc:
-				self.adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+				print('Calculating PI...')
+				self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
 
 		# add abundance for edges, TSS per gene, and TES per gene
+		print('Calculating edge usage...')
 		self.create_edge_adata()
+		print('Calculating TSS usage...')
 		self.create_end_adata(kind='tss')
+		print('Calculating TES usage...')
 		self.create_end_adata(kind='tes')
 
 		# set abundance flag to true
@@ -381,7 +386,8 @@ class SwanGraph(Graph):
 		dupe_cols = [c for c in meta_cols if c in sg_cols]
 
 		# drop columns from one table depending on overwrite settings
-		adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
+		# adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
+		adatas = [self.adata, self.tss_adata, self.tes_adata]
 		if dupe_cols:
 			if overwrite:
 				for adata in adatas:
@@ -423,7 +429,7 @@ class SwanGraph(Graph):
 		tid = self.adata.var.index.tolist()
 		obs = self.adata.obs.index.tolist()
 		data = self.adata.layers['counts'].transpose()
-		t_exp_df = pd.DataFrame(columns=obs, data=data, index=tid)
+		t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs, data=data, index=tid)
 		t_exp_df = t_exp_df.merge(self.t_df, how='left',
 			left_index=True, right_index=True)
 
@@ -434,7 +440,7 @@ class SwanGraph(Graph):
 		# sort based on vertex id
 		df.sort_index(inplace=True, ascending=True)
 
-		# set index to gene ID, gene name, and vertex id ˘¿
+		# set index to gene ID, gene name, and vertex id
 		df.reset_index(drop=True, inplace=True)
 		df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
 		df = df[self.datasets]
@@ -458,40 +464,29 @@ class SwanGraph(Graph):
 		var.set_index('{}_id'.format(kind), inplace=True)
 		df.drop(var_cols, axis=1, inplace=True)
 		df = df[self.adata.obs.index.tolist()]
-		X = df.transpose().values
+		X = sparse.csr_matrix(df.transpose().values)
 		obs = self.adata.obs
 
+		# create anndata
+		adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+		# add counts and tpm as layers
+		adata.layers['counts'] = adata.X
+		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata).to_numpy())
+		if not self.sc:
+			adata.layers['pi'] = sparse.csr_matrix(calc_pi(adata,
+					adata.var)[0].to_numpy())
+
+		# assign adata and clean up unstructured data if needed
 		if kind == 'tss':
-
-			# create end-level adata object
-			self.tss_adata = anndata.AnnData(var=var, obs=obs, X=X)
-
-			# add counts and tpm as layers
-			self.tss_adata.layers['counts'] = self.tss_adata.X
-			self.tss_adata.layers['tpm'] = calc_tpm(self.tss_adata).to_numpy()
-			if not self.sc:
-				self.tss_adata.layers['pi'] = calc_pi(self.tss_adata,
-						self.tss_adata.var)[0].to_numpy()
-
-			# some cleanup for unstructured data if it was already added
 			if self.has_abundance():
-				self.tss_adata.uns = self.tss_adata.uns
+				adata.uns = self.tss_adata.uns
+			self.tss_adata = adata
 
-		if kind == 'tes':
-
-			# create end-level adata object
-			self.tes_adata = anndata.AnnData(var=var, obs=obs, X=X)
-
-			# add counts and tpm as layers
-			self.tes_adata.layers['counts'] = self.tes_adata.X
-			self.tes_adata.layers['tpm'] = calc_tpm(self.tes_adata).to_numpy()
-			if not self.sc:
-				self.tes_adata.layers['pi'] = calc_pi(self.tes_adata,
-						self.tes_adata.var)[0].to_numpy()
-
-			# some cleanup for unstructured data if it was already added
+		elif kind == 'tes':
 			if self.has_abundance():
-				self.tes_adata.uns = self.tes_adata.uns
+				adata.uns = self.tss_adata.uns
+			self.tes_adata = adata
 
 	def create_edge_adata(self):
 		"""
@@ -506,7 +501,9 @@ class SwanGraph(Graph):
 		tid = self.adata.var.index.tolist()
 		obs = self.adata.obs.index.tolist()
 		data = self.adata.layers['counts'].transpose()
-		t_exp_df = pd.DataFrame(columns=obs, data=data, index=tid)
+		t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs,
+													 data=data,
+													 index=tid)
 
 		# merge counts per transcript with edges
 		edge_exp_df = edge_exp_df.merge(t_exp_df, how='left',
@@ -521,23 +518,29 @@ class SwanGraph(Graph):
 		edge_exp_df.sort_values(by=['v1', 'v2'], inplace=True)
 		edge_exp_df.drop(['v1', 'v2'], axis=1, inplace=True)
 
+		# drop edges that are unexpressed
+		edge_exp_df = edge_exp_df.loc[edge_exp_df.sum(1) > 0]
+
 		# obs, var, and X tables for new data
 		var = edge_exp_df.index.to_frame()
-		X = edge_exp_df.transpose().values
+		X = sparse.csr_matrix(edge_exp_df.transpose().values)
 		obs = self.adata.obs
 
 		# create edge-level adata object
-		self.edge_adata = anndata.AnnData(var=var, obs=obs, X=X)
+		adata = anndata.AnnData(var=var, obs=obs, X=X)
 
 		# add counts and tpm as layers
-		self.edge_adata.layers['counts'] = self.edge_adata.X
-		self.edge_adata.layers['tpm'] = calc_tpm(self.edge_adata, self.edge_df).to_numpy()
-			# self.edge_adata.layers['pi'] = calc_pi(self.adata, self.t_df)[0].to_numpy()
+		adata.layers['counts'] = adata.X
+		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata).to_numpy())
+		# can't make pi for edges unless I make a new edge for
+		# each gene that the edge is in
+		# could just have self.edge_adata var separate from self.edge_df for now tho
+	#	 self.edge_adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.edge_df)[0].to_numpy())
 
+		# assign adata and clean up unstructured data if needed
 		if self.has_abundance():
-
-			# some cleanup for unstructured data
-			self.edge_adata.uns = self.edge_adata.uns
+			adata.uns = self.edge_adata.uns
+		self.edge_adata = adata
 
 	##########################################################################
 	############# Related to creating dfs from GTF or TALON DB ###############
@@ -1675,12 +1678,12 @@ class SwanGraph(Graph):
 		# construct tables for each gene and test!
 		gids = df.gid.unique().tolist()
 		gene_de_df = pd.DataFrame(index=gids, columns=['p_val', 'dpi',
-                                               'pos_iso_1', 'pos_iso_2',
-                                               'pos_iso_1_dpi', 'pos_iso_2_dpi',
-                                               'neg_iso_1', 'neg_iso_2',
-                                               'neg_iso_1_dpi', 'neg_iso_2_dpi'],
-                          data=[[np.nan for i in range(10)] \
-                                for j in range(len(gids))])
+											   'pos_iso_1', 'pos_iso_2',
+											   'pos_iso_1_dpi', 'pos_iso_2_dpi',
+											   'neg_iso_1', 'neg_iso_2',
+											   'neg_iso_1_dpi', 'neg_iso_2_dpi'],
+						  data=[[np.nan for i in range(10)] \
+								for j in range(len(gids))])
 		gene_de_df.index.name = 'gid'
 
 		# TODO - should parallelize this
@@ -1803,8 +1806,10 @@ class SwanGraph(Graph):
 			col_name = col_name[:-1]
 			col_name += str(i)
 
+		# adatas = [self.adata, self.tss_adata, \
+		# 		  self.tes_adata, self.edge_adata]
 		adatas = [self.adata, self.tss_adata, \
-				  self.tes_adata, self.edge_adata]
+				  self.tes_adata]
 		for adata in adatas:
 			adata.obs[col_name] = ''
 
@@ -1825,8 +1830,10 @@ class SwanGraph(Graph):
 		"""
 
 		# after we're done, drop this column
+		# adatas = [self.adata, self.tss_adata, \
+		# 		  self.tes_adata, self.edge_adata]
 		adatas = [self.adata, self.tss_adata, \
-				  self.tes_adata, self.edge_adata]
+				  self.tes_adata]
 		for adata in adatas:
 			adata.obs.drop(col_name, axis=1, inplace=True)
 
@@ -1866,9 +1873,9 @@ class SwanGraph(Graph):
 		columns = self.adata.var.index.tolist()
 		rows = self.adata.obs.index.tolist()
 		if kind == 'counts':
-		    data = self.adata.layers['counts']
+			data = self.adata.layers['counts']
 		elif kind == 'tpm':
-		    data = self.adata.layers['tpm']
+			data = self.adata.layers['tpm']
 		elif kind == 'pi':
 			print('mellow!')
 			data = self.adata.layers['pi']
@@ -1880,61 +1887,61 @@ class SwanGraph(Graph):
 
 		# save file
 		if prefix:
-		    fname = '{}_transcript_abundance.tsv'.format(prefix)
-		    df.to_csv(fname, sep='\t', index=False)
-
-		return df
-
-	def get_edge_abundance(self, prefix=None, kind='counts'):
-		"""
-		Gets edge expression from the current SwanGraph in a DataFrame
-		complete information about where edge is.
-
-		Parameters:
-			prefix (str): Path and filename prefix. Resulting file will
-				be saved as prefix_edge_abundance.tsv
-				Default: None (will not save)
-			kind (str): Choose "tpm" or "counts"
-
-		Returns:
-			df (pandas DataFrame): Abundance and metadata information about
-				each edge.
-		"""
-
-		# add location information to edge_df
-		temp = self.edge_df.merge(self.loc_df[['chrom', 'coord']],
-					how='left', left_on='v1', right_on='vertex_id')
-		temp.rename({'coord': 'start'}, axis=1, inplace=True)
-		temp = temp.merge(self.loc_df[['coord']],
-					how='left', left_on='v2', right_on='vertex_id')
-		temp.rename({'coord': 'stop'}, axis=1, inplace=True)
-		temp.drop(['v1', 'v2'], axis=1, inplace=True)
-
-		# get collapsed abundance table from edge_adata
-		columns = self.edge_adata.var.index.tolist()
-		rows = self.edge_adata.obs.index.tolist()
-		if kind == 'counts':
-			data = self.edge_adata.layers['counts']
-		elif kind == 'tpm':
-			data = self.edge_adata.layers['tpm']
-
-		df = pd.DataFrame(index=rows, columns=columns, data=data)
-		df = df.transpose()
-		df.reset_index(inplace=True)
-		df['index'] = df['index'].astype('int')
-
-		# merge the info together with the abundance
-		df = temp.merge(df, how='right', left_index=True, right_index=True)
-
-		# drop index
-		df.drop('index', axis=1, inplace=True)
-
-		# save file
-		if prefix:
-			fname = '{}_edge_abundance.tsv'.format(prefix)
+			fname = '{}_transcript_abundance.tsv'.format(prefix)
 			df.to_csv(fname, sep='\t', index=False)
 
 		return df
+
+	# def get_edge_abundance(self, prefix=None, kind='counts'):
+	# 	"""
+	# 	Gets edge expression from the current SwanGraph in a DataFrame
+	# 	complete information about where edge is.
+	#
+	# 	Parameters:
+	# 		prefix (str): Path and filename prefix. Resulting file will
+	# 			be saved as prefix_edge_abundance.tsv
+	# 			Default: None (will not save)
+	# 		kind (str): Choose "tpm" or "counts"
+	#
+	# 	Returns:
+	# 		df (pandas DataFrame): Abundance and metadata information about
+	# 			each edge.
+	# 	"""
+	#
+	# 	# add location information to edge_df
+	# 	temp = self.edge_df.merge(self.loc_df[['chrom', 'coord']],
+	# 				how='left', left_on='v1', right_on='vertex_id')
+	# 	temp.rename({'coord': 'start'}, axis=1, inplace=True)
+	# 	temp = temp.merge(self.loc_df[['coord']],
+	# 				how='left', left_on='v2', right_on='vertex_id')
+	# 	temp.rename({'coord': 'stop'}, axis=1, inplace=True)
+	# 	temp.drop(['v1', 'v2'], axis=1, inplace=True)
+	#
+	# 	# get collapsed abundance table from edge_adata
+	# 	columns = self.edge_adata.var.index.tolist()
+	# 	rows = self.edge_adata.obs.index.tolist()
+	# 	if kind == 'counts':
+	# 		data = self.edge_adata.layers['counts']
+	# 	elif kind == 'tpm':
+	# 		data = self.edge_adata.layers['tpm']
+	#
+	# 	df = pd.DataFrame(index=rows, columns=columns, data=data)
+	# 	df = df.transpose()
+	# 	df.reset_index(inplace=True)
+	# 	df['index'] = df['index'].astype('int')
+	#
+	# 	# merge the info together with the abundance
+	# 	df = temp.merge(df, how='right', left_index=True, right_index=True)
+	#
+	# 	# drop index
+	# 	df.drop('index', axis=1, inplace=True)
+	#
+	# 	# save file
+	# 	if prefix:
+	# 		fname = '{}_edge_abundance.tsv'.format(prefix)
+	# 		df.to_csv(fname, sep='\t', index=False)
+	#
+	# 	return df
 
 	def get_tss_abundance(self, prefix=None, kind='counts'):
 		"""
@@ -2041,16 +2048,16 @@ class SwanGraph(Graph):
 		"""
 
 		def adjust_lightness(color, amount=0.5):
-		    import colorsys
-		    import matplotlib.colors as mc
-		    try:
-		        c = mc.cnames[color]
-		    except:
-		        c = color
-		    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
-		    c = colorsys.hls_to_rgb(c[0], .8, c[2])
-		    c = mc.to_hex(c)
-		    return c
+			import colorsys
+			import matplotlib.colors as mc
+			try:
+				c = mc.cnames[color]
+			except:
+				c = color
+			c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+			c = colorsys.hls_to_rgb(c[0], .8, c[2])
+			c = mc.to_hex(c)
+			return c
 
 		# user-defined colors
 		if cmap:
@@ -2107,8 +2114,8 @@ class SwanGraph(Graph):
 		self.adata.uns['{}_dict'.format(obs_col)] = cmap
 
 		# also add these to the other adatas
-		self.edge_adata.uns['{}_colors'.format(obs_col)] = sample_colors
-		self.edge_adata.uns['{}_dict'] = cmap
+		# self.edge_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		# self.edge_adata.uns['{}_dict'] = cmap
 		self.tss_adata.uns['{}_colors'.format(obs_col)] = sample_colors
 		self.tss_adata.uns['{}_dict'] = cmap
 		self.tes_adata.uns['{}_colors'.format(obs_col)] = sample_colors
@@ -2722,8 +2729,8 @@ class SwanGraph(Graph):
 		"""
 		if kind == 'transcript':
 			adata = self.adata
-		elif kind == 'edge':
-			adata = self.edge_adata
+		# elif kind == 'edge':
+		# 	adata = self.edge_adata
 		elif kind == 'tss':
 			adata = self.tss_adata
 		elif kind == 'tes':

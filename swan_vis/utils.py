@@ -9,6 +9,9 @@ import os
 import copy
 from collections import defaultdict
 from tqdm import tqdm
+import scanpy as sc
+from scipy import sparse
+
 from swan_vis.talon_utils import *
 
 pd.options.mode.chained_assignment = None
@@ -326,14 +329,17 @@ def calc_total_counts(adata, obs_col='dataset', layer='counts'):
 			per condition.
 
 	"""
-	adata.X = adata.layers[layer]
-	df = pd.DataFrame(data=adata.X, index=adata.obs[obs_col].tolist(), \
-		columns=adata.var.index.tolist())
+
+	# turn into a sparse dataframe
+	cols = adata.var.index.tolist()
+	inds = adata.obs[obs_col].tolist()
+	data = adata.layers[layer]
+	data = sparse.csr_matrix(data)
+	df = pd.DataFrame.sparse.from_spmatrix(data, index=inds, columns=cols)
+	df.index.name = obs_col
 
 	# add up values on condition (row)
 	df = df.groupby(level=0).sum()
-
-	# df = df.transpose()
 
 	return df
 
@@ -375,6 +381,13 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 
 	# add gid
 	df = df.merge(t_df['gid'], how='left', left_index=True, right_index=True)
+	t_counts = df.melt(id_vars=['gid'],
+					   value_vars=conditions,
+					   var_name=obs_col,
+					   value_name='t_counts',
+					   ignore_index=False)
+	t_counts.index.name = id_col
+	t_counts.reset_index(inplace=True)
 
 	# calculate total number of reads per gene per condition
 	temp = df.copy(deep=True)
@@ -384,39 +397,34 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	# merge back in
 	df.reset_index(inplace=True)
 	df.rename({'index':id_col}, axis=1, inplace=True)
-	df = df.merge(totals, on='gid', suffixes=(None, '_total'))
+	df = df.merge(totals, on='gid', suffixes=('_t_counts', None))
 	del totals
 
-	# calculate percent iso exp for each gene / transcript / condition
-	pi_cols = []
-	for c in conditions:
-		cond_col = '{}_pi'.format(c)
-		total_col = '{}_total'.format(c)
-		df[cond_col] = (df[c]/df[total_col])*100
-		pi_cols.append(cond_col)
+	df = df.melt(id_vars=['gid'],
+				 value_vars=conditions,
+				 var_name=obs_col,
+				 value_name='gene_counts')
+	df = df.drop_duplicates()
+	df = t_counts.merge(df, how='left', on=['gid', obs_col])
 
-	# cleanup: fill nans with 0, set indices, rename cols
-	df.fillna(0, inplace=True)
 
-	# formatting
-	df.set_index(id_col, inplace=True)
-	df = df[pi_cols]
-	for col in pi_cols:
-		new_col = col[:-3]
-		df.rename({col: new_col}, axis=1, inplace=True)
+	df['pi'] = (df.t_counts/df.gene_counts)*100
+	df = df.pivot(columns=obs_col, index=id_col, values='pi')
 
-	# reorder columns like adata.obs
-	df = df[adata.obs[obs_col].unique().tolist()]
+	# order based on order in adata
+	ids = adata.var.index.tolist()
+	df = df.loc[ids]
+	cols = adata.obs[obs_col].unique().tolist()
+	df = df[cols]
+
+	# convert to sparse
 	df = df.transpose()
-	# df.index.name = obs_col # maybe put this back in ?
-
-	# reorder in adata.var / t_df order
-	if id_col != 'tss_id' and id_col != 'tes_id':
-		df = df[t_df[id_col].tolist()]
-
+	df = pd.DataFrame.sparse.from_spmatrix(data=sparse.csr_matrix(df.values),
+										   index=df.index.tolist(),
+										   columns=df.columns)
 	return df, sums
 
-def calc_tpm(adata, sg_df=None, obs_col='dataset'):
+def calc_tpm(adata, obs_col='dataset'):
 	"""
 	Calculate the TPM per condition given by `obs_col`.
 	Default column to use is `adata.obs` index column, `dataset`.
@@ -434,40 +442,26 @@ def calc_tpm(adata, sg_df=None, obs_col='dataset'):
 			SwanGraph, and values represent the TPM value per isoform per
 			condition.
 	"""
+	# calculate tpm using scanpy
+	d = sc.pp.normalize_total(adata,
+							  layer='counts',
+							  target_sum=1e6,
+							  key_added='total_counts',
+							  inplace=False)
+	adata.obs['total_counts'] = d['norm_factor']
 
-	# calculate cumulative counts across obs_col
-	id_col = adata.var.index.name
-	conditions = adata.obs[obs_col].unique().tolist()
-	df = calc_total_counts(adata, obs_col=obs_col)
-	df = df.transpose()
+	# turn into a sparse dataframe
+	cols = adata.var.index.tolist()
+	inds = adata.obs[obs_col].tolist()
+	data = d['X']
+	data = sparse.csr_matrix(data)
+	df = pd.DataFrame.sparse.from_spmatrix(data, index=inds, columns=cols)
+	df.index.name = obs_col
 
-	# we use ints to index edges and locs
-	if id_col == 'vertex_id' or id_col == 'edge_id':
-		df.index = df.index.astype('int')
-
-	# calculate tpm per isoform per condition
-	tpm_cols = []
-	for c in conditions:
-		cond_col = '{}_tpm'.format(c)
-		total_col = '{}_total'.format(c)
-		df[total_col] = df[c].sum()
-		df[cond_col] = (df[c]*1000000)/df[total_col]
-		tpm_cols.append(cond_col)
-
-	# formatting
-	df.index.name = id_col
-	df = df[tpm_cols]
-	for col in tpm_cols:
-		new_col = col[:-4]
-		df.rename({col: new_col}, axis=1, inplace=True)
-
-	# reorder columns like adata.obs
-	df = df[adata.obs[obs_col].unique().tolist()]
-	df = df.transpose()
-
-	# reorder in adata.var / t_df order
-	if not isinstance(sg_df, type(None)):
-		df = df[sg_df[id_col].tolist()]
+	# average across tpm
+	if obs_col != 'dataset':
+		df.reset_index(inplace=True)
+		df = df.groupby(obs_col).mean()
 
 	return df
 
@@ -881,13 +875,13 @@ def test_gene(gene_df, conditions):
 	# if there are fewer than 2 isoforms
 	temp_len = len(temp.index)
 	if temp_len >= 2:
-	    pos_dpi = temp.iloc[:2].dpi.sum(axis=0)
-	    pos_isos = temp.iloc[:2].index.tolist()
-	    pos_dpis = temp.iloc[:2].dpi.tolist()
+		pos_dpi = temp.iloc[:2].dpi.sum(axis=0)
+		pos_isos = temp.iloc[:2].index.tolist()
+		pos_dpis = temp.iloc[:2].dpi.tolist()
 	else:
-	    pos_dpi = temp.dpi.sum(axis=0)
-	    pos_isos = temp.index.tolist()+[np.nan for i in range(temp_len, 2)]
-	    pos_dpis = temp.dpi.tolist()+[np.nan for i in range(temp_len, 2)]
+		pos_dpi = temp.dpi.sum(axis=0)
+		pos_isos = temp.index.tolist()+[np.nan for i in range(temp_len, 2)]
+		pos_dpis = temp.dpi.tolist()+[np.nan for i in range(temp_len, 2)]
 
 	# get highest 2 negative dpis
 	temp = gene_df.sort_values(by='dpi', ascending=True)
@@ -896,13 +890,13 @@ def test_gene(gene_df, conditions):
 	# if there are fewer than 2 isoforms
 	temp_len = len(temp.index)
 	if temp_len >= 2:
-	    neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
-	    neg_isos = temp.iloc[:2].index.tolist()
-	    neg_dpis = temp.iloc[:2].dpi.tolist()
+		neg_dpi = abs(temp.iloc[:2].dpi.sum(axis=0))
+		neg_isos = temp.iloc[:2].index.tolist()
+		neg_dpis = temp.iloc[:2].dpi.tolist()
 	else:
-	    neg_dpi = abs(temp.dpi.sum(axis=0))
-	    neg_isos = temp.index.tolist()+[np.nan for i in range(temp_len, 2)]
-	    neg_dpis = temp.dpi.tolist()+[np.nan for i in range(temp_len, 2)]
+		neg_dpi = abs(temp.dpi.sum(axis=0))
+		neg_isos = temp.index.tolist()+[np.nan for i in range(temp_len, 2)]
+		neg_dpis = temp.dpi.tolist()+[np.nan for i in range(temp_len, 2)]
 
 	gene_dpi = max(pos_dpi, neg_dpi)
 
