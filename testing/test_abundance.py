@@ -70,6 +70,153 @@ class TestAbundance(object):
         print(ctrl_pi)
         assert np.array_equal(ctrl_pi, test_pi)
 
+        # test tss stuff
+        # entries
+        ctrl = ['test1_gid_1', 'test2_gid_1', 'test4_gid_1']
+        test = sg.tss_adata.var.index.tolist()
+        print('tss index')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert set(ctrl) == set(test)
+
+        # counts
+        ctrl = [[5,5], [15,15], [10,10]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        test = sg.tss_adata.layers['counts'].toarray()
+        print('tss counts')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # tpm
+        ctrl = [[166666.6667,166666.6667], [500000,500000], [333333.3333,333333.3333]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        ctrl = np.around(ctrl)
+        test = np.around(sg.tss_adata.layers['tpm'].toarray())
+        print('tss tpm')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # pi
+        ctrl = [[100,100], [100,100], [100,100]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        ctrl = np.around(ctrl)
+        test = np.around(sg.tss_adata.layers['pi'].toarray())
+        print('tss pi')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+
+        # test tes stuff
+        # entries
+        ctrl = ['test1_gid_1', 'test2_gid_1', 'test2_gid_2', 'test4_gid_1']
+        test = sg.tes_adata.var.index.tolist()
+        print('tes index')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert set(ctrl) == set(test)
+
+        # counts
+        ctrl = [[5,5], [10,10], [5,5], [10,10]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        test = sg.tes_adata.layers['counts'].toarray()
+        print('tes counts')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # tpm
+        ctrl = [[166666.6667,166666.6667], [333333.3333,333333.3333], [166666.6667,166666.6667], [333333.3333,333333.3333]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        ctrl = np.around(ctrl)
+        test = np.around(sg.tes_adata.layers['tpm'].toarray())
+        print('tes tpm')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # pi
+        ctrl = [[100,100], [66.66666667,66.66666667], [33.33333333,33.33333333], [100,100]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        ctrl = np.around(ctrl)
+        test = np.around(sg.tes_adata.layers['pi'].toarray())
+        print('tes pi')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # test edge stuff
+        # entries
+        ctrl = [0,1,2,3,4,10,9,8,12,15,7,14,11,6,5]
+        ctrl = [str(c) for c in ctrl]
+        test = sg.edge_adata.var.index.tolist()
+        print('edge index')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert set(ctrl) == set(test)
+
+        # counts
+        ctrl = [[5,5], [5,5], [5,5], [5,5], [5,5],
+                [10,10], [10,10], [10,0], [5,5], [0,10],
+                [10,0], [0,10], [5,5], [10,10], [15,15]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        test = sg.edge_adata.layers['counts'].toarray()
+        print('edge counts')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # tpm
+        ctrl = [[50000,50000],[50000,50000],[50000,50000],[50000,50000],
+                [50000,50000],[100000,100000],[100000,100000],[100000,0],
+                [50000,50000],[0,100000],[100000,0],[0,100000],
+                [50000,50000],[100000,100000],[150000,150000]]
+        ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        ctrl = np.around(ctrl)
+        test = np.around(sg.edge_adata.layers['tpm'].toarray())
+        print('edge tpm')
+        print('ctrl')
+        print(ctrl)
+        print('test')
+        print(test)
+        assert np.array_equal(ctrl, test)
+
+        # # pi
+        # ctrl = [[5,5],[5,5],[5,5],[5,5],
+        #         [5,5],[1,1],[1,1],[1,0],
+        #         [5,5],[0,1],[1,0],[0,1],
+        #         [5,5],[1,1],[15,15]]
+        # ctrl = np.transpose(np.array(ctrl)).astype(np.float)
+        # ctrl = np.around(ctrl)
+        # test = np.around(sg.edge_adata.layers['pi'].toarray())
+        # print('tes pi')
+        # print('ctrl')
+        # print(ctrl)
+        # print('test')
+        # print(test)
+        # assert np.array_equal(ctrl, test)
 
     # add abundance - one after another
     def test_add_abundance_2(self):
