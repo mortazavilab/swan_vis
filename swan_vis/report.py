@@ -181,7 +181,6 @@ class Report(FPDF):
 				self.cell(32, 5, meta_col, align='L')
 				curr_y = curr_y + 6
 
-
 				for meta_cat in self.obs[meta_col].unique().tolist():
 
 					# if i % 6 == 0 and i != 0:

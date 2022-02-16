@@ -333,13 +333,17 @@ def calc_total_counts(adata, obs_col='dataset', layer='counts'):
 	# turn into a sparse dataframe
 	cols = adata.var.index.tolist()
 	inds = adata.obs[obs_col].tolist()
-	data = adata.layers[layer]
-	data = sparse.csr_matrix(data)
-	df = pd.DataFrame.sparse.from_spmatrix(data, index=inds, columns=cols)
+	data = adata.layers[layer].toarray()
+	df = pd.DataFrame(data=data, index=inds, columns=cols)
 	df.index.name = obs_col
 
 	# add up values on condition (row)
 	df = df.groupby(level=0).sum()
+
+	# convert to sparse
+	df = pd.DataFrame.sparse.from_spmatrix(data=sparse.csr_matrix(df.values),
+										   index=df.index.tolist(),
+										   columns=df.columns)
 
 	return df
 
@@ -371,6 +375,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	conditions = adata.obs[obs_col].unique().tolist()
 	df = calc_total_counts(adata, obs_col=obs_col)
 	df = df.transpose()
+
 	# we use ints to index edges and locs
 	if id_col == 'vertex_id' or id_col == 'edge_id':
 		df.index = df.index.astype('int')
@@ -392,6 +397,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	# calculate total number of reads per gene per condition
 	temp = df.copy(deep=True)
 	temp.reset_index(drop=True, inplace=True)
+	temp[conditions] = temp[conditions].sparse.to_dense()
 	totals = temp.groupby('gid').sum().reset_index()
 
 	# merge back in
@@ -406,7 +412,6 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 				 value_name='gene_counts')
 	df = df.drop_duplicates()
 	df = t_counts.merge(df, how='left', on=['gid', obs_col])
-
 
 	df['pi'] = (df.t_counts/df.gene_counts)*100
 	df = df.pivot(columns=obs_col, index=id_col, values='pi')
@@ -442,6 +447,7 @@ def calc_tpm(adata, obs_col='dataset'):
 			SwanGraph, and values represent the TPM value per isoform per
 			condition.
 	"""
+
 	# calculate tpm using scanpy
 	d = sc.pp.normalize_total(adata,
 							  layer='counts',
@@ -450,18 +456,33 @@ def calc_tpm(adata, obs_col='dataset'):
 							  inplace=False)
 	adata.obs['total_counts'] = d['norm_factor']
 
-	# turn into a sparse dataframe
+	# turn into a dataframe
 	cols = adata.var.index.tolist()
 	inds = adata.obs[obs_col].tolist()
-	data = d['X']
-	data = sparse.csr_matrix(data)
-	df = pd.DataFrame.sparse.from_spmatrix(data, index=inds, columns=cols)
+	data = d['X'].toarray()
+	df = pd.DataFrame(data=data, columns=cols, index=inds)
 	df.index.name = obs_col
 
 	# average across tpm
 	if obs_col != 'dataset':
+
+		# keep track of original row order to sort by
+		row_order = df.index.unique().tolist()
+		row_map = {}
+		for i, row in enumerate(row_order):
+			row_map[row] = i
+
+		df['row_order'] = df.index.map(row_map)
 		df.reset_index(inplace=True)
 		df = df.groupby(obs_col).mean()
+		df = df.sort_values(by='row_order', ascending=True)
+		df.drop('row_order', inplace=True, axis=1)
+
+	# make sparse
+	data = sparse.csr_matrix(df.values)
+	inds = df.index.tolist()
+	cols = df.columns.tolist()
+	df = pd.DataFrame.sparse.from_spmatrix(data, index=inds, columns=cols)
 
 	return df
 
