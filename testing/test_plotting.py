@@ -51,9 +51,9 @@ class TestPlotting(object):
     def test_init_9(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_graph('test2_gid', display=False)
-        sg.plot_transcript_path('test5', display=False)
-        sg.plot_graph('test2_gid', display=False)
+        sg.plot_graph('test2_gid')
+        sg.plot_transcript_path('test5')
+        sg.plot_graph('test2_gid')
 
         # edge_df
         sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
@@ -72,13 +72,13 @@ class TestPlotting(object):
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
 
         # loc_df
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
-                [5, 'chr2', 50, True, False, True, 'TES'],
-                [6, 'chr2', 45, False, False, True, 'TES']]
+                [5, 'chr2', 50, True, False, True, 'tes'],
+                [6, 'chr2', 45, False, False, True, 'tes']]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -92,8 +92,8 @@ class TestPlotting(object):
     def test_init_8(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_graph('test2_gid', display=False)
-        sg.plot_graph('test2_gname', display=False)
+        sg.plot_graph('test2_gid')
+        sg.plot_graph('test2_gname')
 
         # edge_df
         sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
@@ -112,13 +112,13 @@ class TestPlotting(object):
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
 
         # loc_df
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
-                [5, 'chr2', 50, True, False, True, 'TES'],
-                [6, 'chr2', 45, False, False, True, 'TES']]
+                [5, 'chr2', 50, True, False, True, 'tes'],
+                [6, 'chr2', 45, False, False, True, 'tes']]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -132,8 +132,8 @@ class TestPlotting(object):
     def test_init_7(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_graph('test4_gid', display=False)
-        sg.plot_graph('test2_gid', display=False)
+        sg.plot_graph('test4_gid')
+        sg.plot_graph('test2_gid')
 
         # edge_df
         sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
@@ -152,13 +152,13 @@ class TestPlotting(object):
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
 
         # loc_df
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
-                [5, 'chr2', 50, True, False, True, 'TES'],
-                [6, 'chr2', 45, False, False, True, 'TES']]
+                [5, 'chr2', 50, True, False, True, 'tes'],
+                [6, 'chr2', 45, False, False, True, 'tes']]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -172,8 +172,8 @@ class TestPlotting(object):
     def test_init_6(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_transcript_path('test3', display=False)
-        sg.plot_transcript_path('test2', display=False)
+        sg.plot_transcript_path('test3')
+        sg.plot_transcript_path('test2')
 
         # edge_df
         sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
@@ -193,13 +193,13 @@ class TestPlotting(object):
 
         # loc_df
         # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
                 [5, 'chr2', 50, True, False, True, 'internal', None, None],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -213,8 +213,8 @@ class TestPlotting(object):
     def test_init_5(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_transcript_path('test5', display=False)
-        sg.plot_transcript_path('test2', display=False)
+        sg.plot_transcript_path('test5')
+        sg.plot_transcript_path('test2')
 
         # edge_df
         sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
@@ -234,13 +234,13 @@ class TestPlotting(object):
 
         # loc_df
         # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
                 [5, 'chr2', 50, True, False, True, 'internal', None, None],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -254,8 +254,8 @@ class TestPlotting(object):
     def test_init_4(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_transcript_path('test2', display=False)
-        sg.plot_graph('test2_gid', display=False)
+        sg.plot_transcript_path('test2')
+        sg.plot_graph('test2_gid')
 
         # edge_df
         sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
@@ -274,13 +274,13 @@ class TestPlotting(object):
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
 
         # loc_df
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
-                [5, 'chr2', 50, True, False, True, 'TES'],
-                [6, 'chr2', 45, False, False, True, 'TES']]
+                [5, 'chr2', 50, True, False, True, 'tes'],
+                [6, 'chr2', 45, False, False, True, 'tes']]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -294,8 +294,8 @@ class TestPlotting(object):
     def test_init_3(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_transcript_path('test1', display=False)
-        sg.plot_graph('test2_gid', display=False)
+        sg.plot_transcript_path('test1')
+        sg.plot_graph('test2_gid')
 
         # edge_df
         sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
@@ -314,13 +314,13 @@ class TestPlotting(object):
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
 
         # loc_df
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
-                [5, 'chr2', 50, True, False, True, 'TES'],
-                [6, 'chr2', 45, False, False, True, 'TES']]
+                [5, 'chr2', 50, True, False, True, 'tes'],
+                [6, 'chr2', 45, False, False, True, 'tes']]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -336,9 +336,9 @@ class TestPlotting(object):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
 
-        sg.plot_graph('test2_gid', display=False)
+        sg.plot_graph('test2_gid')
 
-        sg.plot_transcript_path('test2', display=False)
+        sg.plot_transcript_path('test2')
 
         # edge_df
         sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
@@ -358,13 +358,13 @@ class TestPlotting(object):
 
         # loc_df
         # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
                 [5, 'chr2', 50, True, False, True, 'internal', None, None],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -380,9 +380,9 @@ class TestPlotting(object):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
 
-        sg.plot_graph('test4_gid', display=False)
+        sg.plot_graph('test4_gid')
 
-        sg.plot_transcript_path('test2', display=False)
+        sg.plot_transcript_path('test2')
 
         # edge_df
         sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
@@ -402,13 +402,13 @@ class TestPlotting(object):
 
         # loc_df
         # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
                 [5, 'chr2', 50, True, False, True, 'internal', None, None],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -436,7 +436,7 @@ class TestPlotting(object):
         locs = [12,11,8,7]
         sg.loc_df.loc[locs, 'dataset_1'] = True
 
-        sg.plot_graph('test2_gid', display=False, indicate_dataset='dataset_1')
+        sg.plot_graph('test2_gid', indicate_dataset='dataset_1')
 
         # edge_df
         sg.pg.edge_df.drop(['dataset_1', 'dataset_2', 'curve'], axis=1, inplace=True) # not checking this
@@ -456,13 +456,13 @@ class TestPlotting(object):
 
         # loc_df
         sg.pg.loc_df.drop(['dataset_1', 'dataset_2'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', 'node_outline', 2],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', 'node_outline', 2],
                 [1, 'chr2', 80, True, False, False, 'internal', 'node_outline', 2],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', 'node_outline', 2],
-                [5, 'chr2', 50, True, False, True, 'TES', 'node_outline', 2],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [5, 'chr2', 50, True, False, True, 'tes', 'node_outline', 2],
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -487,7 +487,7 @@ class TestPlotting(object):
         locs = [12,11,8,7]
         sg.loc_df.loc[locs, 'annotation'] = False
 
-        sg.plot_graph('test2_gid', display=False, indicate_novel=True)
+        sg.plot_graph('test2_gid', indicate_novel=True)
 
         # edge_df
         sg.pg.edge_df.drop(['annotation', 'curve'], axis=1, inplace=True) # not checking this
@@ -507,13 +507,13 @@ class TestPlotting(object):
 
         # loc_df
         sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', 'node_outline', 2],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', 'node_outline', 2],
                 [1, 'chr2', 80, True, False, False, 'internal', 'node_outline', 2],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', 'node_outline', 2],
-                [5, 'chr2', 50, True, False, True, 'TES', 'node_outline', 2],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [5, 'chr2', 50, True, False, True, 'tes', 'node_outline', 2],
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -525,11 +525,11 @@ class TestPlotting(object):
     # test calc_node_edge_styles - vanilla transcript path
     #     transcript_path where role in transcript
     #     is different ie transcripts [1,2,3], [0,1,2,3] 1 needs to be colored int
-    #     sth with this guy? [5, 'chr2', 50, True, False, True, 'TES'],
+    #     sth with this guy? [5, 'chr2', 50, True, False, True, 'tes'],
     def test_path_1(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_transcript_path('test2', display=False)
+        sg.plot_transcript_path('test2')
 
         # edge_df
         sg.pg.edge_df.drop(['curve'], axis=1, inplace=True) # not checking this
@@ -549,13 +549,13 @@ class TestPlotting(object):
 
         # loc_df
         # sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
                 [5, 'chr2', 50, True, False, True, 'internal', None, None],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -583,7 +583,7 @@ class TestPlotting(object):
         locs = [12,11,8,7]
         sg.loc_df.loc[locs, 'dataset_1'] = True
 
-        sg.plot_transcript_path('test2', display=False, indicate_dataset='dataset_1')
+        sg.plot_transcript_path('test2', indicate_dataset='dataset_1')
 
         # edge_df
         sg.pg.edge_df.drop(['dataset_1', 'dataset_2', 'curve'], axis=1, inplace=True) # not checking this
@@ -603,13 +603,13 @@ class TestPlotting(object):
 
         # loc_df
         sg.pg.loc_df.drop(['dataset_1', 'dataset_2'], axis=1, inplace=True) # not checking this
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', 'node_outline', 2],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', 'node_outline', 2],
                 [1, 'chr2', 80, True, False, False, 'internal', 'node_outline', 2],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', 'node_outline', 2],
                 [5, 'chr2', 50, True, False, True, 'internal', 'node_outline', 2],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -634,7 +634,7 @@ class TestPlotting(object):
         locs = [12,11,8,7]
         sg.loc_df.loc[locs, 'annotation'] = False
 
-        sg.plot_transcript_path('test2', display=False, indicate_novel=True)
+        sg.plot_transcript_path('test2', indicate_novel=True)
 
         # edge_df
         sg.pg.edge_df.drop(['annotation', 'curve'], axis=1, inplace=True) # not checking this
@@ -654,13 +654,13 @@ class TestPlotting(object):
 
         # loc_df
         sg.pg.loc_df.drop(['annotation'], axis=1, inplace=True)
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', 'node_outline', 2],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', 'node_outline', 2],
                 [1, 'chr2', 80, True, False, False, 'internal', 'node_outline', 2],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal_gray', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', 'node_outline', 2],
                 [5, 'chr2', 50, True, False, True, 'internal', 'node_outline', 2],
-                [6, 'chr2', 45, False, False, True, 'TES', None, None]]
+                [6, 'chr2', 45, False, False, True, 'tes', None, None]]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
@@ -674,7 +674,7 @@ class TestPlotting(object):
     def test_summary_1(self):
         sg = swan.SwanGraph()
         sg.add_transcriptome('files/test_full.gtf')
-        sg.plot_graph('test2_gid', display=False)
+        sg.plot_graph('test2_gid')
 
         # edge_df
         sg.pg.edge_df.drop('curve', axis=1, inplace=True) # not checking this
@@ -693,18 +693,20 @@ class TestPlotting(object):
         ctrl_edge_df = swan.set_dupe_index(ctrl_edge_df, 'edge_id')
 
         # loc_df
-        data = [[0, 'chr2', 100, False, True, False, 'TSS', None, None],
+        data = [[0, 'chr2', 100, False, True, False, 'tss', None, None],
                 [1, 'chr2', 80, True, False, False, 'internal', None, None],
                 [2, 'chr2', 75, True, False, False, 'internal', None, None],
                 [3, 'chr2', 65, True, False, False, 'internal', None, None],
                 [4, 'chr2', 60, True, False, False, 'internal', None, None],
-                [5, 'chr2', 50, True, False, True, 'TES'],
-                [6, 'chr2', 45, False, False, True, 'TES']]
+                [5, 'chr2', 50, True, False, True, 'tes'],
+                [6, 'chr2', 45, False, False, True, 'tes']]
         cols = ['vertex_id', 'chrom', 'coord', 'internal', 'TSS', 'TES', \
                 'color', 'edgecolor', 'linewidth']
         ctrl_loc_df = pd.DataFrame(data=data, columns=cols)
         ctrl_loc_df = swan.create_dupe_index(ctrl_loc_df, 'vertex_id')
         ctrl_loc_df = swan.set_dupe_index(ctrl_loc_df, 'vertex_id')
+
+        print(sg.t_df.loc_path)
 
         check_dfs(sg.pg.loc_df, ctrl_loc_df, sg.pg.edge_df, ctrl_edge_df)
 

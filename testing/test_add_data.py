@@ -64,6 +64,7 @@ class TestMetadata(object):
         cols = ['dataset', 'cluster', 'sample', 'cell_state']
         ctrl = pd.DataFrame(data=data, columns=cols)
         ctrl.index = ctrl.dataset
+        test.drop('total_counts', axis=1, inplace=True)
         ctrl = ctrl[test.columns]
         ctrl.sort_index(inplace=True)
         test.sort_index(inplace=True)
@@ -95,6 +96,8 @@ class TestMetadata(object):
         cols = ['dataset', 'cluster', 'sample']
         ctrl = pd.DataFrame(data=data, columns=cols)
         ctrl.index = ctrl.dataset
+        # don't test total_counts
+        test.drop('total_counts', axis=1, inplace=True)
         ctrl = ctrl[test.columns]
         ctrl.sort_index(inplace=True)
         test.sort_index(inplace=True)
