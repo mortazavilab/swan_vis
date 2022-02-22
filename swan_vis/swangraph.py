@@ -1718,18 +1718,9 @@ class SwanGraph(Graph):
 		for gene in gids:
 			gene_df = df.loc[df.gid==gene]
 			gene_df, test_result = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
-			# print()
-			# print(gene)
-			# print(gene_df)
-			# print(test_result)
 			data = [[gene, test_result]]
 			test_result = pd.DataFrame(data=data, columns=['gene', 'test_result'])
 			test_results = pd.concat((test_results, test_result))
-
-			# if gene == 'ENSMUSG00000063889.16':
-			# # if gene == 'ENSMUSG00000023764.18':
-			# 	print(gene_df)
-			# 	return gene_df
 
 			# if the gene is valid for testing, do so
 			if isinstance(gene_df, pd.DataFrame):
@@ -1756,6 +1747,12 @@ class SwanGraph(Graph):
 		else:
 			gene_de_df['adj_p_val'] = np.nan
 		gene_de_df.reset_index(inplace=True)
+
+		# add gene names
+		gnames = self.t_df[['gname', 'gid']]
+		gnames.reset_index(drop=True, inplace=True)
+		gnames.drop_duplicates(inplace=True)
+		gene_de_df = gene_de_df.merge(gnames, how='left', on='gid')
 
 		# add summary table to anndata
 		kind = 'die_{}'.format(kind)

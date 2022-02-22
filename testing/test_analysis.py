@@ -182,7 +182,7 @@ class TestSGAnalysis(object):
         drop_cols = ['p_val', 'adj_p_val', 'pos_iso_1', 'pos_iso_2',
                      'pos_iso_1_dpi', 'pos_iso_2_dpi',
                      'neg_iso_1', 'neg_iso_2',
-                     'neg_iso_1_dpi', 'neg_iso_2_dpi']
+                     'neg_iso_1_dpi', 'neg_iso_2_dpi', 'gname']
         test.drop(drop_cols, axis=1, inplace=True)
         ctrl = pd.read_csv('files/chr11_and_Tcf3_PB65_B017_B018_dpi.tsv', sep='\t')
         test.dpi = test.dpi.round().astype('float')
@@ -207,7 +207,7 @@ class TestSGAnalysis(object):
         drop_cols = ['p_val', 'adj_p_val', 'pos_iso_1', 'pos_iso_2',
                      'pos_iso_1_dpi', 'pos_iso_2_dpi',
                      'neg_iso_1', 'neg_iso_2',
-                     'neg_iso_1_dpi', 'neg_iso_2_dpi']
+                     'neg_iso_1_dpi', 'neg_iso_2_dpi', 'gname']
         test.drop(drop_cols, axis=1, inplace=True)
         ctrl = pd.read_csv('files/chr11_and_Tcf3_cluster_dpi.tsv', sep='\t')
         test.dpi = test.dpi.round()
