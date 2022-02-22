@@ -433,17 +433,18 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 										   columns=df.columns)
 	return df, sums
 
-def calc_tpm(adata, obs_col='dataset'):
+def calc_tpm(adata, obs_col='dataset', recalc=False):
 	"""
 	Calculate the TPM per condition given by `obs_col`.
 	Default column to use is `adata.obs` index column, `dataset`.
 
 	Parameters:
 		adata (anndata AnnData): Annotated data object from the SwanGraph
-		sg_df (pandas DataFrame): Pandas DataFrame from SwanGraph that will
-			be used to order the rows of resultant TPM DataFrame
 		obs_col (str or list of str): Column name from adata.obs table to group on.
 			Default: 'dataset'
+		recalc (bool): Whether tpm data should be recalculated or tpm
+			values should just be averaged
+			Default: False
 
 	Returns:
 		df (pandas DataFrame): Pandas datafrom where rows are the different
@@ -452,20 +453,29 @@ def calc_tpm(adata, obs_col='dataset'):
 			condition.
 	"""
 
-	# calculate tpm using scanpy
-	d = sc.pp.normalize_total(adata,
-							  layer='counts',
-							  target_sum=1e6,
-							  key_added='total_counts',
-							  inplace=False)
-	adata.obs['total_counts'] = d['norm_factor']
+	# only need to calculate tpm once when adding abundance
+	if recalc:
+
+		# calculate tpm using scanpy
+		d = sc.pp.normalize_total(adata,
+								  layer='counts',
+								  target_sum=1e6,
+								  key_added='total_counts',
+								  inplace=False)
+		adata.obs['total_counts'] = d['norm_factor']
+		data = d['X'].toarray()
+
+	# otherwise just grab the tpm from the adata
+	else:
+		data = adata.layers['tpm'].toarray()
 
 	# turn into a dataframe
 	cols = adata.var.index.tolist()
 	inds = adata.obs[obs_col].tolist()
-	data = d['X'].toarray()
 	df = pd.DataFrame(data=data, columns=cols, index=inds)
 	df.index.name = obs_col
+
+	print(df.head())
 
 	# average across tpm
 	if obs_col != 'dataset':
@@ -888,7 +898,7 @@ def test_gene(gene_df, conditions):
 
 	Returns:
 		entry (list): List of gene id, gene dpi, and information about top 2 pos
-			and neg dpis 
+			and neg dpis
 	"""
 
 	counts_cols = [c+'_counts' for c in conditions]

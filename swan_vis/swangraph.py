@@ -319,7 +319,7 @@ class SwanGraph(Graph):
 			# add counts as layers
 			self.adata.layers['counts'] = self.adata.X
 			print('Calculating transcript TPM...')
-			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata).to_numpy())
+			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
 
 			if not self.sc:
 				print('Calculating PI...')
@@ -338,7 +338,7 @@ class SwanGraph(Graph):
 
 			# recalculate pi and tpm
 			print('Calculating transcript TPM...')
-			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata).to_numpy())
+			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
 
 			if not self.sc:
 				print('Calculating PI...')
@@ -482,7 +482,7 @@ class SwanGraph(Graph):
 
 		# add counts and tpm as layers
 		adata.layers['counts'] = adata.X
-		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata).to_numpy())
+		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
 		if not self.sc:
 			adata.layers['pi'] = sparse.csr_matrix(calc_pi(adata,
 					adata.var)[0].to_numpy())
@@ -546,7 +546,7 @@ class SwanGraph(Graph):
 
 		# add counts and tpm as layers
 		adata.layers['counts'] = adata.X
-		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata).to_numpy())
+		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
 
 		# can't make pi for edges unless I make a new edge for
 		# each gene that the edge is in
@@ -1432,7 +1432,7 @@ class SwanGraph(Graph):
 		adata.layers['counts'] = adata.X
 
 		# recalculate TPM
-		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata).to_numpy())
+		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
 
 		# set layer to TPM
 		adata.X = adata.layers['tpm']
