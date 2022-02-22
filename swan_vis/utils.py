@@ -279,6 +279,8 @@ def get_ends(t_df, kind):
 	Parameters:
 		kind (str): Choose 'tss' or 'tes'
 	"""
+	# might be able to use this in the future:
+	# https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.explode.html
 	if kind == 'tss':
 		ind = 0
 	elif kind == 'tes':
@@ -299,6 +301,8 @@ def pivot_path_list(t_df, path_col):
 		t_df (pandas DataFrame): Transcript datafram from SwanGraph
 		path_col (str): Which path to pull from. Choose from 'path' or 'loc_path'
 	"""
+	# might be able to use this in the future:
+	# https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.explode.html
 	df = pd.DataFrame([[tid, x] for tid, path in zip(t_df.index, t_df[path_col]) \
 		for x in path])
 	if path_col == 'path':
@@ -822,7 +826,7 @@ def get_die_gene_table(gene_df, conditions, rc):
 		gene_df (pandas DataFrame): :ength n table of counts per isoform per
 			condition, percent isoform per gene per condition, and change in
 			percent isoform across conditions IF the gene is testable
-		gene_df (None): Returns None if the gene was deemed untestable.
+		test_result (str): Reason why gene was untestable, if relevant
 	"""
 
 	id_col = 'tid'
@@ -883,8 +887,8 @@ def test_gene(gene_df, conditions):
 		conditions (list of str, len 2): Name of condition columns
 
 	Returns:
-		p (float): P-value result of chi-squared test on gene
-		dpi (float): Overall change in isoform expression
+		entry (list): List of gene id, gene dpi, and information about top 2 pos
+			and neg dpis 
 	"""
 
 	counts_cols = [c+'_counts' for c in conditions]

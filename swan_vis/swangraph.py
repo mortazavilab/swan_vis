@@ -1667,7 +1667,7 @@ class SwanGraph(Graph):
 
 		# use calculated values already in the SwanGraph
 		if obs_col == 'dataset' and not self.sc:
-			df = pd.DataFrame(data=adata.layers['pi'],
+			df = pd.DataFrame(data=adata.layers['pi'].todense(),
 								 index=adata.obs.index,
 								 columns=adata.var.index)
 			sums = calc_total_counts(adata, obs_col)
@@ -1718,6 +1718,10 @@ class SwanGraph(Graph):
 		for gene in gids:
 			gene_df = df.loc[df.gid==gene]
 			gene_df, test_result = get_die_gene_table(gene_df, obs_conditions, rc_thresh)
+			# print()
+			# print(gene)
+			# print(gene_df)
+			# print(test_result)
 			data = [[gene, test_result]]
 			test_result = pd.DataFrame(data=data, columns=['gene', 'test_result'])
 			test_results = pd.concat((test_results, test_result))
@@ -1744,7 +1748,7 @@ class SwanGraph(Graph):
 
 		# remove untestable genes and perform p value
 		# Benjamini-Hochberg correction
-		gene_de_df.dropna(axis=0, inplace=True)
+		gene_de_df.dropna(subset=['p_val'], axis=0, inplace=True)
 		p_vals = gene_de_df.p_val.tolist()
 		if len(p_vals) > 0:
 			_, adj_p_vals, _, _ = multipletests(p_vals, method='fdr_bh')
@@ -1954,7 +1958,7 @@ class SwanGraph(Graph):
 
 		# merge the info together with the abundance
 		df = df.merge(temp, how='left', left_index=True, right_on='edge_id')
-		
+
 		# drop index
 		df.drop('index', axis=1, inplace=True)
 

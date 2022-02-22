@@ -26,10 +26,16 @@ tutorials/figures/
 tutorials/swan.p
 tutorials/.ipynb_checkpoints/
 
-# other 
+# other
 .DS_Store
 
 # pip stuff
 dist/
 swan_vis.egg-info/
 
+# swan files
+*.p
+
+# other
+../temp_code_doc/
+../tutorials/untitled.py
