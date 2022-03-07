@@ -23,7 +23,7 @@ setup(
     'networkx>=2.5',
     'tqdm',
     'anndata>=0.7',
-    'diffxpy==0.7.4'
+    'diffxpy==0.7.4',
     'scanpy>1.4'
     ],
   classifiers=[
