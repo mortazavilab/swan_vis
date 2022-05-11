@@ -2372,7 +2372,7 @@ class SwanGraph(Graph):
 				   include_unexpressed=False,
 				   indicate_novel=False,
 				   display_numbers=False,
-				   transcript_name=False,
+				   transcript_col='tid',
 				   browser=False,
 				   order='expression'):
 		"""
@@ -2421,6 +2421,9 @@ class SwanGraph(Graph):
 				outlining them and dashing them respectively
 				Incompatible with indicate_dataset
 				Default: False
+			transcript_col (str): Name of column in sg.t_df to use as
+				the transcript's display name
+				Default: tid
 			browser (bool): Plot transcript models in genome browser-
 				style format. Incompatible with indicate_dataset and
 				indicate_novel
@@ -2485,6 +2488,11 @@ class SwanGraph(Graph):
 		# check to see if these plotting settings will play together
 		self.check_plotting_args(indicate_dataset,
 			indicate_novel, browser)
+
+		# check to see if transcript column is present in sg.t_df
+		if transcript_col not in self.t_df.columns:
+			raise Exception('Transcript identifier column {} '.format(transcript_col)+\
+							'not present in SwanGraph.')
 
 		# get the list of columns to include from the input datasets dict
 		if datasets:
@@ -2672,7 +2680,7 @@ class SwanGraph(Graph):
 
 		# merge with sg.t_df to get additional columns
 		datasets = t_df.columns
-		cols = ['novelty', 'tname']
+		cols = ['novelty', transcript_col]
 		t_df = t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
 
 		# create report
@@ -2683,10 +2691,10 @@ class SwanGraph(Graph):
 					 browser,
 					 ftype='report',
 					 gid=gid)
-		if transcript_name:
-			t_disp = 'Transcript Name'
-		else:
+		if transcript_col == 'tid':
 			t_disp = 'Transcript ID'
+		else:
+			t_disp = 'Transcript Name'
 
 		report = Report(gid_prefix,
 						report_type,
@@ -2707,14 +2715,17 @@ class SwanGraph(Graph):
 		report.add_page()
 
 		# loop through each transcript and add it to the report
+
 		for ind, entry in t_df.iterrows():
 			tid = ind
-
 			# display name for transcript
-			if transcript_name:
-				t_disp = entry['tname']
-			else:
+			if transcript_col == 'tid':
 				t_disp = tid
+			else:
+				t_disp = entry[transcript_col]
+				# t_disp = entry['tname']
+			# else:
+			# 	t_disp = tid
 			fname = create_fname(prefix,
 								 indicate_dataset,
 								 indicate_novel,

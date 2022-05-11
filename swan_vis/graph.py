@@ -4,6 +4,7 @@ import pandas as pd
 import copy
 from tqdm import tqdm
 import anndata
+import swan_vis
 from swan_vis.utils import *
 
 # super class that both SwanGraph and PlottedGraph inherit from.
