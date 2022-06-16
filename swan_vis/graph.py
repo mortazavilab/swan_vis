@@ -18,10 +18,14 @@ class Graph:
 		----------
 		datasets (list of str):
 			Names of datasets in the Graph
+		gene_datasets (list of str):
+			Names of datasets w/ gene expression in the Graph
 		annotation (bool):
 			Whether an annotation transcriptome has been added.
 		abundance (bool):
 			Whether abundance data has been added to the SwanGraph
+		gene_abundance (bool):
+			Whether gene abundance data has been added to the SwanGraph
 		loc_df (pandas DataFrame):
 			DataFrame of all unique observed genomic
 			coordinates in the transcriptome
@@ -34,6 +38,8 @@ class Graph:
 		adata (anndata AnnData):
 			Annotated data object to hold transcript expression values
 			and metadata
+		gene_adata (anndata AnnData):
+			Annotated data object to hold gene expression values / metadata
 		edge_adata (anndata AnnData):
 			Annotated data object to hold edge expression values and metadata
 		tss_adata (anndata AnnData):
@@ -43,8 +49,10 @@ class Graph:
 		"""
 
 		self.datasets = []
+		self.gene_datasets = []
 		self.annotation = False
 		self.abundance = False
+		self.gene_abundance = False
 		self.loc_df = pd.DataFrame(columns=['chrom', 'coord',
 									   'vertex_id'])
 		self.edge_df = pd.DataFrame(columns=['v1', 'v2', 'strand',
@@ -54,6 +62,7 @@ class Graph:
 
 		# adata objects for transcripts, edges, locations, tss, and tes
 		self.adata = anndata.AnnData()
+		self.gene_adata = anndata.AnnData()
 		# self.edge_adata = anndata.AnnData()
 		self.tss_adata = anndata.AnnData()
 		self.tes_adata = anndata.AnnData()
@@ -362,6 +371,12 @@ class Graph:
 		Checks if any abundance data has been added to the Graph.
 		"""
 		return self.abundance
+
+	def has_gene_abundance(self):
+		"""
+		Checks if gene abundance data has been added to the Graph.
+		"""
+		return self.gene_abundance
 
 	##########################################################################
 	############################# Accessing data ############################

@@ -19,6 +19,7 @@ import matplotlib.colors as mc
 import colorsys
 from scipy import sparse
 import scanpy as sc
+import pdb
 
 from swan_vis.utils import *
 from swan_vis.talon_utils import *
@@ -158,7 +159,7 @@ class SwanGraph(Graph):
 		# get loc_df, edge_df, t_df
 		if ftype == 'gtf':
 			check_file_loc(fname, 'GTF')
-			t_df, exon_df, from_talon = parse_gtf(fname, include_isms, verbose)
+			t_df, exon_df, from_talon, from_cerberus = parse_gtf(fname, include_isms, verbose)
 		elif ftype == 'db':
 			check_file_loc(fname, 'TALON DB')
 			observed = True
@@ -172,7 +173,7 @@ class SwanGraph(Graph):
 
 		# create the dfs with new and preexisting data and assign them to the
 		# df fields of the SwanGraph
-		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon)
+		loc_df, edge_df, t_df = self.create_dfs(t_df, exon_df, from_talon, from_cerberus)
 
 		self.loc_df = loc_df
 		self.edge_df = edge_df
@@ -240,17 +241,17 @@ class SwanGraph(Graph):
 			lids = loc_df.vertex_id.unique().tolist()
 			self.loc_df = self.loc_df.loc[lids]
 
-	def add_abundance(self, counts_file):
+	def abundance_to_adata(self, counts_file, how='iso'):
 		"""
-		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
-		SwanGraph but not in the counts matrix will be assigned 0 counts.
-		Transcripts in the abundance matrix but not in the SwanGraph will not
-		have expression added.
+		Convert expression matrix to adata
 
 		Parameters:
-			counts_file (str): Path to TSV expression file where first column is
-				the transcript ID and following columns name the added datasets and
-				their counts in each dataset, OR to a TALON abundance matrix.
+			counts_file (str): Path to TALON or Swan-formatted counts matrix
+			how (str): {'iso', 'gene'}
+
+		Returns:
+			adata (anndata AnnData): AnnData representation of gene or
+				transcript-level expression
 		"""
 
 		# read in abundance file
@@ -265,25 +266,35 @@ class SwanGraph(Graph):
 			'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
 			'gene_novelty', 'transcript_novelty', 'ISM_subtype']
 		if df.columns.tolist()[:11] == cols:
-			df = reformat_talon_abundance(counts_file)
+			df = reformat_talon_abundance(df, how=how)
 
-		# rename transcript ID column
+		# rename id ID column
 		col = df.columns[0]
-		df.rename({col: 'tid'}, axis=1, inplace=True)
+		if how == 'gene':
+			id_col = 'gid'
+		elif how == 'iso':
+			id_col = 'tid'
+
+		df.rename({col: id_col}, axis=1, inplace=True)
+
+		# sum for gene level
+		if how == 'gene':
+			df = df.groupby(id_col).sum().reset_index()
 
 		# limit to just the transcripts already in the graph
-		sg_tids = self.t_df.tid.tolist()
-		ab_tids = df.tid.tolist()
-		tids = list(set(sg_tids)&set(ab_tids))
-		df = df.loc[df.tid.isin(tids)]
+		if how == 'iso':
+			sg_tids = self.t_df.tid.tolist()
+			ab_tids = df.tid.tolist()
+			tids = list(set(sg_tids)&set(ab_tids))
+			df = df.loc[df.tid.isin(tids)]
 
 		# transpose to get adata format
-		df.set_index('tid', inplace=True)
+		df.set_index(id_col, inplace=True)
 		df = df.T
 
 		# get adata components - obs, var, and X
 		var = df.columns.to_frame()
-		var.columns = ['tid']
+		var.columns = [id_col]
 		obs = df.index.to_frame()
 		obs.columns = ['dataset']
 		X = sparse.csr_matrix(df.to_numpy())
@@ -294,12 +305,33 @@ class SwanGraph(Graph):
 		adata = adata[:, genes]
 		adata.layers['counts'] = adata.X
 
+		return adata
+
+	def merge_adata_abundance(self, adata, how='iso'):
+		"""
+		Merge abundance information with preexisting abundance info in the
+			SwanGraph
+
+		Parameters:
+			adata (anndata AnnData): Output from `abundance_to_adata`
+			how (str): {'iso', 'gene'}
+		"""
+
+		if how == 'gene':
+			dataset_list = self.gene_datasets
+			ab_bool = self.has_gene_abundance()
+			sg_adata = self.gene_adata
+		elif how == 'iso':
+			dataset_list = self.datasets
+			ab_bool = self.has_abundance()
+			sg_adata = self.adata
+
 		# add each dataset to list of "datasets", check if any are already there!
 		datasets = adata.obs.dataset.tolist()
 		for d in datasets:
-			if d in self.datasets:
+			if d in dataset_list:
 				raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
-		self.datasets.extend(datasets)
+		dataset_list.extend(datasets)
 
 		print()
 		if len(datasets) <= 5:
@@ -311,49 +343,178 @@ class SwanGraph(Graph):
 
 		# if there is preexisting abundance data in the SwanGraph, concatenate
 		# otherwise, adata is the new transcript level adata
-		if not self.has_abundance():
+		if not ab_bool:
 
 			# create transcript-level adata object
-			self.adata = adata
+			sg_adata = adata
 
 			# add counts as layers
-			self.adata.layers['counts'] = self.adata.X
-			print('Calculating transcript TPM...')
-			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
+			sg_adata.layers['counts'] = sg_adata.X
+			print('Calculating TPM...')
+			sg_adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(sg_adata, recalc=True).to_numpy())
 
-			if not self.sc:
+			if not self.sc and how == 'iso':
 				print('Calculating PI...')
-				self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
+				sg_adata.layers['pi'] = sparse.csr_matrix(calc_pi(sg_adata, self.t_df)[0].to_numpy())
 		else:
 
 			# first set current layer to be counts
-			self.adata.X = self.adata.layers['counts']
+			sg_adata.X = sg_adata.layers['counts']
 
 			# concatenate existing adata with new one
 			# outer join to add all new transcripts (that are from added
 			# annotation or transcriptome) to the abundance
-			uns = self.adata.uns
-			self.adata = self.adata.concatenate(adata, join='outer', index_unique=None)
-			self.adata.uns = uns
+			uns = sg_adata.uns
+			sg_adata = sg_adata.concatenate(adata, join='outer', index_unique=None)
+			sg_adata.uns = uns
 
 			# recalculate pi and tpm
-			print('Calculating transcript TPM...')
-			self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
+			print('Calculating TPM...')
+			sg_adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(sg_adata, recalc=True).to_numpy())
 
-			if not self.sc:
+			if not self.sc and how == 'iso':
 				print('Calculating PI...')
-				self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
+				sg_adata.layers['pi'] = sparse.csr_matrix(calc_pi(sg_adata, self.t_df)[0].to_numpy())
+
+		if how == 'iso':
+			self.adata = sg_adata
+		elif how == 'gene':
+			self.gene_adata = sg_adata
 
 		# add abundance for edges, TSS per gene, and TES per gene
-		print('Calculating edge usage...')
-		self.create_edge_adata()
-		print('Calculating TSS usage...')
-		self.create_end_adata(kind='tss')
-		print('Calculating TES usage...')
-		self.create_end_adata(kind='tes')
+		if how == 'iso':
+			print('Calculating edge usage...')
+			self.create_edge_adata()
+			print('Calculating TSS usage...')
+			self.create_end_adata(kind='tss')
+			print('Calculating TES usage...')
+			self.create_end_adata(kind='tes')
 
 		# set abundance flag to true
-		self.abundance = True
+		if how == 'iso':
+			self.abundance = True
+			self.adata = sg_adata
+		elif how == 'gene':
+			self.gene_abundance = True
+			self.gene_adata = sg_adata
+
+	def add_abundance(self, counts_file, how='iso'):
+		"""
+		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
+		SwanGraph but not in the counts matrix will be assigned 0 counts.
+		Transcripts in the abundance matrix but not in the SwanGraph will not
+		have expression added.
+
+		Parameters:
+			counts_file (str): Path to TSV expression file where first column is
+				the transcript ID and following columns name the added datasets and
+				their counts in each dataset, OR to a TALON abundance matrix.
+			how (str): {'iso', 'gene'}
+		"""
+		adata = self.abundance_to_adata(counts_file, how=how)
+		self.merge_adata_abundance(adata, how=how)
+
+		# # read in abundance file
+		# check_file_loc(counts_file, 'abundance matrix')
+		# try:
+		# 	df = pd.read_csv(counts_file, sep='\t')
+		# except:
+		# 	raise ValueError('Problem reading expression matrix {}'.format(counts_file))
+		#
+		# # check if abundance matrix is a talon abundance matrix
+		# cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
+		# 	'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
+		# 	'gene_novelty', 'transcript_novelty', 'ISM_subtype']
+		# if df.columns.tolist()[:11] == cols:
+		# 	df = reformat_talon_abundance(df)
+		#
+		# # rename transcript ID column
+		# col = df.columns[0]
+		# df.rename({col: 'tid'}, axis=1, inplace=True)
+		#
+		# # limit to just the transcripts already in the graph
+		# sg_tids = self.t_df.tid.tolist()
+		# ab_tids = df.tid.tolist()
+		# tids = list(set(sg_tids)&set(ab_tids))
+		# df = df.loc[df.tid.isin(tids)]
+		#
+		# # transpose to get adata format
+		# df.set_index('tid', inplace=True)
+		# df = df.T
+		#
+		# # get adata components - obs, var, and X
+		# var = df.columns.to_frame()
+		# var.columns = ['tid']
+		# obs = df.index.to_frame()
+		# obs.columns = ['dataset']
+		# X = sparse.csr_matrix(df.to_numpy())
+		#
+		# # create transcript-level adata object and filter out unexpressed transcripts
+		# adata = anndata.AnnData(var=var, obs=obs, X=X)
+		# genes, _  = sc.pp.filter_genes(adata, min_counts=1, inplace=False)
+		# adata = adata[:, genes]
+		# adata.layers['counts'] = adata.X
+		#
+		# # add each dataset to list of "datasets", check if any are already there!
+		# datasets = adata.obs.dataset.tolist()
+		# for d in datasets:
+		# 	if d in self.datasets:
+		# 		raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
+		# self.datasets.extend(datasets)
+		#
+		# print()
+		# if len(datasets) <= 5:
+		# 	print('Adding abundance for datasets {} to SwanGraph.'.format(', '.join(datasets)))
+		# else:
+		# 	mini_datasets = datasets[:5]
+		# 	n = len(datasets) - len(mini_datasets)
+		# 	print('Adding abundance for datasets {}... (and {} more) to SwanGraph'.format(', '.join(mini_datasets), n))
+		#
+		# # if there is preexisting abundance data in the SwanGraph, concatenate
+		# # otherwise, adata is the new transcript level adata
+		# if not self.has_abundance():
+		#
+		# 	# create transcript-level adata object
+		# 	self.adata = adata
+		#
+		# 	# add counts as layers
+		# 	self.adata.layers['counts'] = self.adata.X
+		# 	print('Calculating transcript TPM...')
+		# 	self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
+		#
+		# 	if not self.sc:
+		# 		print('Calculating PI...')
+		# 		self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
+		# else:
+		#
+		# 	# first set current layer to be counts
+		# 	self.adata.X = self.adata.layers['counts']
+		#
+		# 	# concatenate existing adata with new one
+		# 	# outer join to add all new transcripts (that are from added
+		# 	# annotation or transcriptome) to the abundance
+		# 	uns = self.adata.uns
+		# 	self.adata = self.adata.concatenate(adata, join='outer', index_unique=None)
+		# 	self.adata.uns = uns
+		#
+		# 	# recalculate pi and tpm
+		# 	print('Calculating transcript TPM...')
+		# 	self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
+		#
+		# 	if not self.sc:
+		# 		print('Calculating PI...')
+		# 		self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
+		#
+		# # add abundance for edges, TSS per gene, and TES per gene
+		# print('Calculating edge usage...')
+		# self.create_edge_adata()
+		# print('Calculating TSS usage...')
+		# self.create_end_adata(kind='tss')
+		# print('Calculating TES usage...')
+		# self.create_end_adata(kind='tes')
+		#
+		# # set abundance flag to true
+		# self.abundance = True
 
 	def add_metadata(self, fname, overwrite=False):
 		"""
@@ -387,7 +548,7 @@ class SwanGraph(Graph):
 
 		# drop columns from one table depending on overwrite settings
 		# adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
-		adatas = [self.adata, self.tss_adata, self.tes_adata]
+		adatas = [self.adata, self.tss_adata, self.tes_adata, self.gene_adata]
 		if dupe_cols:
 			if overwrite:
 				for adata in adatas:
@@ -456,6 +617,7 @@ class SwanGraph(Graph):
 		# https://cmdlinetips.com/2019/03/how-to-write-pandas-groupby-function-using-sparse-matrix/
 		id_col = '{}_id'.format(kind)
 		name_col = '{}_name'.format(kind)
+		df = df.copy()
 		df.reset_index(inplace=True)
 		df[self.datasets] = df[self.datasets].sparse.to_dense()
 		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
@@ -657,7 +819,8 @@ class SwanGraph(Graph):
 		return edge_df
 
 	def create_dfs(self, transcripts, exons,
-				   from_talon=False):
+				   from_talon=False,
+				   from_cerberus=False):
 		"""
 		Create loc, edge, and transcript dataframes. Input parameters are from
 		either parse_gtf or parse_db. By default retains structure and metadata
@@ -675,6 +838,7 @@ class SwanGraph(Graph):
 			from_talon (bool): Whether or not the GTF was determined to be
 				from TALON.
 				Default: False
+			from_cerberus (bool): Whether or not GTF is from cerberus
 
 		Returns:
 			loc_df (pandas DataFrame): DataFrame of unique genomic locations
@@ -709,20 +873,28 @@ class SwanGraph(Graph):
 				  'edge_type': item['edge_type']} for key, item in edges.items()]
 		edge_df = pd.DataFrame(edges)
 
+		cols = ['tid', 'tname', 'gid', 'gname', 'path']
 		if from_talon:
-			transcripts = [{'tid': key,
-						'tname': item['tname'],
-						'gid': item['gid'],
-						'gname': item['gname'],
-						'path': item['path'],
-						'novelty': item['novelty']} for key, item in transcripts.items()]
-		else:
-			transcripts = [{'tid': key,
-						'tname': item['tname'],
-						'gid': item['gid'],
-						'gname': item['gname'],
-						'path': item['path']} for key, item in transcripts.items()]
+			cols.append('novelty')
+		if from_cerberus:
+			cols += ['tss_id', 'ic_id', 'tes_id']
+		# if from_talon:
+		# 	transcripts = [{'tid': key,
+		# 				'tname': item['tname'],
+		# 				'gid': item['gid'],
+		# 				'gname': item['gname'],
+		# 				'path': item['path'],
+		# 				'novelty': item['novelty']} for key, item in transcripts.items()]
+		# else:
+		# 	transcripts = [{'tid': key,
+		# 				'tname': item['tname'],
+		# 				'gid': item['gid'],
+		# 				'gname': item['gname'],
+		# 				'path': item['path']} for key, item in transcripts.items()]
 		t_df = pd.DataFrame(transcripts)
+		t_df = t_df.transpose()
+		t_df = t_df.reset_index(drop=True)
+		t_df = t_df[cols]
 
 		# remove entries that are already in the SwanGraph so we just get
 		# dfs of new entries

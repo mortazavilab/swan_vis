@@ -406,6 +406,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	totals = temp.groupby('gid').sum().reset_index()
 
 	# merge back in
+	df = df.copy()
 	df.reset_index(inplace=True)
 	df.rename({'index':id_col}, axis=1, inplace=True)
 	df = df.merge(totals, on='gid', suffixes=('_t_counts', None))
@@ -597,6 +598,7 @@ def parse_db(database, pass_list, observed, include_isms, verbose):
 			gid = gene_annotation_dict['gene_id']
 			gname = gene_annotation_dict['gene_name']
 			strand = transcript_entry['strand']
+
 			novelty = get_transcript_novelties(transcript_annotation_dict)
 
 			# add transcript to dictionary
@@ -677,6 +679,7 @@ def parse_gtf(gtf_file, include_isms, verbose):
 			(all exon in this case) of each exon.
 		from_talon (bool): Whether or not the GTF was determined to be
 			from TALON
+		from_cerberus (bool): Whether or not the GTF is from cerberus
 	"""
 
 	# counts the number of transcripts in a given GTF
@@ -695,6 +698,7 @@ def parse_gtf(gtf_file, include_isms, verbose):
 	transcripts = {}
 	exons = {}
 	from_talon = False
+	from_cerberus = False
 	ism_tids = []
 
 	# display progess
@@ -735,8 +739,10 @@ def parse_gtf(gtf_file, include_isms, verbose):
 				# check if this gtf has transcript novelty vals
 				# for the first transcript entry
 				if not transcripts:
-					if 'talon_transcript' in attributes:
+					if 'talon_transcript' in attributes or 'talon_gene' in attributes:
 						from_talon = True
+					if 'ic_id' in attributes:
+						from_cerberus = True
 
 				tid = attributes['transcript_id']
 				gid = attributes['gene_id']
@@ -759,10 +765,27 @@ def parse_gtf(gtf_file, include_isms, verbose):
 						 'strand': strand,
 						 'exons': []}
 
+				# NIC
+				# if tid == 'ENSG00000000460[3,10,3]':
+				#  pdb.set_trace()
+				#
+				# # NNC
+				# elif tid == 'ENSG00000000460[1,12,3]':
+				#  pdb.set_trace()
+				#
+				# # Known
+				# elif tid == 'ENSG00000000460[2,2,1]':
+				#  pdb.set_trace()
+
+
 				# if we're using a talon gtf, add a novelty field
 				if from_talon:
 					novelty = get_transcript_novelties(attributes)
 					entry['novelty'] = novelty
+				if from_cerberus:
+					entry['tss_id'] = attributes['tss_id']
+					entry['tes_id'] = attributes['tes_id']
+					entry['ic_id'] = attributes['ic_id']
 
 				# do not include ISM transcripts
 				if not include_isms and from_talon:
@@ -810,7 +833,7 @@ def parse_gtf(gtf_file, include_isms, verbose):
 	if not include_isms:
 		t_df = t_df.loc[~t_df.tid.isin(ism_tids)]
 
-	return t_df, exon_df, from_talon
+	return t_df, exon_df, from_talon, from_cerberus
 
 ##########################################################################
 ######################## Related to DIE testing ##########################
@@ -958,9 +981,11 @@ def make_cond_map(groups, group_names):
 
 # get novelty types associated with each transcript
 def get_transcript_novelties(fields):
-	if fields['transcript_status'] == 'KNOWN':
-		return 'Known'
-	elif 'ISM_transcript' in fields:
+	if 'transcript_status' in fields.keys():
+		if fields['transcript_status'] == 'KNOWN':
+			return 'Known'
+
+	if 'ISM_transcript' in fields:
 		return 'ISM'
 	elif 'NIC_transcript' in fields:
 		return 'NIC'
@@ -972,15 +997,17 @@ def get_transcript_novelties(fields):
 		return 'Intergenic'
 	elif 'genomic_transcript' in fields:
 		return 'Genomic'
+	else:
+		return 'Undefined'
 
 # reformat talon abundance file for the generic format expected by swan
-def reformat_talon_abundance(fname, ofile=None):
+def reformat_talon_abundance(df, how='iso', ofile=None):
 	"""
 	Reformat TALON abundance file into the format expected by add_abundance.
 	Removes all columns but the annot_transcript_id column and counts columns.
 
 	Parameters:
-		fname (str): Name / path to TALON abundance file
+		df (pandas DataFrame): DF representation of TALON abundance
 		ofile (str): Filename to save output to, if any.
 			Default: None
 
@@ -988,12 +1015,15 @@ def reformat_talon_abundance(fname, ofile=None):
 		df (pandas DataFrame): DataFrame of abundance values indexed by
 			transcript ID
 	"""
-	check_file_loc(fname, 'TALON abundance')
 
-	df = pd.read_csv(fname, sep='\t')
-	drop_cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_gene_name',
+	drop_cols = ['gene_ID', 'transcript_ID', 'annot_gene_name',
 		'annot_transcript_name', 'n_exons', 'length', 'gene_novelty',
 		'transcript_novelty', 'ISM_subtype']
+	if how=='iso':
+		drop_cols.append('annot_gene_id')
+	elif how=='gene':
+		drop_cols.append('annot_transcript_id')
+
 	df.drop(drop_cols, axis=1, inplace=True)
 
 	# if not writing output file just return df
