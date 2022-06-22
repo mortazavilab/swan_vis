@@ -406,7 +406,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	totals = temp.groupby('gid').sum().reset_index()
 
 	# merge back in
-	df = df.copy()
+	df = df.copy(deep=True)
 	df.reset_index(inplace=True)
 	df.rename({'index':id_col}, axis=1, inplace=True)
 	df = df.merge(totals, on='gid', suffixes=('_t_counts', None))

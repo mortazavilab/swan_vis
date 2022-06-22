@@ -42,6 +42,8 @@ class Graph:
 			Annotated data object to hold gene expression values / metadata
 		edge_adata (anndata AnnData):
 			Annotated data object to hold edge expression values and metadata
+		ic_adata (anndata AnnData):
+			Annotated data object to hold intron chain expression values / metadata
 		tss_adata (anndata AnnData):
 			Annotated data object to hold TSS expression values and metadata
 		tes_adata (anndata AnnData):
@@ -63,6 +65,7 @@ class Graph:
 		# adata objects for transcripts, edges, locations, tss, and tes
 		self.adata = anndata.AnnData()
 		self.gene_adata = anndata.AnnData()
+		self.ic_adata = anndata.AnnData()
 		# self.edge_adata = anndata.AnnData()
 		self.tss_adata = anndata.AnnData()
 		self.tes_adata = anndata.AnnData()

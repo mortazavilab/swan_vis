@@ -386,9 +386,13 @@ class SwanGraph(Graph):
 			print('Calculating edge usage...')
 			self.create_edge_adata()
 			print('Calculating TSS usage...')
-			self.create_end_adata(kind='tss')
+			self.create_feat_adata(kind='tss')
 			print('Calculating TES usage...')
-			self.create_end_adata(kind='tes')
+			self.create_feat_adata(kind='tes')
+
+			if 'ic_id' in self.t_df.columns:
+				print('Calculating IC usage...')
+				self.create_feat_adata(kind='ic')
 
 		# set abundance flag to true
 		if how == 'iso':
@@ -413,108 +417,6 @@ class SwanGraph(Graph):
 		"""
 		adata = self.abundance_to_adata(counts_file, how=how)
 		self.merge_adata_abundance(adata, how=how)
-
-		# # read in abundance file
-		# check_file_loc(counts_file, 'abundance matrix')
-		# try:
-		# 	df = pd.read_csv(counts_file, sep='\t')
-		# except:
-		# 	raise ValueError('Problem reading expression matrix {}'.format(counts_file))
-		#
-		# # check if abundance matrix is a talon abundance matrix
-		# cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
-		# 	'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
-		# 	'gene_novelty', 'transcript_novelty', 'ISM_subtype']
-		# if df.columns.tolist()[:11] == cols:
-		# 	df = reformat_talon_abundance(df)
-		#
-		# # rename transcript ID column
-		# col = df.columns[0]
-		# df.rename({col: 'tid'}, axis=1, inplace=True)
-		#
-		# # limit to just the transcripts already in the graph
-		# sg_tids = self.t_df.tid.tolist()
-		# ab_tids = df.tid.tolist()
-		# tids = list(set(sg_tids)&set(ab_tids))
-		# df = df.loc[df.tid.isin(tids)]
-		#
-		# # transpose to get adata format
-		# df.set_index('tid', inplace=True)
-		# df = df.T
-		#
-		# # get adata components - obs, var, and X
-		# var = df.columns.to_frame()
-		# var.columns = ['tid']
-		# obs = df.index.to_frame()
-		# obs.columns = ['dataset']
-		# X = sparse.csr_matrix(df.to_numpy())
-		#
-		# # create transcript-level adata object and filter out unexpressed transcripts
-		# adata = anndata.AnnData(var=var, obs=obs, X=X)
-		# genes, _  = sc.pp.filter_genes(adata, min_counts=1, inplace=False)
-		# adata = adata[:, genes]
-		# adata.layers['counts'] = adata.X
-		#
-		# # add each dataset to list of "datasets", check if any are already there!
-		# datasets = adata.obs.dataset.tolist()
-		# for d in datasets:
-		# 	if d in self.datasets:
-		# 		raise ValueError('Dataset {} already present in the SwanGraph.'.format(d))
-		# self.datasets.extend(datasets)
-		#
-		# print()
-		# if len(datasets) <= 5:
-		# 	print('Adding abundance for datasets {} to SwanGraph.'.format(', '.join(datasets)))
-		# else:
-		# 	mini_datasets = datasets[:5]
-		# 	n = len(datasets) - len(mini_datasets)
-		# 	print('Adding abundance for datasets {}... (and {} more) to SwanGraph'.format(', '.join(mini_datasets), n))
-		#
-		# # if there is preexisting abundance data in the SwanGraph, concatenate
-		# # otherwise, adata is the new transcript level adata
-		# if not self.has_abundance():
-		#
-		# 	# create transcript-level adata object
-		# 	self.adata = adata
-		#
-		# 	# add counts as layers
-		# 	self.adata.layers['counts'] = self.adata.X
-		# 	print('Calculating transcript TPM...')
-		# 	self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
-		#
-		# 	if not self.sc:
-		# 		print('Calculating PI...')
-		# 		self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
-		# else:
-		#
-		# 	# first set current layer to be counts
-		# 	self.adata.X = self.adata.layers['counts']
-		#
-		# 	# concatenate existing adata with new one
-		# 	# outer join to add all new transcripts (that are from added
-		# 	# annotation or transcriptome) to the abundance
-		# 	uns = self.adata.uns
-		# 	self.adata = self.adata.concatenate(adata, join='outer', index_unique=None)
-		# 	self.adata.uns = uns
-		#
-		# 	# recalculate pi and tpm
-		# 	print('Calculating transcript TPM...')
-		# 	self.adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(self.adata, recalc=True).to_numpy())
-		#
-		# 	if not self.sc:
-		# 		print('Calculating PI...')
-		# 		self.adata.layers['pi'] = sparse.csr_matrix(calc_pi(self.adata, self.t_df)[0].to_numpy())
-		#
-		# # add abundance for edges, TSS per gene, and TES per gene
-		# print('Calculating edge usage...')
-		# self.create_edge_adata()
-		# print('Calculating TSS usage...')
-		# self.create_end_adata(kind='tss')
-		# print('Calculating TES usage...')
-		# self.create_end_adata(kind='tes')
-		#
-		# # set abundance flag to true
-		# self.abundance = True
 
 	def add_metadata(self, fname, overwrite=False):
 		"""
@@ -548,7 +450,8 @@ class SwanGraph(Graph):
 
 		# drop columns from one table depending on overwrite settings
 		# adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
-		adatas = [self.adata, self.tss_adata, self.tes_adata, self.gene_adata]
+		adatas = [self.adata, self.tss_adata, self.tes_adata,
+			      self.gene_adata, self.ic_adata]
 		if dupe_cols:
 			if overwrite:
 				for adata in adatas:
@@ -575,90 +478,162 @@ class SwanGraph(Graph):
 	##########################################################################
 	############# Obtaining abundance of edges, locs, and ends ###############
 	##########################################################################
-	def create_end_adata(self, kind):
-		"""
-		Create a tss / tes-level adata object. Enables calculating tss / tes
-		usage across samples.
+	def create_cerberus_adata(self, mode):
+	    """
+		Use the ends and intron chains called by cerberus to compute
+		expression values for TSSs, TESs, or intron chains.
 
-		Parameters:
-			kind (str): Choose from 'tss' or 'tes'
-		"""
+	    Parameters:
+	        mode (str): {'ic', 'tss', 'tes'}
+	    """
+	    id_col = '{}_id'.format(mode)
+	    name_col = '{}_name'.format(mode)
 
-		# limit to only expresed transcripts
-		t_df = self.t_df.copy(deep=True)
-		t_df = t_df.loc[self.adata.var.index.tolist()]
-		df = get_ends(t_df, kind)
+	    # merge ic, tss, tes info with transcript counts
+	    gb_cols = ['gid', 'gname', id_col]
+	    subset_cols = copy.deepcopy(gb_cols)
+	    if mode in ['tss', 'tes']:
+	        end = True
+	        vert_col = '{}_vertex'.format(mode)
+	        subset_cols.append('loc_path')
+	        if mode == 'tss':
+	            ind = 0
+	        elif mode == 'tes':
+	            ind = -1
+	    else:
+	        end = False
 
-		# get a mergeable transcript expression df
-		tid = self.adata.var.index.tolist()
-		obs = self.adata.obs.index.tolist()
-		data = self.adata.layers['counts'].transpose()
-		t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs, data=data, index=tid)
-		t_exp_df = t_exp_df.merge(t_df, how='left',
-			left_index=True, right_index=True)
+	    df = self.t_df[subset_cols].reset_index()
 
-		# merge counts per transcript with end expression
-		df = df.merge(t_exp_df, how='left',
-			left_index=True, right_index=True)
+	    # merge with vertex id
+	    if end:
+	        df[vert_col] = [path[ind] for path in df.loc_path.values.tolist()]
+	        df.drop('loc_path', axis=1, inplace=True)
+	        gb_cols.append(vert_col)
 
-		# sort based on vertex id
-		df.sort_index(inplace=True, ascending=True)
+	    t_counts = self.get_transcript_abundance(kind='counts')
+	    t_counts = t_counts.merge(df, how='left', on='tid')
+	    # if mode == 'tes':
+	    #     print(t_counts.loc[t_counts.tes_id == 'ENCODEHG000058837_1', 'hl60_m2_72hr_1_1'])
 
-		# set index to gene ID, gene name, and vertex id
-		df.reset_index(drop=True, inplace=True)
-		df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
-		df = df[self.datasets]
+	    # gb and sum counts over the different features
+	    t_counts.drop('tid', axis=1, inplace=True)
+	    # print(mode)
+	    # print(gb_cols)
+	    t_counts = t_counts.groupby(gb_cols).sum()
 
-		# groupby on gene and assign each unique TSS / gene combo an ID
-		# use dense representation b/c I've already removed 0 counts and sparse
-		# gb operations are known to be slow in pandas
-		# https://github.com/pandas-dev/pandas/issues/36123
-		# maybe try this? :
-		# https://cmdlinetips.com/2019/03/how-to-write-pandas-groupby-function-using-sparse-matrix/
-		id_col = '{}_id'.format(kind)
-		name_col = '{}_name'.format(kind)
-		df = df.copy()
-		df.reset_index(inplace=True)
-		df[self.datasets] = df[self.datasets].sparse.to_dense()
-		df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
+	    # get separate components of the table
+	    X = sparse.csr_matrix(t_counts.transpose().values)
+	    obs = self.adata.obs
 
-		df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
-						ascending=[True, True])\
-						.groupby(['gid']) \
-						.cumcount() + 1
-		df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
-		df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
-		df.drop('end_gene_num', axis=1, inplace=True)
+	    # add name of thing
+	    t_counts.reset_index(inplace=True)
+	    t_counts[name_col] = t_counts.gname+'_'+t_counts[id_col].str.split('_', expand=True)[1]
+	    gb_cols.append(name_col)
+	    var = t_counts[gb_cols]
+	    var.set_index(id_col, inplace=True)
 
-		# obs, var, and X tables for new data
-		var_cols = ['gid', 'gname', 'vertex_id', id_col, name_col]
-		var = df[var_cols]
-		var.set_index('{}_id'.format(kind), inplace=True)
-		df.drop(var_cols, axis=1, inplace=True)
-		df = df[self.adata.obs.index.tolist()]
-		X = sparse.csr_matrix(df.transpose().values)
-		obs = self.adata.obs
+	    if end:
+	        var.rename({vert_col: 'vertex'}, axis=1, inplace=True)
 
-		# create anndata
-		adata = anndata.AnnData(var=var, obs=obs, X=X)
+	    return obs, var, X
 
-		# add counts and tpm as layers
-		adata.layers['counts'] = adata.X
-		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
-		if not self.sc:
-			adata.layers['pi'] = sparse.csr_matrix(calc_pi(adata,
-					adata.var)[0].to_numpy())
+	def create_feat_adata(self, kind):
+	    """
+	    Create a tss / tes / ic-level adata object. Enables calculating tss / tes
+	    usage across samples.
 
-		# assign adata and clean up unstructured data if needed
-		if kind == 'tss':
-			if self.has_abundance():
-				adata.uns = self.tss_adata.uns
-			self.tss_adata = adata
+	    Parameters:
+	        kind (str): {'tss', 'ic', 'tes'}
+	    """
 
-		elif kind == 'tes':
-			if self.has_abundance():
-				adata.uns = self.tss_adata.uns
-			self.tes_adata = adata
+	    # check to see if end information is already present in swangraph
+	    id_col = '{}_id'.format(kind)
+	    if id_col in self.t_df.columns:
+	        print('Using cerberus IDs to calculate')
+	        obs, var, X = self.create_cerberus_adata(kind)
+
+	    else:
+	        # limit to only expresed transcripts
+	        t_df = self.t_df.copy(deep=True)
+	        t_df = t_df.loc[self.adata.var.index.tolist()]
+	        df = get_ends(t_df, kind)
+
+	        # get a mergeable transcript expression df
+	        tid = self.adata.var.index.tolist()
+	        obs = self.adata.obs.index.tolist()
+	        data = self.adata.layers['counts'].transpose()
+	        t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs, data=data, index=tid)
+	        t_exp_df = t_exp_df.merge(t_df, how='left',
+	            left_index=True, right_index=True)
+
+	        # merge counts per transcript with end expression
+	        df = df.merge(t_exp_df, how='left',
+	            left_index=True, right_index=True)
+
+	        # sort based on vertex id
+	        df.sort_index(inplace=True, ascending=True)
+
+	        # set index to gene ID, gene name, and vertex id
+	        df.reset_index(drop=True, inplace=True)
+	        df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
+	        df = df[self.datasets]
+
+	        # groupby on gene and assign each unique TSS / gene combo an ID
+	        # use dense representation b/c I've already removed 0 counts and sparse
+	        # gb operations are known to be slow in pandas
+	        # https://github.com/pandas-dev/pandas/issues/36123
+	        # maybe try this? :
+	        # https://cmdlinetips.com/2019/03/how-to-write-pandas-groupby-function-using-sparse-matrix/
+	        id_col = '{}_id'.format(kind)
+	        name_col = '{}_name'.format(kind)
+	        df = df.copy()
+	        df.reset_index(inplace=True)
+	        df[self.datasets] = df[self.datasets].sparse.to_dense()
+	        df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
+
+	        df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
+	                        ascending=[True, True])\
+	                        .groupby(['gid']) \
+	                        .cumcount() + 1
+	        df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
+	        df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
+	        df.drop('end_gene_num', axis=1, inplace=True)
+
+	        # obs, var, and X tables for new data
+	        var_cols = ['gid', 'gname', 'vertex_id', id_col, name_col]
+	        var = df[var_cols]
+	        var.set_index('{}_id'.format(kind), inplace=True)
+	        df.drop(var_cols, axis=1, inplace=True)
+	        df = df[self.adata.obs.index.tolist()]
+	        X = sparse.csr_matrix(df.transpose().values)
+	        obs = self.adata.obs
+
+	    # create anndata
+	    adata = anndata.AnnData(var=var, obs=obs, X=X)
+
+	    # add counts and tpm as layers
+	    adata.layers['counts'] = adata.X
+	    adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
+	    if not self.sc:
+	        adata.layers['pi'] = sparse.csr_matrix(calc_pi(adata,
+	                adata.var)[0].to_numpy())
+
+	    # assign adata and clean up unstructured data if needed
+	    if kind == 'tss':
+	        if self.has_abundance():
+	            adata.uns = self.tss_adata.uns
+	        self.tss_adata = adata
+
+	    elif kind == 'tes':
+	        if self.has_abundance():
+	            adata.uns = self.tss_adata.uns
+	        self.tes_adata = adata
+
+	    elif kind == 'ic':
+	        if self.has_abundance():
+	            adata.uns = self.ic_adata.uns
+	        self.ic_adata = adata
 
 	def create_edge_adata(self):
 		"""
