@@ -74,6 +74,23 @@ class Graph:
 	################# Related to checking contents of Graph ##################
 	##########################################################################
 
+	def get_adatas(self):
+		"""
+		Get a list of populated AnnData objects in the graph
+
+		Returns:
+			adatas (list of anndata AnnData): List of AnnData objects
+		 			in the SwanGraph that have data
+		"""
+		check_adatas = [self.adata, self.gene_adata,
+				        self.tss_adata, self.tes_adata,
+						self.ic_adata]
+		adatas = []
+		for adata in check_adatas:
+			if not adata.obs.empty:
+				adatas.append(adata)
+		return adatas
+
 	# check that input datasets are in the Graph:
 	def check_datasets(self, datasets):
 		"""

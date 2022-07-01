@@ -450,8 +450,10 @@ class SwanGraph(Graph):
 
 		# drop columns from one table depending on overwrite settings
 		# adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
-		adatas = [self.adata, self.tss_adata, self.tes_adata,
-			      self.gene_adata, self.ic_adata]
+		# adatas = [self.adata, self.tss_adata, self.tes_adata,
+		# 	      self.gene_adata, self.ic_adata]
+		adatas = self.get_adatas()
+		pdb.set_trace()
 		if dupe_cols:
 			if overwrite:
 				for adata in adatas:
@@ -1195,6 +1197,12 @@ class SwanGraph(Graph):
 								'there is no expression data.')
 
 			t_df['sum'] = np.log2(t_df+1).sum(axis=1)
+			t_df.sort_values(by='sum', ascending=False, inplace=True)
+			t_df.drop('sum', axis=1, inplace=True)
+
+		# order by cumulative pi value
+		elif order == 'pi':
+			t_df['sum'] = t_df.sum(axis=1)
 			t_df.sort_values(by='sum', ascending=False, inplace=True)
 			t_df.drop('sum', axis=1, inplace=True)
 
@@ -1978,8 +1986,9 @@ class SwanGraph(Graph):
 
 		# adatas = [self.adata, self.tss_adata, \
 		# 		  self.tes_adata, self.edge_adata]
-		adatas = [self.adata, self.tss_adata, \
-				  self.tes_adata]
+		# adatas = [self.adata, self.tss_adata, \
+		# 		  self.tes_adata]
+		adatas = self.get_adatas()
 		for adata in adatas:
 			adata.obs[col_name] = ''
 
@@ -2002,8 +2011,9 @@ class SwanGraph(Graph):
 		# after we're done, drop this column
 		# adatas = [self.adata, self.tss_adata, \
 		# 		  self.tes_adata, self.edge_adata]
-		adatas = [self.adata, self.tss_adata, \
-				  self.tes_adata]
+		# adatas = [self.adata, self.tss_adata, \
+		# 		  self.tes_adata]
+		adatas = self.get_adatas()
 		for adata in adatas:
 			adata.obs.drop(col_name, axis=1, inplace=True)
 
@@ -2711,17 +2721,26 @@ class SwanGraph(Graph):
 				t_df = t_df.transpose()
 
 		# order transcripts by user's preferences
+		if order == 'pi' and not layer == 'pi':
+			order = 'expression'
+
 		if order == 'expression' and self.abundance == False:
 			order = 'tid'
 		elif order == 'expression':
 			order = 'log2tpm'
 		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
-		tids = list(set(tids)&set(tpm_df.index.tolist()))
+		if order == 'log2tpm':
+			order_df = tpm_df
+		elif order == 'pi':
+			order_df = t_df
+		tids = list(set(tids)&set(order_df.index.tolist()))
 		tpm_df = tpm_df.loc[tids]
-		_, tids = sg.order_transcripts_subset(tpm_df, order=order)
+		t_df = t_df.loc[tids]
+		_, tids = sg.order_transcripts_subset(order_df, order=order)
+		tpm_df = tpm_df.loc[tids]
+		t_df = t_df.loc[tids]
 	#	 print('finished ordering transcripts')
 		del tpm_df
-		t_df = t_df.loc[tids]
 
 		# remove unexpressed transcripts if desired
 		if not include_unexpressed:
