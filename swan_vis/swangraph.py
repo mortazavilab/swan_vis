@@ -453,7 +453,6 @@ class SwanGraph(Graph):
 		# adatas = [self.adata, self.tss_adata, self.tes_adata,
 		# 	      self.gene_adata, self.ic_adata]
 		adatas = self.get_adatas()
-		pdb.set_trace()
 		if dupe_cols:
 			if overwrite:
 				for adata in adatas:
