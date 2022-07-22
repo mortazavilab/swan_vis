@@ -536,6 +536,9 @@ class SwanGraph(Graph):
 
 	    if end:
 	        var.rename({vert_col: 'vertex'}, axis=1, inplace=True)
+		#
+	    # if mode == 'tss':
+	    #     pdb.set_trace()
 
 	    return obs, var, X
 
@@ -2728,13 +2731,13 @@ class SwanGraph(Graph):
 		elif order == 'expression':
 			order = 'log2tpm'
 		tids = self.t_df.loc[self.t_df.gid == gid].index.tolist()
+		tids = list(set(tids)&set(tpm_df.index.tolist()))
+		tpm_df = tpm_df.loc[tids]
+		t_df = t_df.loc[tids]
 		if order == 'log2tpm':
 			order_df = tpm_df
 		elif order == 'pi':
 			order_df = t_df
-		tids = list(set(tids)&set(order_df.index.tolist()))
-		tpm_df = tpm_df.loc[tids]
-		t_df = t_df.loc[tids]
 		_, tids = sg.order_transcripts_subset(order_df, order=order)
 		tpm_df = tpm_df.loc[tids]
 		t_df = t_df.loc[tids]
