@@ -504,6 +504,30 @@ def calc_tpm(adata, obs_col='dataset', recalc=False):
 ####################### Related to file parsing ##########################
 ##########################################################################
 
+def get_stable_gid(df, col):
+    """
+    Get a list of stable gene ids from a dataframe
+
+    Parameters:
+        df (pandas DataFrame): DF w/ ENSEMBL gids in some column
+        col (str): Column name of gids
+
+    Returns:
+        gids (list of str): List of stable gids
+    """
+    df = df.copy(deep=True)
+    try:
+        df[['temp', 'par_region_1', 'par_region_2']] = df[col].str.split('_', n=2, expand=True)
+        df[col] = df[col].str.split('.', expand=True)[0]
+        df[['par_region_1', 'par_region_2']] = df[['par_region_1',
+                                                           'par_region_2']].fillna('')
+        df[col] = df[col]+df.par_region_1+df.par_region_2
+        df.drop(['temp', 'par_region_1', 'par_region_2'], axis=1, inplace=True)
+    except:
+        df[col] = df[col].str.split('.', expand=True)[0]
+
+    return df[col].tolist()
+
 def parse_db(database, pass_list, observed, include_isms, verbose):
 	"""
 	Get the unique transcripts and exons that are present in a TALON DB
@@ -656,6 +680,13 @@ def parse_db(database, pass_list, observed, include_isms, verbose):
 
 	t_df = pd.DataFrame(transcripts).transpose()
 	exon_df = pd.DataFrame(exons).transpose()
+
+	# use stable gid if we can
+	try:
+		t_df['gid'] = get_stable_gid(t_df, 'gid')
+	except:
+		pass
+
 	return t_df, exon_df
 
 def parse_gtf(gtf_file, include_isms, verbose):
@@ -832,6 +863,12 @@ def parse_gtf(gtf_file, include_isms, verbose):
 	# remove ISMs that we've recorded
 	if not include_isms:
 		t_df = t_df.loc[~t_df.tid.isin(ism_tids)]
+
+	# use stable gid if we can
+	try:
+		t_df['gid'] = get_stable_gid(t_df, 'gid')
+	except:
+		pass
 
 	return t_df, exon_df, from_talon, from_cerberus
 

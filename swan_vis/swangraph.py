@@ -166,6 +166,7 @@ class SwanGraph(Graph):
 			t_df, exon_df = parse_db(fname, pass_list, observed,
 									 include_isms, verbose)
 			from_talon = True
+			from_cerberus = False
 
 		# keep track of transcripts from GTF if we're adding annotation
 		if annotation:
