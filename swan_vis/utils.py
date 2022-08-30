@@ -435,7 +435,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 										   columns=df.columns)
 	return df, sums
 
-def calc_tpm(adata, obs_col='dataset', recalc=False):
+def calc_tpm(adata, obs_col='dataset', how='mean', recalc=False):
 	"""
 	Calculate the TPM per condition given by `obs_col`.
 	Default column to use is `adata.obs` index column, `dataset`.
@@ -444,6 +444,7 @@ def calc_tpm(adata, obs_col='dataset', recalc=False):
 		adata (anndata AnnData): Annotated data object from the SwanGraph
 		obs_col (str or list of str): Column name from adata.obs table to group on.
 			Default: 'dataset'
+		how (str): How to compute tpm across multiple datasets {'mean', 'max'}
 		recalc (bool): Whether tpm data should be recalculated or tpm
 			values should just be averaged
 			Default: False
@@ -488,7 +489,10 @@ def calc_tpm(adata, obs_col='dataset', recalc=False):
 
 		df['row_order'] = df.index.map(row_map)
 		df.reset_index(inplace=True)
-		df = df.groupby(obs_col).mean()
+		if how == 'mean':
+			df = df.groupby(obs_col).mean()
+		elif how == 'max':
+			df = df.groupby(obs_col).max()
 		df = df.sort_values(by='row_order', ascending=True)
 		df.drop('row_order', inplace=True, axis=1)
 
