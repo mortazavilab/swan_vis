@@ -434,6 +434,93 @@ class PlottedGraph(Graph):
 	######################## Browser track style plotting #########################
 	###############################################################################
 
+	def plot_browser(self, x=0, y=0, w=14, h=0.1, color=None, ax=None, **kwargs):
+		"""
+		Plot the browser representation for one transcript on a given axis
+
+		Parameters:
+			x (float): Start x coord from right of browser model
+			y (float): Start y coord from bottom right corner of browser model
+			w (float): Maximum width of browser model
+			h (float): Height of browser model
+			color (str): Color to plot model in
+			ax (matplotlib axes): Axes to plot on
+
+		Returns:
+			ax (matplotlib axes): Axes with browser plot added
+		"""
+
+		# TODO option to plot relative to gene start or not
+
+		# set up axes if not provided
+		if not ax:
+			print('uwu y u in here')
+			plt.figure(1, figsize=(4,3), frameon=False)
+			plt.xlim(x, x+w)
+			plt.ylim(y-2, y+2)
+			ax = plt.gca()
+
+		# change color
+		if not color:
+			color = self.color_dict['browser']
+
+		# get min / max coords from gene and transcript
+		g_min = self.g_min
+		g_max = self.g_max
+		t_min, t_max = self.get_transcript_min_max(self.tid)
+		g_len = g_max - g_min
+		t_len = t_max - t_min
+
+		# scaling factor
+		scale = w / g_len
+
+		# path / strand info
+		strand = self.strand
+		loc_path = self.loc_path
+		edge_path = self.edge_path
+
+		# plot exons
+		exons = [(v1,v2) for v1,v2 in zip(loc_path[:-1],loc_path[1:])][::2]
+		introns = [(v1,v2) for v1,v2 in zip(loc_path[:-1],loc_path[1:])][1::2]
+		y_coord = y
+		for v1,v2 in exons:
+
+			# get coords from loc_df
+			v1_coord = self.loc_df.loc[v1, 'coord']
+			v2_coord = self.loc_df.loc[v2, 'coord']
+			min_coord = min(v1_coord, v2_coord)
+			max_coord = max(v1_coord, v2_coord)
+
+			# depending on strand, get starting coord and witdh of exon
+			if strand == '+':
+				x_coord = ((min_coord-g_min)*scale)+x
+			elif strand == '-':
+				x_coord = ((g_max-max_coord)*scale)+x
+
+			# width
+			width = (max_coord-min_coord)*scale
+
+			# plot
+			rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
+			ax.add_patch(rect)
+
+		# plot intron as a line b/w first and last exons
+		dist = 200*scale
+		y_line = y + (h/2)
+		if strand == '+':
+			c1 = ((t_min-g_min)*scale)+x
+			c2 = c1+(t_len*scale)-dist
+			x_coords = [c1+dist, c2-dist]
+		elif strand == '-':
+			c1 = ((g_max-t_max)*scale)+x
+			c2 = c1+(t_len*scale)
+			x_coords = [c1+dist, c2-dist]
+
+		linewidth = 3
+		plt.plot(x_coords, [y_line,y_line], color=color, linewidth=linewidth)
+
+		return ax
+
 	# plots the browser track representation of the transcript from self.path
 	def plot_browser_path(self):
 

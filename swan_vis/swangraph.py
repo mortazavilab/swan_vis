@@ -452,7 +452,7 @@ class SwanGraph(Graph):
 		# drop columns from one table depending on overwrite settings
 		# adatas = [self.adata, self.tss_adata, self.tes_adata, self.edge_adata]
 		# adatas = [self.adata, self.tss_adata, self.tes_adata,
-		# 	      self.gene_adata, self.ic_adata]
+		# 		  self.gene_adata, self.ic_adata]
 		adatas = self.get_adatas()
 		if dupe_cols:
 			if overwrite:
@@ -481,164 +481,164 @@ class SwanGraph(Graph):
 	############# Obtaining abundance of edges, locs, and ends ###############
 	##########################################################################
 	def create_cerberus_adata(self, mode):
-	    """
+		"""
 		Use the ends and intron chains called by cerberus to compute
 		expression values for TSSs, TESs, or intron chains.
 
-	    Parameters:
-	        mode (str): {'ic', 'tss', 'tes'}
-	    """
-	    id_col = '{}_id'.format(mode)
-	    name_col = '{}_name'.format(mode)
+		Parameters:
+			mode (str): {'ic', 'tss', 'tes'}
+		"""
+		id_col = '{}_id'.format(mode)
+		name_col = '{}_name'.format(mode)
 
-	    # merge ic, tss, tes info with transcript counts
-	    gb_cols = ['gid', 'gname', id_col]
-	    subset_cols = copy.deepcopy(gb_cols)
-	    if mode in ['tss', 'tes']:
-	        end = True
-	        vert_col = '{}_vertex'.format(mode)
-	        subset_cols.append('loc_path')
-	        if mode == 'tss':
-	            ind = 0
-	        elif mode == 'tes':
-	            ind = -1
-	    else:
-	        end = False
+		# merge ic, tss, tes info with transcript counts
+		gb_cols = ['gid', 'gname', id_col]
+		subset_cols = copy.deepcopy(gb_cols)
+		if mode in ['tss', 'tes']:
+			end = True
+			vert_col = '{}_vertex'.format(mode)
+			subset_cols.append('loc_path')
+			if mode == 'tss':
+				ind = 0
+			elif mode == 'tes':
+				ind = -1
+		else:
+			end = False
 
-	    df = self.t_df[subset_cols].reset_index()
+		df = self.t_df[subset_cols].reset_index()
 
-	    # merge with vertex id
-	    if end:
-	        df[vert_col] = [path[ind] for path in df.loc_path.values.tolist()]
-	        df.drop('loc_path', axis=1, inplace=True)
-	        gb_cols.append(vert_col)
+		# merge with vertex id
+		if end:
+			df[vert_col] = [path[ind] for path in df.loc_path.values.tolist()]
+			df.drop('loc_path', axis=1, inplace=True)
+			gb_cols.append(vert_col)
 
-	    t_counts = self.get_transcript_abundance(kind='counts')
-	    t_counts = t_counts.merge(df, how='left', on='tid')
-	    # if mode == 'tes':
-	    #     print(t_counts.loc[t_counts.tes_id == 'ENCODEHG000058837_1', 'hl60_m2_72hr_1_1'])
+		t_counts = self.get_transcript_abundance(kind='counts')
+		t_counts = t_counts.merge(df, how='left', on='tid')
+		# if mode == 'tes':
+		#	 print(t_counts.loc[t_counts.tes_id == 'ENCODEHG000058837_1', 'hl60_m2_72hr_1_1'])
 
-	    # gb and sum counts over the different features
-	    t_counts.drop('tid', axis=1, inplace=True)
-	    # print(mode)
-	    # print(gb_cols)
-	    t_counts = t_counts.groupby(gb_cols).sum()
+		# gb and sum counts over the different features
+		t_counts.drop('tid', axis=1, inplace=True)
+		# print(mode)
+		# print(gb_cols)
+		t_counts = t_counts.groupby(gb_cols).sum()
 
-	    # get separate components of the table
-	    X = sparse.csr_matrix(t_counts.transpose().values)
-	    obs = self.adata.obs
+		# get separate components of the table
+		X = sparse.csr_matrix(t_counts.transpose().values)
+		obs = self.adata.obs
 
-	    # add name of thing
-	    t_counts.reset_index(inplace=True)
-	    t_counts[name_col] = t_counts.gname+'_'+t_counts[id_col].str.split('_', expand=True)[1]
-	    gb_cols.append(name_col)
-	    var = t_counts[gb_cols]
-	    var.set_index(id_col, inplace=True)
+		# add name of thing
+		t_counts.reset_index(inplace=True)
+		t_counts[name_col] = t_counts.gname+'_'+t_counts[id_col].str.split('_', expand=True)[1]
+		gb_cols.append(name_col)
+		var = t_counts[gb_cols]
+		var.set_index(id_col, inplace=True)
 
-	    if end:
-	        var.rename({vert_col: 'vertex'}, axis=1, inplace=True)
+		if end:
+			var.rename({vert_col: 'vertex'}, axis=1, inplace=True)
 		#
-	    # if mode == 'tss':
-	    #     pdb.set_trace()
+		# if mode == 'tss':
+		#	 pdb.set_trace()
 
-	    return obs, var, X
+		return obs, var, X
 
 	def create_feat_adata(self, kind):
-	    """
-	    Create a tss / tes / ic-level adata object. Enables calculating tss / tes
-	    usage across samples.
+		"""
+		Create a tss / tes / ic-level adata object. Enables calculating tss / tes
+		usage across samples.
 
-	    Parameters:
-	        kind (str): {'tss', 'ic', 'tes'}
-	    """
+		Parameters:
+			kind (str): {'tss', 'ic', 'tes'}
+		"""
 
-	    # check to see if end information is already present in swangraph
-	    id_col = '{}_id'.format(kind)
-	    if id_col in self.t_df.columns:
-	        print('Using cerberus IDs to calculate')
-	        obs, var, X = self.create_cerberus_adata(kind)
+		# check to see if end information is already present in swangraph
+		id_col = '{}_id'.format(kind)
+		if id_col in self.t_df.columns:
+			print('Using cerberus IDs to calculate')
+			obs, var, X = self.create_cerberus_adata(kind)
 
-	    else:
-	        # limit to only expresed transcripts
-	        t_df = self.t_df.copy(deep=True)
-	        t_df = t_df.loc[self.adata.var.index.tolist()]
-	        df = get_ends(t_df, kind)
+		else:
+			# limit to only expresed transcripts
+			t_df = self.t_df.copy(deep=True)
+			t_df = t_df.loc[self.adata.var.index.tolist()]
+			df = get_ends(t_df, kind)
 
-	        # get a mergeable transcript expression df
-	        tid = self.adata.var.index.tolist()
-	        obs = self.adata.obs.index.tolist()
-	        data = self.adata.layers['counts'].transpose()
-	        t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs, data=data, index=tid)
-	        t_exp_df = t_exp_df.merge(t_df, how='left',
-	            left_index=True, right_index=True)
+			# get a mergeable transcript expression df
+			tid = self.adata.var.index.tolist()
+			obs = self.adata.obs.index.tolist()
+			data = self.adata.layers['counts'].transpose()
+			t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs, data=data, index=tid)
+			t_exp_df = t_exp_df.merge(t_df, how='left',
+				left_index=True, right_index=True)
 
-	        # merge counts per transcript with end expression
-	        df = df.merge(t_exp_df, how='left',
-	            left_index=True, right_index=True)
+			# merge counts per transcript with end expression
+			df = df.merge(t_exp_df, how='left',
+				left_index=True, right_index=True)
 
-	        # sort based on vertex id
-	        df.sort_index(inplace=True, ascending=True)
+			# sort based on vertex id
+			df.sort_index(inplace=True, ascending=True)
 
-	        # set index to gene ID, gene name, and vertex id
-	        df.reset_index(drop=True, inplace=True)
-	        df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
-	        df = df[self.datasets]
+			# set index to gene ID, gene name, and vertex id
+			df.reset_index(drop=True, inplace=True)
+			df.set_index(['gid', 'gname', 'vertex_id'], inplace=True)
+			df = df[self.datasets]
 
-	        # groupby on gene and assign each unique TSS / gene combo an ID
-	        # use dense representation b/c I've already removed 0 counts and sparse
-	        # gb operations are known to be slow in pandas
-	        # https://github.com/pandas-dev/pandas/issues/36123
-	        # maybe try this? :
-	        # https://cmdlinetips.com/2019/03/how-to-write-pandas-groupby-function-using-sparse-matrix/
-	        id_col = '{}_id'.format(kind)
-	        name_col = '{}_name'.format(kind)
-	        df = df.copy()
-	        df.reset_index(inplace=True)
-	        df[self.datasets] = df[self.datasets].sparse.to_dense()
-	        df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
+			# groupby on gene and assign each unique TSS / gene combo an ID
+			# use dense representation b/c I've already removed 0 counts and sparse
+			# gb operations are known to be slow in pandas
+			# https://github.com/pandas-dev/pandas/issues/36123
+			# maybe try this? :
+			# https://cmdlinetips.com/2019/03/how-to-write-pandas-groupby-function-using-sparse-matrix/
+			id_col = '{}_id'.format(kind)
+			name_col = '{}_name'.format(kind)
+			df = df.copy()
+			df.reset_index(inplace=True)
+			df[self.datasets] = df[self.datasets].sparse.to_dense()
+			df = df.groupby(['gid', 'gname', 'vertex_id']).sum().reset_index()
 
-	        df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
-	                        ascending=[True, True])\
-	                        .groupby(['gid']) \
-	                        .cumcount() + 1
-	        df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
-	        df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
-	        df.drop('end_gene_num', axis=1, inplace=True)
+			df['end_gene_num'] = df.sort_values(['gid', 'vertex_id'],
+							ascending=[True, True])\
+							.groupby(['gid']) \
+							.cumcount() + 1
+			df[id_col] = df['gid']+'_'+df['end_gene_num'].astype(str)
+			df[name_col] = df['gname']+'_'+df['end_gene_num'].astype(str)
+			df.drop('end_gene_num', axis=1, inplace=True)
 
-	        # obs, var, and X tables for new data
-	        var_cols = ['gid', 'gname', 'vertex_id', id_col, name_col]
-	        var = df[var_cols]
-	        var.set_index('{}_id'.format(kind), inplace=True)
-	        df.drop(var_cols, axis=1, inplace=True)
-	        df = df[self.adata.obs.index.tolist()]
-	        X = sparse.csr_matrix(df.transpose().values)
-	        obs = self.adata.obs
+			# obs, var, and X tables for new data
+			var_cols = ['gid', 'gname', 'vertex_id', id_col, name_col]
+			var = df[var_cols]
+			var.set_index('{}_id'.format(kind), inplace=True)
+			df.drop(var_cols, axis=1, inplace=True)
+			df = df[self.adata.obs.index.tolist()]
+			X = sparse.csr_matrix(df.transpose().values)
+			obs = self.adata.obs
 
-	    # create anndata
-	    adata = anndata.AnnData(var=var, obs=obs, X=X)
+		# create anndata
+		adata = anndata.AnnData(var=var, obs=obs, X=X)
 
-	    # add counts and tpm as layers
-	    adata.layers['counts'] = adata.X
-	    adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
-	    if not self.sc:
-	        adata.layers['pi'] = sparse.csr_matrix(calc_pi(adata,
-	                adata.var)[0].to_numpy())
+		# add counts and tpm as layers
+		adata.layers['counts'] = adata.X
+		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
+		if not self.sc:
+			adata.layers['pi'] = sparse.csr_matrix(calc_pi(adata,
+					adata.var)[0].to_numpy())
 
-	    # assign adata and clean up unstructured data if needed
-	    if kind == 'tss':
-	        if self.has_abundance():
-	            adata.uns = self.tss_adata.uns
-	        self.tss_adata = adata
+		# assign adata and clean up unstructured data if needed
+		if kind == 'tss':
+			if self.has_abundance():
+				adata.uns = self.tss_adata.uns
+			self.tss_adata = adata
 
-	    elif kind == 'tes':
-	        if self.has_abundance():
-	            adata.uns = self.tss_adata.uns
-	        self.tes_adata = adata
+		elif kind == 'tes':
+			if self.has_abundance():
+				adata.uns = self.tss_adata.uns
+			self.tes_adata = adata
 
-	    elif kind == 'ic':
-	        if self.has_abundance():
-	            adata.uns = self.ic_adata.uns
-	        self.ic_adata = adata
+		elif kind == 'ic':
+			if self.has_abundance():
+				adata.uns = self.ic_adata.uns
+			self.ic_adata = adata
 
 	def create_edge_adata(self):
 		"""
@@ -2361,6 +2361,29 @@ class SwanGraph(Graph):
 			self.pg.plot_graph()
 			print('Saving summary graph for {} as {}'.format(gid, fname))
 			save_fig(fname)
+
+	def plot_browser(self, tid, **kwargs):
+		"""
+		Plot browser representation for a given transcript
+
+		Parameters:
+			tid (str): Transcript ID of transcript to plot
+
+		Returns:
+			ax (matplotlib axes): Axes with transcript plotted
+		"""
+
+		# init plot settings
+		self.check_transcript(tid)
+		self.pg.init_plot_settings(self, tid=tid,
+								   indicate_dataset=False,
+								   indicate_novel=False,
+								   browser=True)
+
+		# plot
+		ax = self.pg.plot_browser(**kwargs)
+
+		return ax
 
 	def plot_transcript_path(self, tid,
 							 indicate_dataset=False,
