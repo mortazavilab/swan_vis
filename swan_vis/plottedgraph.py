@@ -162,6 +162,7 @@ class PlottedGraph(Graph):
 
 		self.g_min, self.g_max = self.get_gene_min_max(gid)
 		self.strand = self.get_strand_from_gid(gid)
+		self.chrom = self.get_chrom_from_gid(gid)
 
 		# get positions and sizes of nodes/edges in this gene
 		self.new_swangraph()
@@ -434,6 +435,57 @@ class PlottedGraph(Graph):
 	######################## Browser track style plotting #########################
 	###############################################################################
 
+	def plot_regions(self, regions, scale, strand, plot_min, plot_max, x, y, h, color, ax):
+		"""
+		Plot exons of a gene, bed regions, etc.
+
+		Parameters:
+			regions (list of tuple of int): Coords for start and end of each
+				region to plot
+			scale (float): Scale of plot
+			plot_min (int): Min genomic coord plotted
+			plot_max (int): Max genomic coord plotted
+			x (float): X postition of leftmost region to plot
+			y (float): Y position of plotted regions
+			h (float): Height of plotted regions
+			color (str or list of str): Color to plot each region in
+			ax (matplotlib axes): Matplotlib axes to make plot on
+
+		Returns:
+			ax (matplotlib axes): Matplotlib axes with blocks plotted
+		"""
+		if type(color) == list:
+			colors = color
+		else:
+			colors = [color for i in range(len(regions))]
+
+		y_coord = y
+		i = 0
+		for v1,v2 in regions:
+
+			# color
+			color = colors[i]
+
+			# get coords from loc_df
+			min_coord = min(v1, v2)
+			max_coord = max(v1, v2)
+
+			# depending on strand, get starting coord and witdh of exon
+			if strand == '+':
+				x_coord = ((min_coord-plot_min)*scale)+x
+			elif strand == '-':
+				x_coord = ((plot_max-max_coord)*scale)+x
+
+			# width
+			width = (max_coord-min_coord)*scale
+
+			# plot
+			rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
+			ax.add_patch(rect)
+
+			i+=1
+		return ax
+
 	def plot_browser(self, x=0, y=0, w=14, h=0.1, color=None, ax=None, **kwargs):
 		"""
 		Plot the browser representation for one transcript on a given axis
@@ -454,7 +506,6 @@ class PlottedGraph(Graph):
 
 		# set up axes if not provided
 		if not ax:
-			print('uwu y u in here')
 			plt.figure(1, figsize=(4,3), frameon=False)
 			plt.xlim(x, x+w)
 			plt.ylim(y-2, y+2)
@@ -473,6 +524,7 @@ class PlottedGraph(Graph):
 
 		# scaling factor
 		scale = w / g_len
+		self.scale = scale
 
 		# path / strand info
 		strand = self.strand
@@ -480,29 +532,31 @@ class PlottedGraph(Graph):
 		edge_path = self.edge_path
 
 		# plot exons
-		exons = [(v1,v2) for v1,v2 in zip(loc_path[:-1],loc_path[1:])][::2]
-		introns = [(v1,v2) for v1,v2 in zip(loc_path[:-1],loc_path[1:])][1::2]
+		exons = [(self.loc_df.loc[v1, 'coord'],
+				 self.loc_df.loc[v2, 'coord']) \
+				 for v1,v2 in zip(loc_path[:-1],loc_path[1:])][::2]
 		y_coord = y
-		for v1,v2 in exons:
+		ax = self.plot_regions(exons, scale, strand, g_min, g_max,
+					           x, y, h, color, ax)
 
-			# get coords from loc_df
-			v1_coord = self.loc_df.loc[v1, 'coord']
-			v2_coord = self.loc_df.loc[v2, 'coord']
-			min_coord = min(v1_coord, v2_coord)
-			max_coord = max(v1_coord, v2_coord)
+		# for v1,v2 in exons:
 
-			# depending on strand, get starting coord and witdh of exon
-			if strand == '+':
-				x_coord = ((min_coord-g_min)*scale)+x
-			elif strand == '-':
-				x_coord = ((g_max-max_coord)*scale)+x
-
-			# width
-			width = (max_coord-min_coord)*scale
-
-			# plot
-			rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
-			ax.add_patch(rect)
+			# # get coords from loc_df
+			# min_coord = min(v1, v2)
+			# max_coord = max(v1, v1)
+			#
+			# # depending on strand, get starting coord and witdh of exon
+			# if strand == '+':
+			# 	x_coord = ((min_coord-g_min)*scale)+x
+			# elif strand == '-':
+			# 	x_coord = ((g_max-max_coord)*scale)+x
+			#
+			# # width
+			# width = (max_coord-min_coord)*scale
+			#
+			# # plot
+			# rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
+			# ax.add_patch(rect)
 
 		# plot intron as a line b/w first and last exons
 		dist = 200*scale

@@ -471,6 +471,17 @@ class Graph:
 			vertex = self.t_df.loc[(self.t_df.gid == gid)].path.tolist()[0][0]
 		return self.edge_df.loc[vertex, 'strand']
 
+	def get_chrom_from_gid(self, gid):
+		"""
+		Return the chromosome of the input gene ID.
+
+		Parameters:
+			gid (str): Gene ID
+		"""
+		chrom = self.loc_df.loc[self.t_df.loc[self.t_df.gid==gid,
+					'loc_path'].tolist()[0][0], 'chrom']
+		return chrom
+
 	def get_path_from_tid(self, tid):
 		"""
 		Return the edge path of the input transcript ID.
