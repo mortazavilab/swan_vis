@@ -435,7 +435,126 @@ class PlottedGraph(Graph):
 	######################## Browser track style plotting #########################
 	###############################################################################
 
-	def plot_regions(self, regions, scale, strand, plot_min, plot_max, x, y, h, color, ax):
+
+	def plot_line_bw_regions(self, regions, scale, strand, x, y, h, color, ax):
+	    """
+	    Plot a line connecting two regions
+
+	    Parameters:
+	        regions (list of tuple of int): Start and end regions
+	        strand (str): {'+', '-'}
+	        x (float): x offset
+	        y (float): y position
+	        h (float): height of vertical bars
+	        color (str): Color to plot
+	        ax (matplotlib axes): Axis to plot on
+
+	    Returns:
+	        ax (matplotlib axes): Axis w/ line plotted b/w 2 regions
+	    """
+
+	    g_min = self.g_min
+	    g_max = self.g_max
+
+	    coords = [regions[0][0], regions[0][1], regions[1][0], regions[1][1]]
+	    coords.sort()
+	    min_coord = coords[1]
+	    max_coord = coords[2]
+	    coord_dist = max_coord-min_coord
+
+	    dist = 75*scale
+	    y_line = y + (h/2)
+	    if strand == '+':
+	        c1 = ((min_coord-g_min)*scale)+x
+	        c2 = c1+(coord_dist*scale)
+	        x_coords = [c1+dist, c2-dist]
+	    elif strand == '-':
+	        c1 = ((g_max-max_coord)*scale)+x
+	        c2 = c1+(coord_dist*scale)
+	        x_coords = [c1+dist, c2-dist]
+
+	    linewidth = h*(2/0.2)
+	    plt.plot(x_coords, [y_line,y_line], color=color, linewidth=linewidth)
+
+	    return ax
+
+	def plot_scale(self, x, y, h, fontsize, ax):
+	    """
+	    Plot a scale for a plotted region
+
+	    Parameters:
+	        x (float): x offset
+	        y (float): y position
+	        h (float): height of vertical bars
+	        fontsize (float): Size of font to display on scale
+	        ax (matplotlib axes): Axis to plot on
+
+	    Returns:
+	        ax (matplotlib axes): Axis w/ line plotted b/w 2 regions
+	    """
+
+	    # get plot limits
+	    g_min = self.g_min
+	    g_max = self.g_max
+	    gene_len = g_max - g_min
+	    width = int((10/10000)*gene_len)
+	    scale = self.scale
+	    strand = self.strand
+
+	    # try different scale lengths until we've reached something optimal
+	    scale_len = 500
+	    while 1:
+	        if scale_len >= gene_len:
+	            break
+	        scale_len *= 10
+
+	    # dial it back so we show a nice chunk instead of the scale of the entire gene
+	    scale_len /= 10
+
+	    # are we going to indicate this in bp, kb, mb?
+	    if scale_len < 1000:
+	        scale_unit = 'bp'
+	        text_scale = scale_len
+	    elif scale_len < 10**6:
+	        scale_unit = 'kb'
+	        text_scale =  scale_len / 1000
+	    else:
+	        scale_unit = 'mb'
+	        text_scale = scale_len / 10**6
+	    text_scale = int(text_scale)
+
+	    # turn the boundaries of the scale into regions
+	    g_ave = (g_max+g_min)/2
+	    scale_min = g_ave - (scale_len/2)
+	    scale_max = g_ave + (scale_len/2)
+	    dist = int((10/10000)*gene_len)
+	    regions = [(scale_min-dist, scale_min),
+	               (scale_max, scale_max+dist)]
+
+	    # regions on either side of the scale and the line
+	    ax = self.plot_regions(regions, scale, strand, g_min, g_max, x, y, h, 'k', ax)
+	    ax = self.plot_line_bw_regions(regions, scale, strand, x, y, h, 'k', ax)
+
+	    # text
+	    coords = [regions[0][0], regions[0][1], regions[1][0], regions[1][1]]
+	    coords.sort()
+	    dist = 200*scale
+	    if strand == '+':
+	        coord = coords[0]
+	        coord = ((coord-g_min)*scale)+x-dist
+	    elif strand == '-':
+	        coord = coords[-1]
+	        coord = ((g_max-coord)*scale)+x-dist
+	    txt = '{} {}'.format(text_scale, scale_unit)
+	    y = y+(h/2)
+	    print('y right here now: {}'.format(y))
+	    ax.text(coord, y, txt, fontsize=fontsize, horizontalalignment='right', verticalalignment='center')
+
+	    return ax
+
+	def plot_regions(self, regions, scale, strand, plot_min, plot_max,
+					 x, y, h, color, ax,
+					 verbose=False):
 		"""
 		Plot exons of a gene, bed regions, etc.
 
@@ -478,6 +597,11 @@ class PlottedGraph(Graph):
 
 			# width
 			width = (max_coord-min_coord)*scale
+
+			if verbose:
+				print('x_coord:{}'.format(x_coord))
+				print('width : {}'.format(width))
+				print()
 
 			# plot
 			rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
@@ -539,27 +663,8 @@ class PlottedGraph(Graph):
 		ax = self.plot_regions(exons, scale, strand, g_min, g_max,
 					           x, y, h, color, ax)
 
-		# for v1,v2 in exons:
-
-			# # get coords from loc_df
-			# min_coord = min(v1, v2)
-			# max_coord = max(v1, v1)
-			#
-			# # depending on strand, get starting coord and witdh of exon
-			# if strand == '+':
-			# 	x_coord = ((min_coord-g_min)*scale)+x
-			# elif strand == '-':
-			# 	x_coord = ((g_max-max_coord)*scale)+x
-			#
-			# # width
-			# width = (max_coord-min_coord)*scale
-			#
-			# # plot
-			# rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
-			# ax.add_patch(rect)
-
 		# plot intron as a line b/w first and last exons
-		dist = 200*scale
+		dist = 125*scale
 		y_line = y + (h/2)
 		if strand == '+':
 			c1 = ((t_min-g_min)*scale)+x
@@ -735,12 +840,6 @@ class PlottedGraph(Graph):
 		if len(str(text_scale)) > 2:
 			x_coord = scale_start - (gene_len/7)
 		ax.text(x_coord, y_coord, txt, fontsize=30)
-
-		# # check if forward or reverse strand
-		# if self.strand == '-':
-		#	 ordered_nodes.reverse()
-		#
-		# return ordered_nodes
 
 	# orders edges by those present in the transcript and those not present in the transcript
 	def get_ordered_edges(self):
