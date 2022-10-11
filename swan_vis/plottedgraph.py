@@ -547,7 +547,6 @@ class PlottedGraph(Graph):
 	        coord = ((g_max-coord)*scale)+x-dist
 	    txt = '{} {}'.format(text_scale, scale_unit)
 	    y = y+(h/2)
-	    print('y right here now: {}'.format(y))
 	    ax.text(coord, y, txt, fontsize=fontsize, horizontalalignment='right', verticalalignment='center')
 
 	    return ax
