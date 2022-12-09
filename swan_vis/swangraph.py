@@ -536,7 +536,7 @@ class SwanGraph(Graph):
 		var.set_index(id_col, inplace=True)
 
 		if end:
-			var.rename({vert_col: 'vertex'}, axis=1, inplace=True)
+			var.rename({vert_col: 'vertex_id'}, axis=1, inplace=True)
 		#
 		# if mode == 'tss':
 		#	 pdb.set_trace()
@@ -1062,7 +1062,7 @@ class SwanGraph(Graph):
 
 		# didn't ask for either
 		if not gid and not datasets:
-			return sg
+			return self
 
 		# subset on gene
 		if gid:
