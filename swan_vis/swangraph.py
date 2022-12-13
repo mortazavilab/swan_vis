@@ -2112,12 +2112,10 @@ class SwanGraph(Graph):
 		df = df.transpose()
 		df.reset_index(inplace=True)
 		df['index'] = df['index'].astype('int')
+		df.set_index('index', inplace=True)
 
 		# merge the info together with the abundance
 		df = df.merge(temp, how='left', left_index=True, right_on='edge_id')
-
-		# drop index
-		df.drop('index', axis=1, inplace=True)
 
 		# save file
 		if prefix:
@@ -2177,6 +2175,8 @@ class SwanGraph(Graph):
 				each end.
 		"""
 
+		id_col = f'{how}_id'
+
 		# add location information to end_adata.var
 		if how == 'tss':
 			adata = self.tss_adata
@@ -2205,7 +2205,8 @@ class SwanGraph(Graph):
 		df.reset_index(inplace=True)
 
 		# merge the info together with the abundance
-		df = temp.merge(df, how='right', left_index=True, right_index=True)
+		# df = temp.merge(df, how='right', left_index=True, right_index=True)
+		df = temp.merge(df, how='right', left_on=id_col, right_on='index')
 
 		# drop index
 		df.drop('index', axis=1, inplace=True)
