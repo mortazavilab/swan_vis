@@ -527,7 +527,7 @@ class PlottedGraph(Graph):
 	    g_ave = (g_max+g_min)/2
 	    scale_min = g_ave - (scale_len/2)
 	    scale_max = g_ave + (scale_len/2)
-	    dist = int((10/10000)*gene_len)
+	    dist = int((50/10000)*gene_len)
 	    regions = [(scale_min-dist, scale_min),
 	               (scale_max, scale_max+dist)]
 
@@ -598,12 +598,15 @@ class PlottedGraph(Graph):
 			width = (max_coord-min_coord)*scale
 
 			if verbose:
+				print(min_coord)
+				print(max_coord)
 				print('x_coord:{}'.format(x_coord))
 				print('width : {}'.format(width))
 				print()
 
 			# plot
-			rect = pch.Rectangle((x_coord, y_coord), width, h, color=color, edgecolor=None)
+			rect = pch.Rectangle((x_coord, y_coord), width, h, color=color,
+			                     edgecolor=None, linewidth=0)
 			ax.add_patch(rect)
 
 			i+=1
