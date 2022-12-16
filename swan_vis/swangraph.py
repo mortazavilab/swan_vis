@@ -2763,6 +2763,8 @@ class SwanGraph(Graph):
 			order_df = tpm_df
 		elif order == 'pi':
 			order_df = t_df
+		else:
+			order_df = t_df
 		_, tids = sg.order_transcripts_subset(order_df, order=order)
 		tpm_df = tpm_df.loc[tids]
 		t_df = t_df.loc[tids]
