@@ -2306,6 +2306,8 @@ class SwanGraph(Graph):
 		self.tss_adata.uns['{}_dict'] = cmap
 		self.tes_adata.uns['{}_colors'.format(obs_col)] = sample_colors
 		self.tes_adata.uns['{}_dict'] = cmap
+		self.gene_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.gene_adata.uns['{}_dict'] = cmap
 
 	def plot_graph(self, gid,
 				   indicate_dataset=False,
