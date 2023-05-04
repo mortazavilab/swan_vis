@@ -678,7 +678,8 @@ class PlottedGraph(Graph):
 			x_coords = [c1+dist, c2-dist]
 
 		linewidth = 3
-		plt.plot(x_coords, [y_line,y_line], color=color, linewidth=linewidth)
+		plt.plot(x_coords, [y_line,y_line], color=color,
+				 linewidth=linewidth, zorder=1)
 
 		return ax
 
