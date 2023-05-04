@@ -659,6 +659,13 @@ class SwanGraph(Graph):
 													 data=data,
 													 index=tid)
 
+		# import pdb
+		# pdb.set_trace()
+
+		# # melt and remove 0-exp things
+		# t_exp_df = t_exp_df.melt()
+		# t_exp_df = t_exp_df.loc[t_exp_df.value > 0]
+
 		# merge counts per transcript with edges
 		edge_exp_df = edge_exp_df.merge(t_exp_df, how='left',
 			left_index=True, right_index=True)
