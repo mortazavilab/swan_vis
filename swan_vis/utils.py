@@ -302,15 +302,15 @@ def pivot_path_list(t_df, path_col):
 		t_df (pandas DataFrame): Transcript datafram from SwanGraph
 		path_col (str): Which path to pull from. Choose from 'path' or 'loc_path'
 	"""
-	# might be able to use this in the future:
-	# https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.explode.html
-	df = pd.DataFrame([[tid, x] for tid, path in zip(t_df.index, t_df[path_col]) \
-		for x in path])
+	df = t_df.explode(path_col, ignore_index=False)
 	if path_col == 'path':
-		df.columns = ['tid', 'edge_id']
+		c = 'edge_id'
+		c_map = {path_col: c}
 	elif path_col == 'loc_path':
-		df.columns = ['tid', 'vertex_id']
-	df.set_index('tid', inplace=True)
+		c = 'vertex_id'
+		c_map = {path_col: c}
+	df.rename(c_map, axis=1, inplace=True)
+	df = df[[c]]
 	return df
 
 ##########################################################################
@@ -509,28 +509,28 @@ def calc_tpm(adata, obs_col='dataset', how='mean', recalc=False):
 ##########################################################################
 
 def get_stable_gid(df, col):
-    """
-    Get a list of stable gene ids from a dataframe
+	"""
+	Get a list of stable gene ids from a dataframe
 
-    Parameters:
-        df (pandas DataFrame): DF w/ ENSEMBL gids in some column
-        col (str): Column name of gids
+	Parameters:
+		df (pandas DataFrame): DF w/ ENSEMBL gids in some column
+		col (str): Column name of gids
 
-    Returns:
-        gids (list of str): List of stable gids
-    """
-    df = df.copy(deep=True)
-    try:
-        df[['temp', 'par_region_1', 'par_region_2']] = df[col].str.split('_', n=2, expand=True)
-        df[col] = df[col].str.split('.', expand=True)[0]
-        df[['par_region_1', 'par_region_2']] = df[['par_region_1',
-                                                           'par_region_2']].fillna('')
-        df[col] = df[col]+df.par_region_1+df.par_region_2
-        df.drop(['temp', 'par_region_1', 'par_region_2'], axis=1, inplace=True)
-    except:
-        df[col] = df[col].str.split('.', expand=True)[0]
+	Returns:
+		gids (list of str): List of stable gids
+	"""
+	df = df.copy(deep=True)
+	try:
+		df[['temp', 'par_region_1', 'par_region_2']] = df[col].str.split('_', n=2, expand=True)
+		df[col] = df[col].str.split('.', expand=True)[0]
+		df[['par_region_1', 'par_region_2']] = df[['par_region_1',
+														   'par_region_2']].fillna('')
+		df[col] = df[col]+df.par_region_1+df.par_region_2
+		df.drop(['temp', 'par_region_1', 'par_region_2'], axis=1, inplace=True)
+	except:
+		df[col] = df[col].str.split('.', expand=True)[0]
 
-    return df[col].tolist()
+	return df[col].tolist()
 
 def parse_db(database, pass_list, observed, include_isms, verbose):
 	"""
