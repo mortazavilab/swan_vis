@@ -436,7 +436,8 @@ class PlottedGraph(Graph):
 	###############################################################################
 
 
-	def plot_line_bw_regions(self, regions, scale, strand, x, y, h, color, ax):
+	def plot_line_bw_regions(self, regions, scale, strand, x, y, h, color, ax,
+							 linewidth=1):
 	    """
 	    Plot a line connecting two regions
 
@@ -473,12 +474,12 @@ class PlottedGraph(Graph):
 	        c2 = c1+(coord_dist*scale)
 	        x_coords = [c1+dist, c2-dist]
 
-	    linewidth = h*(2/0.2)
+	    # linewidth = h*(2/0.2)
 	    plt.plot(x_coords, [y_line,y_line], color=color, linewidth=linewidth)
 
 	    return ax
 
-	def plot_scale(self, x, y, h, fontsize, ax):
+	def plot_scale(self, x, y, h, fontsize, ax, **kwargs):
 	    """
 	    Plot a scale for a plotted region
 
@@ -533,7 +534,7 @@ class PlottedGraph(Graph):
 
 	    # regions on either side of the scale and the line
 	    ax = self.plot_regions(regions, scale, strand, g_min, g_max, x, y, h, 'k', ax)
-	    ax = self.plot_line_bw_regions(regions, scale, strand, x, y, h, 'k', ax)
+	    ax = self.plot_line_bw_regions(regions, scale, strand, x, y, h, 'k', ax, **kwargs)
 
 	    # text
 	    coords = [regions[0][0], regions[0][1], regions[1][0], regions[1][1]]
@@ -612,7 +613,9 @@ class PlottedGraph(Graph):
 			i+=1
 		return ax
 
-	def plot_browser(self, x=0, y=0, w=14, h=0.1, color=None, ax=None, **kwargs):
+	def plot_browser(self, x=0, y=0, w=14, h=0.1,
+					 color=None, linewidth=3,
+					 ax=None, **kwargs):
 		"""
 		Plot the browser representation for one transcript on a given axis
 
@@ -621,6 +624,7 @@ class PlottedGraph(Graph):
 			y (float): Start y coord from bottom right corner of browser model
 			w (float): Maximum width of browser model
 			h (float): Height of browser model
+			linewidth (float): Width of intron line
 			color (str): Color to plot model in
 			ax (matplotlib axes): Axes to plot on
 
@@ -677,7 +681,6 @@ class PlottedGraph(Graph):
 			c2 = c1+(t_len*scale)
 			x_coords = [c1+dist, c2-dist]
 
-		linewidth = 3
 		plt.plot(x_coords, [y_line,y_line], color=color,
 				 linewidth=linewidth, zorder=1)
 
