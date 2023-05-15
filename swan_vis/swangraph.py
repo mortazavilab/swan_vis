@@ -61,7 +61,14 @@ class SwanGraph(Graph):
 			Annotated data object to hold TES expression values and metadata
 	"""
 
-	def __init__(self, sc=False):
+	def __init__(self, sc=False, edge_adata=True, end_adata=True, ic_adata=True):
+		"""
+		Parameters:
+			sc (bool): Whether this is coming from single cell data
+			edge_adata (bool): Whether to create the edge_adata table
+			end_adata (bool): Whether to create the tss/tes_adata tables
+			ic_adata (bool): Whether to create the ic_adata table
+		"""
 
 		super().__init__()
 
@@ -72,6 +79,21 @@ class SwanGraph(Graph):
 			self.sc = True
 		else:
 			self.sc = False
+
+		if edge_adata:
+			self.make_edge_adata = True
+		else:
+			self.make_edge_adata = False
+
+		if end_adata:
+			self.make_end_adata = True
+		else:
+			self.make_end_adata = False
+
+		if ic_adata:
+			self.make_ic_adata = True
+		else:
+			self.make_ic_adata = False
 
 	###########################################################################
 	############## Related to adding datasets and merging #####################
@@ -384,16 +406,19 @@ class SwanGraph(Graph):
 
 		# add abundance for edges, TSS per gene, and TES per gene
 		if how == 'iso':
-			print('Calculating edge usage...')
-			self.create_edge_adata()
-			print('Calculating TSS usage...')
-			self.create_feat_adata(kind='tss')
-			print('Calculating TES usage...')
-			self.create_feat_adata(kind='tes')
+			if self.make_edge_adata:
+				print('Calculating edge usage...')
+				self.create_edge_adata()
+			if self.make_end_adata:
+				print('Calculating TSS usage...')
+				self.create_feat_adata(kind='tss')
+				print('Calculating TES usage...')
+				self.create_feat_adata(kind='tes')
 
 			if 'ic_id' in self.t_df.columns:
-				print('Calculating IC usage...')
-				self.create_feat_adata(kind='ic')
+				if self.make_ic_adata:
+					print('Calculating IC usage...')
+					self.create_feat_adata(kind='ic')
 
 		# set abundance flag to true
 		if how == 'iso':
