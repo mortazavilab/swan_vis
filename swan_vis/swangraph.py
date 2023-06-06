@@ -471,7 +471,6 @@ class SwanGraph(Graph):
 		# make sure we're storing as sparse
 		if isinstance(adata.X, np.ndarray):
 			X = sparse.csr_matrix(adata.X)
-			import pdb; pdb.set_trace()
 			adata.X = X
 
 		# name this layer
