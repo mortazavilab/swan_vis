@@ -428,6 +428,72 @@ class SwanGraph(Graph):
 			self.gene_abundance = True
 			self.gene_adata = sg_adata
 
+
+	def format_adata(self, adata_file, how='iso'):
+		"""
+		Format AnnData file for use with Swan
+
+		Parameters:
+			adata_file (str): Path to AnnData file where var index is the
+				transcript ID and obs index is the dataset name.
+			how (str): {'iso', 'gene'}
+
+		Returns:
+			adata (anndata AnnData): AnnData representation of gene or
+				transcript-level expression
+		"""
+
+		# read in abundance file
+		check_file_loc(adata_file, 'AnnData')
+		try:
+			adata = sc.read(adata_file)
+		except:
+			raise ValueError('Problem reading AnnData {}'.format(counts_file))
+
+		# format tid for var table
+		adata.var['tid'] = adata.var.index
+		adata.var.index.name = 'tid'
+
+		# format dataset for obs table
+		adata.obs['dataset'] = adata.obs.index
+
+		# sum for gene level
+		if how == 'gene':
+			# df = df.groupby(id_col).sum().reset_index()
+			raise Error('Not implemented yet')
+			# will have to think about summing across genes
+			# probably use tid<->gid conversions from t_df
+
+		# create transcript-level adata object and filter out unexpressed transcripts
+		genes, _  = sc.pp.filter_genes(adata, min_counts=1, inplace=False)
+		adata = adata[:, genes].copy()
+
+		# make sure we're storing as sparse
+		if isinstance(adata.X, np.ndarray):
+			X = sparse.csr_matrix(adata.X)
+			import pdb; pdb.set_trace()
+			adata.X = X
+
+		# name this layer
+		adata.layers['counts'] = adata.X
+
+		return adata
+
+	def add_adata(self, adata_file, how='iso'):
+		"""
+		Adds abundance / metadata information from an AnnData object into the
+		SwanGraph. Transcripts in the SwanGraph but not in the AnnData will be
+		assigned 0 counts. Transcripts in the abundance matrix but not in the
+		SwanGraph will not have expression added.
+
+		Parameters:
+			adata_file (str): Path to AnnData file where var index is the
+				transcript ID and obs index is the dataset name.
+			how (str): {'iso', 'gene'}
+		"""
+		adata = self.format_adata(adata_file, how=how)
+		self.merge_adata_abundance(adata, how=how)
+
 	def add_abundance(self, counts_file, how='iso'):
 		"""
 		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
@@ -442,6 +508,7 @@ class SwanGraph(Graph):
 			how (str): {'iso', 'gene'}
 		"""
 		adata = self.abundance_to_adata(counts_file, how=how)
+		import pdb; pdb.set_trace()
 		self.merge_adata_abundance(adata, how=how)
 
 	def add_metadata(self, fname, overwrite=False):
@@ -2304,6 +2371,8 @@ class SwanGraph(Graph):
 			cmap (dict): Dictionary of metadata value : color (hex code with #
 				character or named matplotlib color)
 		"""
+
+		cmap = copy.deepcopy(cmap)
 
 		# check if obs_col is even there
 		if obs_col not in self.adata.obs.columns.tolist():
