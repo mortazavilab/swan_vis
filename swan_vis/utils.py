@@ -1065,7 +1065,12 @@ def reformat_talon_abundance(df, how='iso', ofile=None):
 	elif how=='gene':
 		drop_cols.append('annot_transcript_id')
 
-	df.drop(drop_cols, axis=1, inplace=True)
+	# drop the drop cols that exist in this df
+	# (ignore key errors)
+	df.drop(drop_cols,
+			axis=1,
+			inplace=True,
+			errors='ignore')
 
 	# if not writing output file just return df
 	if not ofile:
