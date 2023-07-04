@@ -487,7 +487,8 @@ class SwanGraph(Graph):
 
 		Parameters:
 			adata_file (str): Path to AnnData file where var index is the
-				transcript ID and obs index is the dataset name.
+				transcript ID, obs index is the dataset name, and X is the
+				raw counts (ie not already log transformed).
 			how (str): {'iso', 'gene'}
 		"""
 		adata = self.format_adata(adata_file, how=how)
@@ -507,7 +508,6 @@ class SwanGraph(Graph):
 			how (str): {'iso', 'gene'}
 		"""
 		adata = self.abundance_to_adata(counts_file, how=how)
-		import pdb; pdb.set_trace()
 		self.merge_adata_abundance(adata, how=how)
 
 	def add_metadata(self, fname, overwrite=False):
@@ -2757,6 +2757,7 @@ class SwanGraph(Graph):
 
 					temp = self.adata.obs[[groupby, c, 'dataset']].copy(deep=True)
 					temp = temp.groupby([groupby, c]).count().reset_index()
+					temp = temp.loc[temp.dataset!=0]
 					temp = temp.loc[~temp.dataset.isnull()]
 
 					# if there are duplicates from the metadata column, throw exception
