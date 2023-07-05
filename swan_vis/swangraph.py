@@ -492,6 +492,12 @@ class SwanGraph(Graph):
 		genes, _  = sc.pp.filter_genes(adata, min_counts=1, inplace=False)
 		adata = adata[:, genes].copy()
 
+		# limit to just the transcripts already in the graph
+		sg_tids = self.t_df.tid.tolist()
+		ab_tids = adata.var.index.tolist()
+		tids = list(set(sg_tids)&set(ab_tids))
+		adata = adata[:, tids].copy()
+
 		# make sure we're storing as sparse
 		if isinstance(adata.X, np.ndarray):
 			X = sparse.csr_matrix(adata.X)
