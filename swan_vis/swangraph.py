@@ -2126,7 +2126,7 @@ class SwanGraph(Graph):
 		for i, group in enumerate(groupby):
 			for adata in adatas:
 				if i == 0:
-					adata.obs[col_name] = adata.obs[groupby].astype(str)
+					adata.obs[col_name] = adata.obs[group].astype(str)
 				else:
 					adata.obs[col_name] = adata.obs[col_name] + '_' + adata.obs[group].astype(str)
 		return col_name
