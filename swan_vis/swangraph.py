@@ -34,34 +34,45 @@ class SwanGraph(Graph):
 	A graph class to represent a transcriptome and perform
 	plotting and analysis from it
 
-	Attributes:
-
-		datasets (list of str):
-			Names of datasets in the Graph
-		loc_df (pandas DataFrame):
-			DataFrame of all unique observed genomic
-			coordinates in the transcriptome
-		edge_df (pandas DataFrame):
-			DataFrame of all unique observed exonic or intronic
-			combinations of splice sites in the transcriptome
-		t_df (pandas DataFrame):
-			DataFrame of all unique transcripts found
-			in the transcriptome
-		pg (swan PlottedGraph):
-			The PlottedGraph holds the information from the most
-			recently made plot
-		adata (anndata AnnData):
-			Annotated data object to hold transcript expression values
-			and metadata
-		edge_adata (anndata AnnData):
-			Annotated data object to hold edge expression values and metadata
-		tss_adata (anndata AnnData):
-			Annotated data object to hold TSS expression values and metadata
-		tes_adata (anndata AnnData):
-			Annotated data object to hold TES expression values and metadata
+	Attributes
+	----------
+	datasets (list of str):
+		Names of datasets in the Graph
+	gene_datasets (list of str):
+		Names of datasets w/ gene expression in the Graph
+	annotation (bool):
+		Whether an annotation transcriptome has been added.
+	abundance (bool):
+		Whether abundance data has been added to the SwanGraph
+	gene_abundance (bool):
+		Whether gene abundance data has been added to the SwanGraph
+	loc_df (pandas DataFrame):
+		DataFrame of all unique observed genomic
+		coordinates in the transcriptome
+	edge_df (pandas DataFrame):
+		DataFrame of all unique observed exonic or intronic
+		combinations of splice sites in the transcriptome
+	t_df (pandas DataFrame):
+		DataFrame of all unique transcripts found
+		in the transcriptome
+	adata (anndata AnnData):
+		Annotated data object to hold transcript expression values
+		and metadata
+	gene_adata (anndata AnnData):
+		Annotated data object to hold gene expression values / metadata
+	ic_adata (anndata AnnData):
+		Annotated data object to hold intron chain expression values / metadata
+	tss_adata (anndata AnnData):
+		Annotated data object to hold TSS expression values and metadata
+	tes_adata (anndata AnnData):
+		Annotated data object to hold TES expression values and metadata
 	"""
 
-	def __init__(self, sc=False, edge_adata=True, end_adata=True, ic_adata=True):
+	def __init__(self,
+				 sc=False,
+				 edge_adata=True,
+				 end_adata=True,
+				 ic_adata=True):
 		"""
 		Parameters:
 			sc (bool): Whether this is coming from single cell data
@@ -99,7 +110,9 @@ class SwanGraph(Graph):
 	############## Related to adding datasets and merging #####################
 	###########################################################################
 
-	def add_annotation(self, fname, verbose=False):
+	def add_annotation(self,
+					   fname,
+					   verbose=False):
 		"""
 		Adds an annotation from input fname to the SwanGraph.
 
@@ -124,8 +137,11 @@ class SwanGraph(Graph):
 		# set flag
 		self.annotation = True
 
-	def add_transcriptome(self, fname, pass_list=None,
-		include_isms=False, verbose=False):
+	def add_transcriptome(self,
+						  fname,
+						  pass_list=None,
+						  include_isms=False,
+						  verbose=False):
 
 		"""
 		Adds a whole transcriptome from a set of samples.
@@ -148,7 +164,8 @@ class SwanGraph(Graph):
 		if 'annotation' in self.t_df.columns:
 			self.t_df.annotation.fillna(False, inplace=True)
 
-	def add_dataset(self, fname,
+	def add_dataset(self,
+					fname,
 					pass_list=None,
 					include_isms=False,
 					annotation=False,
@@ -158,7 +175,7 @@ class SwanGraph(Graph):
 
 		Parameters:
 			fname (str): Path to GTF or TALON db
-			pass_list (str): Path to pass list file
+			pass_list (str): Path to pass list file of transcript IDs to include
 			include_isms (bool): Include ISMs from input dataset
 				Default: False
 			annotation (bool): Whether transcripts being added are from
@@ -264,7 +281,9 @@ class SwanGraph(Graph):
 			lids = loc_df.vertex_id.unique().tolist()
 			self.loc_df = self.loc_df.loc[lids]
 
-	def abundance_to_adata(self, counts_file, how='iso'):
+	def abundance_to_adata(self,
+						   counts_file,
+						   how='iso'):
 		"""
 		Convert expression matrix to adata
 
@@ -331,7 +350,9 @@ class SwanGraph(Graph):
 
 		return adata
 
-	def merge_adata_abundance(self, adata, how='iso'):
+	def merge_adata_abundance(self,
+							  adata,
+							  how='iso'):
 		"""
 		Merge abundance information with preexisting abundance info in the
 			SwanGraph
@@ -430,7 +451,9 @@ class SwanGraph(Graph):
 			self.gene_adata = sg_adata
 
 
-	def format_adata(self, adata_file, how='iso'):
+	def format_adata(self,
+	                 adata_file,
+					 how='iso'):
 		"""
 		Format AnnData file for use with Swan
 
@@ -479,7 +502,9 @@ class SwanGraph(Graph):
 
 		return adata
 
-	def add_adata(self, adata_file, how='iso'):
+	def add_adata(self,
+	              adata_file,
+				  how='iso'):
 		"""
 		Adds abundance / metadata information from an AnnData object into the
 		SwanGraph. Transcripts in the SwanGraph but not in the AnnData will be
@@ -490,12 +515,14 @@ class SwanGraph(Graph):
 			adata_file (str): Path to AnnData file where var index is the
 				transcript ID, obs index is the dataset name, and X is the
 				raw counts (ie not already log transformed).
-			how (str): {'iso', 'gene'}
+			how (str): {'iso', 'gene'} (Gene-level currently not implemented)
 		"""
 		adata = self.format_adata(adata_file, how=how)
 		self.merge_adata_abundance(adata, how=how)
 
-	def add_abundance(self, counts_file, how='iso'):
+	def add_abundance(self,
+					  counts_file,
+					  how='iso'):
 		"""
 		Adds abundance from a counts matrix to the SwanGraph. Transcripts in the
 		SwanGraph but not in the counts matrix will be assigned 0 counts.
@@ -511,7 +538,9 @@ class SwanGraph(Graph):
 		adata = self.abundance_to_adata(counts_file, how=how)
 		self.merge_adata_abundance(adata, how=how)
 
-	def add_metadata(self, fname, overwrite=False):
+	def add_metadata(self,
+	                 fname,
+					 overwrite=False):
 		"""
 		Adds metadata to the SwanGraph from a tsv.
 
@@ -574,7 +603,7 @@ class SwanGraph(Graph):
 	##########################################################################
 	def create_cerberus_adata(self, mode):
 		"""
-		Use the ends and intron chains called by cerberus to compute
+		Use the ends and intron chains called by Cerberus to compute
 		expression values for TSSs, TESs, or intron chains.
 
 		Parameters:
@@ -607,13 +636,9 @@ class SwanGraph(Graph):
 
 		t_counts = self.get_transcript_abundance(kind='counts')
 		t_counts = t_counts.merge(df, how='left', on='tid')
-		# if mode == 'tes':
-		#	 print(t_counts.loc[t_counts.tes_id == 'ENCODEHG000058837_1', 'hl60_m2_72hr_1_1'])
 
 		# gb and sum counts over the different features
 		t_counts.drop('tid', axis=1, inplace=True)
-		# print(mode)
-		# print(gb_cols)
 		t_counts = t_counts.groupby(gb_cols).sum()
 
 		# get separate components of the table
@@ -629,9 +654,6 @@ class SwanGraph(Graph):
 
 		if end:
 			var.rename({vert_col: 'vertex_id'}, axis=1, inplace=True)
-		#
-		# if mode == 'tss':
-		#	 pdb.set_trace()
 
 		return obs, var, X
 
@@ -647,7 +669,7 @@ class SwanGraph(Graph):
 		# check to see if end information is already present in swangraph
 		id_col = '{}_id'.format(kind)
 		if id_col in self.t_df.columns:
-			print('Using cerberus IDs to calculate')
+			print('Using Cerberus IDs to calculate')
 			obs, var, X = self.create_cerberus_adata(kind)
 
 		else:
@@ -750,13 +772,6 @@ class SwanGraph(Graph):
 		t_exp_df = pd.DataFrame.sparse.from_spmatrix(columns=obs,
 													 data=data,
 													 index=tid)
-
-		# import pdb
-		# pdb.set_trace()
-
-		# # melt and remove 0-exp things
-		# t_exp_df = t_exp_df.melt()
-		# t_exp_df = t_exp_df.loc[t_exp_df.value > 0]
 
 		# merge counts per transcript with edges
 		edge_exp_df = edge_exp_df.merge(t_exp_df, how='left',
@@ -897,7 +912,9 @@ class SwanGraph(Graph):
 
 		return edge_df
 
-	def create_dfs(self, transcripts, exons,
+	def create_dfs(self,
+	               transcripts,
+				   exons,
 				   from_talon=False,
 				   from_cerberus=False):
 		"""
@@ -957,19 +974,6 @@ class SwanGraph(Graph):
 			cols.append('novelty')
 		if from_cerberus:
 			cols += ['tss_id', 'ic_id', 'tes_id']
-		# if from_talon:
-		# 	transcripts = [{'tid': key,
-		# 				'tname': item['tname'],
-		# 				'gid': item['gid'],
-		# 				'gname': item['gname'],
-		# 				'path': item['path'],
-		# 				'novelty': item['novelty']} for key, item in transcripts.items()]
-		# else:
-		# 	transcripts = [{'tid': key,
-		# 				'tname': item['tname'],
-		# 				'gid': item['gid'],
-		# 				'gname': item['gname'],
-		# 				'path': item['path']} for key, item in transcripts.items()]
 		t_df = pd.DataFrame(transcripts)
 		t_df = t_df.transpose()
 		t_df = t_df.reset_index(drop=True)
@@ -1055,6 +1059,7 @@ class SwanGraph(Graph):
 			exons (dict): Dictionary of exons found in the GTF or TALON DB.
 				Keys (str): chr_v1_c2_strand_exon.
 				Items (dict): eid, chrom, v1, v2, strand, edge_type
+			loc (dict): TODO
 
 		Returns:
 			transcripts (dict): Dictionary of only NEW transcripts.
@@ -1351,8 +1356,9 @@ class SwanGraph(Graph):
 		transcript, or by the genomic location of the transcripts' TSSs or TESs.
 
 		Parameters:
-			order (str): Method to order transcripts by. Choose from ['tid',
-				'expression', 'tss', 'tes']
+			order (str): Method to order transcripts by. {'tid',
+				'expression', 'tss', 'tes'}
+				Default: 'tid'
 		"""
 
 		# order by transcript id
@@ -1622,258 +1628,265 @@ class SwanGraph(Graph):
 
 		return es_df
 
-	def de_gene_test(self, obs_col, obs_conditions=None):
-		"""
-		Runs a differential expression test on the gene level.
+	# def de_gene_test(self, obs_col, obs_conditions=None):
+	# 	"""
+	# 	Runs a differential expression test on the gene level.
+	#
+	# 	Parameters:
+	# 		obs_col (str): Metadata column from self.adata.obs to perform
+	# 			the test on
+	# 		obs_conditions (list of str, len 2): Categories from 'obs_col' in
+	# 			self.adata.obs to perform the test on.
+	#
+	# 	Returns:
+	# 		test (pandas DataFrame): A summary table of the differential
+	# 			expression test, including p and q-values, as well
+	# 			as log fold change.
+	# 	"""
 
-		Parameters:
-			obs_col (str): Metadata column from self.adata.obs to perform
-				the test on
-			obs_conditions (list of str, len 2): Categories from 'obs_col' in
-				self.adata.obs to perform the test on.
+		# # check if obs_col is even there
+		# if obs_col not in self.adata.obs.columns.tolist():
+		# 	raise ValueError('Metadata column {} not found'.format(obs_col))
+		#
+		# # check if there are more than 2 unique values in obs_col
+		# if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+		# 	raise ValueError('Must provide obs_conditions argument when obs_col has'\
+		# 		' >2 unique values')
+		# elif not obs_conditions:
+		# 	obs_conditions = self.adata.obs[obs_col].unique().tolist()
+		# elif len(obs_conditions) != 2:
+		# 	raise ValueError('obs_conditions must have exactly 2 values')
+		#
+		# # check if these values of obs_col exist
+		# if obs_col and obs_conditions:
+		# 	conds = self.adata.obs[obs_col].unique().tolist()
+		# 	for cond in obs_conditions:
+		# 		if cond not in conds:
+		# 			raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+		#
+		# # get an AnnData that's a subset based on obs_conditions
+		# if obs_conditions:
+		# 	inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
+		# 	inds = inds.index.tolist()
+		# 	adata = self.adata[inds, :]
+		# else:
+		# 	adata = self.adata
+		#
+		# # groupby gene and sum counts
+		# data = adata.layers['counts'].toarray()
+		# var = adata.var.index.tolist()
+		# obs = adata.obs.index.tolist()
+		# df = pd.DataFrame(data=data, columns=var, index=obs)
+		# df = df.transpose()
+		# df = df.merge(self.t_df['gid'], how='left',
+		# 	left_index=True, right_index=True)
+		# df.reset_index(drop=True, inplace=True)
+		# df = df.groupby('gid').sum()
+		#
+		# # format as adata and add metadata
+		# df = df.transpose()
+		# X = sparse.csr_matrix(df.values)
+		# var = df.columns.to_frame()
+		# obs = df.index.to_frame()
+		# obs.rename({0: 'dataset'}, axis=1, inplace=True)
+		# adata = anndata.AnnData(X=X, obs=obs, var=var)
+		# adata.obs = adata.obs.merge(self.adata.obs, how='left', on='dataset')
+		# adata.obs.index = adata.obs.dataset
+		# adata.layers['counts'] = adata.X
+		#
+		# # recalculate TPM
+		# adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
+		#
+		# # set layer to TPM
+		# adata.X = adata.layers['tpm']
+		#
+		# formula_loc = "~ 1 + {}".format(obs_col)
+		# factor_loc_totest = obs_col
+		#
+		# # test
+		# test = de.test.wald(
+		# 	data=adata,
+		# 	formula_loc=formula_loc,
+		# 	factor_loc_totest=factor_loc_totest)
+		# test = test.summary()
+		# test.rename({'gene': 'gid'}, axis=1, inplace=True)
+		#
+		# # add gene name column
+		# gnames = self.t_df[['gid', 'gname']].copy(deep=True)
+		# gnames.drop_duplicates(inplace=True)
+		# gnames.reset_index(drop=True, inplace=True)
+		# test = test.merge(gnames, how='left', on='gid')
+		#
+		# # sort on log2fc
+		# test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+		#
+		# # add summary table to anndata
+		# uns_name = make_uns_key(kind='deg',
+		# 			obs_col=obs_col, obs_conditions=obs_conditions)
+		#
+		# self.adata.uns[uns_name] = test
+		#
+		# return test
 
-		Returns:
-			test (pandas DataFrame): A summary table of the differential
-				expression test, including p and q-values, as well
-				as log fold change.
-		"""
+	# def get_de_genes(self, obs_col, obs_conditions=None, q=0.05, log2fc=1):
+	# 	"""
+	# 	Subsets the differential gene expression test summary table based
+	# 	on a q-value and log2fc cutoff. Requires that de_gene_test has
+	# 	already been run.
+	#
+	# 	Parameters:
+	# 		obs_col (str): Column name from self.adata.obs table to group on.
+	# 			Default: 'dataset'
+	# 		obs_conditions (list of str, len 2): Which conditions from obs_col
+	# 			to compare? Required if obs_col has more than 2 unique values.
+	# 		q (float): q-value threshold to declare a gene as significant
+	# 			Default: 0.05
+	# 		log2fc (float): log2fc threshold to declare a gene significant
+	# 			Default: 1
+	#
+	# 	Returns:
+	# 		test (pandas DataFrame): Summary table of genes that pass the
+	# 			significance threshold
+	# 	"""
+	#
+	# 	# check to see if this was even tested
+	# 	uns_name = make_uns_key(kind='deg',
+	# 				obs_col=obs_col, obs_conditions=obs_conditions)
+	# 	try:
+	# 		test = self.adata.uns[uns_name]
+	# 	except:
+	# 		raise Exception('Problem accessing DEG test results for {}, {}'.format(obs_col, obs_conditions))
+	#
+	# 	# subset on q value
+	# 	test = test.loc[test.qval <= q].copy(deep=True)
+	# 	test = test.loc[test.log2fc >= log2fc]
+	#
+	# 	return test
 
-		# check if obs_col is even there
-		if obs_col not in self.adata.obs.columns.tolist():
-			raise ValueError('Metadata column {} not found'.format(obs_col))
+	# def de_transcript_test(self, obs_col, obs_conditions=None):
+	# 	"""
+	# 	Runs a differential expression test on the transcript level.
+	#
+	# 	Parameters:
+	# 		obs_col (str): Metadata column from self.adata.obs to perform
+	# 			the test on
+	# 		obs_conditions (list of str, len 2): Categories from 'obs_col' in
+	# 			self.adata.obs to perform the test on.
+	#
+	# 	Returns:
+	# 		test (pandas DataFrame): A summary table of the differential
+	# 			expression test, including p and q-values, as well
+	# 			as log fold change.
+	# 	"""
+	#
+	# 	# check if obs_col is even there
+	# 	if obs_col not in self.adata.obs.columns.tolist():
+	# 		raise ValueError('Metadata column {} not found'.format(obs_col))
+	#
+	# 	# check if there are more than 2 unique values in obs_col
+	# 	if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
+	# 		raise ValueError('Must provide obs_conditions argument when obs_col has'\
+	# 			' >2 unique values')
+	# 	elif not obs_conditions:
+	# 		obs_conditions = self.adata.obs[obs_col].unique().tolist()
+	# 	elif len(obs_conditions) != 2:
+	# 		raise ValueError('obs_conditions must have exactly 2 values')
+	#
+	# 	# check if these values of obs_col exist
+	# 	if obs_col and obs_conditions:
+	# 		conds = self.adata.obs[obs_col].unique().tolist()
+	# 		for cond in obs_conditions:
+	# 			if cond not in conds:
+	# 				raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
+	#
+	# 	# get an AnnData that's a subset based on obs_conditions
+	# 	if obs_conditions:
+	# 		inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
+	# 		inds = inds.index.tolist()
+	# 		adata = self.adata[inds, :]
+	# 	else:
+	# 		adata = self.adata
+	#
+	# 	# set layer to TPM
+	# 	adata.X = adata.layers['tpm']
+	#
+	# 	formula_loc = "~ 1 + {}".format(obs_col)
+	# 	factor_loc_totest = obs_col
+	#
+	# 	# test
+	# 	test = de.test.wald(
+	# 		data=adata,
+	# 		formula_loc=formula_loc,
+	# 		factor_loc_totest=factor_loc_totest)
+	# 	test = test.summary()
+	# 	test.rename({'gene': 'tid'}, axis=1, inplace=True)
+	#
+	# 	# add gene name column
+	# 	gnames = self.t_df[['tid', 'gid', 'gname']].copy(deep=True)
+	# 	gnames.reset_index(drop=True, inplace=True)
+	# 	test = test.merge(gnames, how='left', on='tid')
+	#
+	# 	# sort on log2fc
+	# 	test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
+	#
+	# 	# add summary table to anndata
+	# 	uns_name = make_uns_key(kind='det',
+	# 				obs_col=obs_col, obs_conditions=obs_conditions)
+	#
+	# 	self.adata.uns[uns_name] = test
+	#
+	# 	return test
 
-		# check if there are more than 2 unique values in obs_col
-		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
-			raise ValueError('Must provide obs_conditions argument when obs_col has'\
-				' >2 unique values')
-		elif not obs_conditions:
-			obs_conditions = self.adata.obs[obs_col].unique().tolist()
-		elif len(obs_conditions) != 2:
-			raise ValueError('obs_conditions must have exactly 2 values')
+	# def get_de_transcripts(self, obs_col, obs_conditions=None, q=0.05, log2fc=1):
+	# 	"""
+	# 	Subsets the differential gene expression test summary table based
+	# 	on a q-value and log2fc cutoff. Requires that de_gene_test has
+	# 	already been run.
+	#
+	# 	Parameters:
+	# 		obs_col (str): Column name from self.adata.obs table to group on.
+	# 			Default: 'dataset'
+	# 		obs_conditions (list of str, len 2): Which conditions from obs_col
+	# 			to compare? Required if obs_col has more than 2 unique values.
+	# 		q (float): q-value threshold to declare a gene as significant
+	# 			Default: 0.05
+	# 		log2fc (float): log2fc threshold to declare a gene significant
+	# 			Default: 1
+	#
+	# 	Returns:
+	# 		test (pandas DataFrame): Summary table of genes that pass the
+	# 			significance threshold
+	# 	"""
+	#
+	# 	# check to see if this was even tested
+	# 	uns_name = make_uns_key(kind='det',
+	# 				obs_col=obs_col, obs_conditions=obs_conditions)
+	# 	try:
+	# 		test = self.adata.uns[uns_name]
+	# 	except:
+	# 		raise Exception('Problem accessing DET test results for {}, {}'.format(obs_col, obs_conditions))
+	#
+	# 	# subset on q value
+	# 	test = test.loc[test.qval <= q].copy(deep=True)
+	# 	test = test.loc[test.log2fc >= log2fc]
+	#
+	# 	return test
 
-		# check if these values of obs_col exist
-		if obs_col and obs_conditions:
-			conds = self.adata.obs[obs_col].unique().tolist()
-			for cond in obs_conditions:
-				if cond not in conds:
-					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
-
-		# get an AnnData that's a subset based on obs_conditions
-		if obs_conditions:
-			inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
-			inds = inds.index.tolist()
-			adata = self.adata[inds, :]
-		else:
-			adata = self.adata
-
-		# groupby gene and sum counts
-		data = adata.layers['counts'].toarray()
-		var = adata.var.index.tolist()
-		obs = adata.obs.index.tolist()
-		df = pd.DataFrame(data=data, columns=var, index=obs)
-		df = df.transpose()
-		df = df.merge(self.t_df['gid'], how='left',
-			left_index=True, right_index=True)
-		df.reset_index(drop=True, inplace=True)
-		df = df.groupby('gid').sum()
-
-		# format as adata and add metadata
-		df = df.transpose()
-		X = sparse.csr_matrix(df.values)
-		var = df.columns.to_frame()
-		obs = df.index.to_frame()
-		obs.rename({0: 'dataset'}, axis=1, inplace=True)
-		adata = anndata.AnnData(X=X, obs=obs, var=var)
-		adata.obs = adata.obs.merge(self.adata.obs, how='left', on='dataset')
-		adata.obs.index = adata.obs.dataset
-		adata.layers['counts'] = adata.X
-
-		# recalculate TPM
-		adata.layers['tpm'] = sparse.csr_matrix(calc_tpm(adata, recalc=True).to_numpy())
-
-		# set layer to TPM
-		adata.X = adata.layers['tpm']
-
-		formula_loc = "~ 1 + {}".format(obs_col)
-		factor_loc_totest = obs_col
-
-		# test
-		test = de.test.wald(
-			data=adata,
-			formula_loc=formula_loc,
-			factor_loc_totest=factor_loc_totest)
-		test = test.summary()
-		test.rename({'gene': 'gid'}, axis=1, inplace=True)
-
-		# add gene name column
-		gnames = self.t_df[['gid', 'gname']].copy(deep=True)
-		gnames.drop_duplicates(inplace=True)
-		gnames.reset_index(drop=True, inplace=True)
-		test = test.merge(gnames, how='left', on='gid')
-
-		# sort on log2fc
-		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-
-		# add summary table to anndata
-		uns_name = make_uns_key(kind='deg',
-					obs_col=obs_col, obs_conditions=obs_conditions)
-
-		self.adata.uns[uns_name] = test
-
-		return test
-
-	def get_de_genes(self, obs_col, obs_conditions=None, q=0.05, log2fc=1):
-		"""
-		Subsets the differential gene expression test summary table based
-		on a q-value and log2fc cutoff. Requires that de_gene_test has
-		already been run.
-
-		Parameters:
-			obs_col (str): Column name from self.adata.obs table to group on.
-				Default: 'dataset'
-			obs_conditions (list of str, len 2): Which conditions from obs_col
-				to compare? Required if obs_col has more than 2 unique values.
-			q (float): q-value threshold to declare a gene as significant
-				Default: 0.05
-			log2fc (float): log2fc threshold to declare a gene significant
-				Default: 1
-
-		Returns:
-			test (pandas DataFrame): Summary table of genes that pass the
-				significance threshold
-		"""
-
-		# check to see if this was even tested
-		uns_name = make_uns_key(kind='deg',
-					obs_col=obs_col, obs_conditions=obs_conditions)
-		try:
-			test = self.adata.uns[uns_name]
-		except:
-			raise Exception('Problem accessing DEG test results for {}, {}'.format(obs_col, obs_conditions))
-
-		# subset on q value
-		test = test.loc[test.qval <= q].copy(deep=True)
-		test = test.loc[test.log2fc >= log2fc]
-
-		return test
-
-	def de_transcript_test(self, obs_col, obs_conditions=None):
-		"""
-		Runs a differential expression test on the transcript level.
-
-		Parameters:
-			obs_col (str): Metadata column from self.adata.obs to perform
-				the test on
-			obs_conditions (list of str, len 2): Categories from 'obs_col' in
-				self.adata.obs to perform the test on.
-
-		Returns:
-			test (pandas DataFrame): A summary table of the differential
-				expression test, including p and q-values, as well
-				as log fold change.
-		"""
-
-		# check if obs_col is even there
-		if obs_col not in self.adata.obs.columns.tolist():
-			raise ValueError('Metadata column {} not found'.format(obs_col))
-
-		# check if there are more than 2 unique values in obs_col
-		if len(self.adata.obs[obs_col].unique().tolist())!=2 and not obs_conditions:
-			raise ValueError('Must provide obs_conditions argument when obs_col has'\
-				' >2 unique values')
-		elif not obs_conditions:
-			obs_conditions = self.adata.obs[obs_col].unique().tolist()
-		elif len(obs_conditions) != 2:
-			raise ValueError('obs_conditions must have exactly 2 values')
-
-		# check if these values of obs_col exist
-		if obs_col and obs_conditions:
-			conds = self.adata.obs[obs_col].unique().tolist()
-			for cond in obs_conditions:
-				if cond not in conds:
-					raise ValueError('Value {} not found in metadata column {}.'.format(cond, obs_col))
-
-		# get an AnnData that's a subset based on obs_conditions
-		if obs_conditions:
-			inds = self.adata.obs.loc[self.adata.obs[obs_col].isin(obs_conditions)]
-			inds = inds.index.tolist()
-			adata = self.adata[inds, :]
-		else:
-			adata = self.adata
-
-		# set layer to TPM
-		adata.X = adata.layers['tpm']
-
-		formula_loc = "~ 1 + {}".format(obs_col)
-		factor_loc_totest = obs_col
-
-		# test
-		test = de.test.wald(
-			data=adata,
-			formula_loc=formula_loc,
-			factor_loc_totest=factor_loc_totest)
-		test = test.summary()
-		test.rename({'gene': 'tid'}, axis=1, inplace=True)
-
-		# add gene name column
-		gnames = self.t_df[['tid', 'gid', 'gname']].copy(deep=True)
-		gnames.reset_index(drop=True, inplace=True)
-		test = test.merge(gnames, how='left', on='tid')
-
-		# sort on log2fc
-		test = test.reindex(test.log2fc.abs().sort_values(ascending=False).index)
-
-		# add summary table to anndata
-		uns_name = make_uns_key(kind='det',
-					obs_col=obs_col, obs_conditions=obs_conditions)
-
-		self.adata.uns[uns_name] = test
-
-		return test
-
-	def get_de_transcripts(self, obs_col, obs_conditions=None, q=0.05, log2fc=1):
-		"""
-		Subsets the differential gene expression test summary table based
-		on a q-value and log2fc cutoff. Requires that de_gene_test has
-		already been run.
-
-		Parameters:
-			obs_col (str): Column name from self.adata.obs table to group on.
-				Default: 'dataset'
-			obs_conditions (list of str, len 2): Which conditions from obs_col
-				to compare? Required if obs_col has more than 2 unique values.
-			q (float): q-value threshold to declare a gene as significant
-				Default: 0.05
-			log2fc (float): log2fc threshold to declare a gene significant
-				Default: 1
-
-		Returns:
-			test (pandas DataFrame): Summary table of genes that pass the
-				significance threshold
-		"""
-
-		# check to see if this was even tested
-		uns_name = make_uns_key(kind='det',
-					obs_col=obs_col, obs_conditions=obs_conditions)
-		try:
-			test = self.adata.uns[uns_name]
-		except:
-			raise Exception('Problem accessing DET test results for {}, {}'.format(obs_col, obs_conditions))
-
-		# subset on q value
-		test = test.loc[test.qval <= q].copy(deep=True)
-		test = test.loc[test.log2fc >= log2fc]
-
-		return test
-
-	def die_gene_test(self, kind='iso', obs_col='dataset',
-					  obs_conditions=None, rc_thresh=10, verbose=False):
+	def die_gene_test(self,
+					  kind='iso',
+					  obs_col='dataset',
+					  obs_conditions=None,
+					  rc_thresh=10,
+					  verbose=False):
 		"""
 		Finds genes with differential isoform expression between two conditions
 		that are in the obs table. If there are more than 2 unique values in
 		`obs_col`, the specific categories must be specified in `obs_conditions`
 
 		Parameters:
+			kind (str): What level you would like to run the test on.
+				{'iso', 'tss', 'tes', 'ic'}.
+				Default: 'iso'
 			obs_col (str): Column name from self.adata.obs table to group on.
 				Default: 'dataset'
 			obs_conditions (list of str, len 2): Which conditions from obs_col
@@ -1901,6 +1914,9 @@ class SwanGraph(Graph):
 		elif kind == 'tes':
 			adata = self.tes_adata
 			ref_df = self.tes_adata.var
+		elif kind == 'ic':
+			adata = self.ic_adata
+			ref_df = self.ic_adata.var
 
 		# check if obs_col is even there
 		if obs_col not in adata.obs.columns.tolist():
@@ -2014,7 +2030,8 @@ class SwanGraph(Graph):
 		# add summary table to anndata
 		kind = 'die_{}'.format(kind)
 		uns_name = make_uns_key(kind=kind,
-					obs_col=obs_col, obs_conditions=obs_conditions)
+								obs_col=obs_col,
+								obs_conditions=obs_conditions)
 
 		self.adata.uns[uns_name] = gene_de_df
 
@@ -2032,7 +2049,7 @@ class SwanGraph(Graph):
 		p-value and change in percent isoform usage (dpi).
 
 		Parameters:
-			kind (str): Choose from 'iso', 'tss' or 'tes'
+			kind (str): {'iso', 'tss', 'tes', 'ic'}
 				Default: 'iso'
 			obs_col (str): Column name from self.adata.obs table to group on.
 				Default: 'dataset'
@@ -2379,7 +2396,7 @@ class SwanGraph(Graph):
 			raise Exception('Metadata column {} not found'.format(obs_col))
 
 		# TODO check if all values in cmap are in the obs_col
-		# also maybe not my problem lol
+		# also maybe not my problem
 
 		# map values in order specific to
 		self.adata.obs[obs_col] = self.adata.obs[obs_col].astype('category')
@@ -2401,8 +2418,8 @@ class SwanGraph(Graph):
 		self.adata.uns['{}_dict'.format(obs_col)] = cmap
 
 		# also add these to the other adatas
-		# self.edge_adata.uns['{}_colors'.format(obs_col)] = sample_colors
-		# self.edge_adata.uns['{}_dict'] = cmap
+		self.edge_adata.uns['{}_colors'.format(obs_col)] = sample_colors
+		self.edge_adata.uns['{}_dict'] = cmap
 		self.tss_adata.uns['{}_colors'.format(obs_col)] = sample_colors
 		self.tss_adata.uns['{}_dict'] = cmap
 		self.tes_adata.uns['{}_colors'.format(obs_col)] = sample_colors
@@ -3041,27 +3058,30 @@ class SwanGraph(Graph):
 ##########################################################################
 ############################# Data retrieval #############################
 ##########################################################################
-	def get_tpm(self, kind='transcript'):
+	def get_tpm(self, kind='iso'):
 		"""
 		Retrieve TPM per dataset.
 
 		Parameters:
-			kind (str): Choose from ['transcript', 'edge', 'tss', 'tes']
+			kind (str): {'iso', 'edge', 'tss', 'tes', 'ic'}
+				Default: 'iso'
 
 		Returns:
-			df (pandas DataFrame): Pandas datafrom where rows are the different
+			df (pandas DataFrame): Pandas dataframe where rows are the different
 				conditions from `dataset` and the columns are ids in the
 				SwanGraph, and values represent the TPM value per
-				isoform/edge/tss/tes per dataset.
+				isoform/edge/tss/tes/ic per dataset.
 		"""
-		if kind == 'transcript':
+		if kind == 'iso':
 			adata = self.adata
-		# elif kind == 'edge':
-		# 	adata = self.edge_adata
+		elif kind == 'edge':
+			adata = self.edge_adata
 		elif kind == 'tss':
 			adata = self.tss_adata
 		elif kind == 'tes':
 			adata = self.tes_adata
+		elif kind == 'ic':
+			adata = self.ic_adata
 
 		adata.X = adata.layers['tpm']
 		df = pd.DataFrame.sparse.from_spmatrix(data=adata.X,

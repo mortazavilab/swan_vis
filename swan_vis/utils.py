@@ -75,7 +75,7 @@ def make_uns_key(kind, obs_col, obs_conditions, die_kind='iso'):
 		obs_col (str): Column name from self.adata.obs table to group on.
 		obs_conditions (list of str, len 2): Which conditions from obs_col
 			to compare? Required if obs_col has more than 2 unique values.
-		die_kind (str): Which DIE test results. Choose from 'iso', 'tss', 'tes'
+		die_kind (str): Which DIE test results. {'iso', 'tss', 'tes', 'ic'}
 			Default: 'tss'
 
 	Returns:
@@ -799,19 +799,6 @@ def parse_gtf(gtf_file, include_isms, verbose):
 						 'tname': tname,
 						 'strand': strand,
 						 'exons': []}
-
-				# NIC
-				# if tid == 'ENSG00000000460[3,10,3]':
-				#  pdb.set_trace()
-				#
-				# # NNC
-				# elif tid == 'ENSG00000000460[1,12,3]':
-				#  pdb.set_trace()
-				#
-				# # Known
-				# elif tid == 'ENSG00000000460[2,2,1]':
-				#  pdb.set_trace()
-
 
 				# if we're using a talon gtf, add a novelty field
 				if from_talon:

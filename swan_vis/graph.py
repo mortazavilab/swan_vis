@@ -66,7 +66,7 @@ class Graph:
 		self.adata = anndata.AnnData()
 		self.gene_adata = anndata.AnnData()
 		self.ic_adata = anndata.AnnData()
-		# self.edge_adata = anndata.AnnData()
+		self.edge_adata = anndata.AnnData()
 		self.tss_adata = anndata.AnnData()
 		self.tes_adata = anndata.AnnData()
 

@@ -6,17 +6,17 @@ File formats in bioinformatics are notoriously hard to standardize. We hope that
 
 * [GTF](file_formats.md#gtf)
 * [Abundance matrix](file_formats.md#abundance-matrix)
+* [AnnData](file_formats.md#anndata)
 * [TALON db](file_formats.md#talon-db)
-* [Batch add datasets config file](file_formats.md#batch-config-file)
 
 ## GTF
 
 In Swan, transcript models are loaded from GTFs. To work with Swan, GTFs must adhere to the following specifications:
 
-* transcript and exon entries in column 3 - this is a dependency we would like to remove in the future but for now this is the way it works
+* Must contain both transcript and exon features - this is a dependency we would like to remove in the future but for now this is the way it works
 * gene\_id and transcript\_id attributes \(for transcripts and exons\) in column 9.
-* recommended: including the transcript\_name and gene\_name field will enable you to plot genes and transcript with their human-readable names as well
-* any non-data header lines must begin with \#
+* Recommended: including the transcript\_name and gene\_name field will enable you to plot genes and transcript with their human-readable names as well
+* Any non-data header lines must begin with \#
 
 Here is an example of what the first few lines of a GTF should look like:
 
@@ -43,7 +43,7 @@ swan.validate_gtf('test.gtf')
 Swan can load abundance information for more meaningful analysis and visualizations. To work with Swan, abundance matrices must:
 
 * Be tab-separated
-* First column are transcript ids that are the same as those loaded via GTF or TALON db
+* First column are transcript IDs that are the same as those loaded via GTF or TALON db
 * Columns labelled by their dataset names containing raw counts for each transcript
 * Alternatively, a [TALON abundance file](https://github.com/mortazavilab/TALON#talon_abundance) can be used in its unaltered form
 
@@ -59,6 +59,11 @@ Sample abundance file:
 | ENST00000445118.6 | 1 | 0 |
 | ENST00000441765.5 | 0 | 0 |
 
+## AnnData
+
+AnnDatas used to add expression and metadata must:
+* Have the transcript ID from the loaded transcriptome / annotation as the index of the `AnnData.var` table
+* Have the dataset name as the index of the `AnnData.obs` table
 
 ## TALON db
 
