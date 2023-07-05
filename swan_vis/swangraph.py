@@ -291,7 +291,6 @@ class SwanGraph(Graph):
 		g_cols = ['gene_ID', 'annot_gene_id', 'annot_gene_name', 'gene_novelty']
 		if df.columns.tolist()[:11] == t_cols or df.columns.tolist()[:4] == g_cols:
 			df = reformat_talon_abundance(df, how=how)
-			import pdb;pdb.set_trace()
 
 		# rename id ID column
 		col = df.columns[0]
