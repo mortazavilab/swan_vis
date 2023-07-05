@@ -338,8 +338,10 @@ class SwanGraph(Graph):
 		# get adata components - obs, var, and X
 		var = df.columns.to_frame()
 		var.columns = [id_col]
+		var.index.name = 'tid'
 		obs = df.index.to_frame()
 		obs.columns = ['dataset']
+		obs.index.name = 'dataset'
 		X = sparse.csr_matrix(df.to_numpy())
 
 		# create transcript-level adata object and filter out unexpressed transcripts
@@ -476,10 +478,12 @@ class SwanGraph(Graph):
 
 		# format tid for var table
 		adata.var['tid'] = adata.var.index
+		# adata.var.index.name = 'tid'
 		adata.var.index.name = 'tid'
 
 		# format dataset for obs table
 		adata.obs['dataset'] = adata.obs.index
+		adata.obs.index.name = 'dataset'
 
 		# sum for gene level
 		if how == 'gene':
@@ -593,7 +597,9 @@ class SwanGraph(Graph):
 		for adata in adatas:
 
 			# merge df with adata obs table
+			adata.obs = reset_dupe_index(adata.obs, 'dataset')
 			adata.obs = adata.obs.merge(df, how='left', on='dataset')
+			adata.obs = set_dupe_index(adata.obs, 'dataset')
 
 			# make sure all dtypes in obs table are non intergers
 			for ind, entry in adata.obs.dtypes.to_frame().iterrows():
