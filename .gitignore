@@ -1,4 +1,4 @@
-
+.gitbook/assets/back/
 # compliation
 __pycache__/
 */__pycache__/
@@ -39,3 +39,16 @@ swan_vis.egg-info/
 # other
 ../temp_code_doc/
 ../tutorials/untitled.py
+230704_code_doc/
+fairlie_readme.md
+temp_code_doc/
+testing.test.tsv
+tutorials/2*ipynb
+*h5ad
+*.tgz*
+faqs/*files/
+tutorials/*files/
+testing/test.tsv
+tutorials/*data*/
+tutorials/untitled.py
+
