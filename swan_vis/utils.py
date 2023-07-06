@@ -930,8 +930,10 @@ def get_die_gene_table(gene_df, conditions, rc):
 		return None, test_result
 
 	# compute isoform-level and gene-level delta pis
-	gene_df[cond1] = gene_df[cond1].astype(float)
-	gene_df[cond2] = gene_df[cond2].astype(float)
+	# gene_df[cond1] = gene_df[cond1].astype(float)
+	# gene_df[cond2] = gene_df[cond2].astype(float)
+	gene_df[cond1] = gene_df[cond1].values.to_dense().astype(np.float64)
+	gene_df[cond2] = gene_df[cond2].values.to_dense().astype(np.float64)
 	gene_df['dpi'] = gene_df[cond1] - gene_df[cond2]
 	test_result = 'testable'
 
