@@ -10,7 +10,6 @@ from collections import defaultdict
 import sqlite3
 import pickle
 import anndata
-import diffxpy.api as de
 from statsmodels.stats.multitest import multipletests
 import multiprocessing
 from itertools import repeat
@@ -336,13 +335,29 @@ class SwanGraph(Graph):
 		df = df.T
 
 		# get adata components - obs, var, and X
+
+		# var
 		var = df.columns.to_frame()
 		var.columns = [id_col]
 		var.index.name = 'tid'
+
+		# obs
 		obs = df.index.to_frame()
 		obs.columns = ['dataset']
+
+		# if we already have transcript abundance and we're adding genes,
+		# copy the obs information there
+		if how == 'gene' and self.has_abundance():
+			self.adata.obs = reset_dupe_index(self.adata.obs, 'dataset')
+			obs = obs.merge(self.adata.obs, how='left', on='dataset')
+			obs.drop('dataset_back', axis=1, inplace=True)
+			self.adata.obs = set_dupe_index(self.adata.obs, 'dataset')
+
 		obs.index.name = 'dataset'
+
+		# X
 		X = sparse.csr_matrix(df.to_numpy())
+
 
 		# create transcript-level adata object and filter out unexpressed transcripts
 		adata = anndata.AnnData(var=var, obs=obs, X=X)
