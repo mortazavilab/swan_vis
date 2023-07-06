@@ -41,7 +41,7 @@ sc.pl.umap(sg.tss_adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_6_1.png)
+![png](../.gitbook/assets/scanpy_compatibility_6_1.png)
 
 
 
@@ -85,7 +85,7 @@ sc.pl.umap(sg.adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_8_2.png)
+![png](../.gitbook/assets/scanpy_compatibility_8_2.png)
 
 
 
@@ -110,7 +110,7 @@ sc.pl.umap(sg.tes_adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_9_1.png)
+![png](../.gitbook/assets/scanpy_compatibility_9_1.png)
 
 
 
@@ -189,7 +189,23 @@ sg.adata.var = sg.adata.var.merge(sg.t_df[['tname', 'annotation']], left_index=T
 sg.adata.var.head()
 ```
 
+
+
+
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -253,7 +269,7 @@ sc.pl.dotplot(sg.adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_16_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_16_0.png)
 
 
 
@@ -284,7 +300,7 @@ sc.pl.heatmap(sg.adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_19_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_19_0.png)
 
 
 
@@ -320,7 +336,7 @@ mp = sc.pl.heatmap(sg.adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_22_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_22_0.png)
 
 
 
@@ -337,7 +353,7 @@ mp = sc.pl.matrixplot(sg.adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_24_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_24_0.png)
 
 
 
@@ -356,7 +372,7 @@ sc.pl.dotplot(sg.tss_adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_26_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_26_0.png)
 
 
 
@@ -379,7 +395,7 @@ sc.pl.violin(sg.adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_30_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_30_0.png)
 
 
 
@@ -398,4 +414,4 @@ sc.pl.violin(sg.tes_adata,
 
 
 
-![png](../.gitbook/assets/scanpy_output_32_0.png)
+![png](../.gitbook/assets/scanpy_compatibility_32_0.png)

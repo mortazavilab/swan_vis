@@ -6,11 +6,11 @@ A SwanGraph consists of several different parts that can be used individually. T
 
 ## Table of contents
 
-* [Genomic location information](data_structure.md#genomic-location-information)
-* [Intron / exon information](data_structure.md#intron-exon-location-information)
-* [Transcript information](data_structure.md#transcript-information)
-* [AnnData](data_structure.md#anndata)
-* [Current plotted graph information](data_structure.md#current-plotted-graph-information)
+* [Genomic location information](data_structure.md#loc_df)
+* [Intron / exon information](data_structure#edge_df)
+* [Transcript information](data_structure#t_df)
+* [AnnData](data_structure#anndata)
+* [Current plotted graph information](data_structure#pg)
 
 
 We'll be using the same SwanGraph from the rest of the tutorial to examine how data is stored in the SwanGraph. Load it using the following code:
@@ -43,6 +43,19 @@ sg.loc_df.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -141,6 +154,19 @@ sg.edge_df.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -222,7 +248,7 @@ Swan stores information about the transcripts from the annotation and added tran
 * gene ID from the GTF (gid)
 * gene name from the GTF, if provided (gname)
 * path of edges (edge_ids from `SwanGraph.edge_df`) that make up the transcript (path)
-* path of genomic locations (vertex_ids fom `SwanGraph.loc_df`) that make up the transcript (loc_path)
+* path of genomic locations (vertex_ids from `SwanGraph.loc_df`) that make up the transcript (loc_path)
 * whether or not the transcript is present in the provided reference annotation (annotation)
 * novelty category of the transcript, if provided (novelty)
 
@@ -235,6 +261,19 @@ sg.t_df.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -264,7 +303,7 @@ sg.t_df.head()
     <tr>
       <th>ENST00000000233.9</th>
       <td>ARF5-201</td>
-      <td>ENSG00000004059.10</td>
+      <td>ENSG00000004059</td>
       <td>ARF5</td>
       <td>[377467, 377468, 377469, 377470, 377471, 37747...</td>
       <td>ENST00000000233.9</td>
@@ -275,7 +314,7 @@ sg.t_df.head()
     <tr>
       <th>ENST00000000412.7</th>
       <td>M6PR-201</td>
-      <td>ENSG00000003056.7</td>
+      <td>ENSG00000003056</td>
       <td>M6PR</td>
       <td>[555507, 555495, 555496, 555497, 555498, 55550...</td>
       <td>ENST00000000412.7</td>
@@ -286,7 +325,7 @@ sg.t_df.head()
     <tr>
       <th>ENST00000000442.10</th>
       <td>ESRRA-201</td>
-      <td>ENSG00000173153.13</td>
+      <td>ENSG00000173153</td>
       <td>ESRRA</td>
       <td>[520219, 520207, 520208, 520209, 520210, 52021...</td>
       <td>ENST00000000442.10</td>
@@ -297,7 +336,7 @@ sg.t_df.head()
     <tr>
       <th>ENST00000001008.5</th>
       <td>FKBP4-201</td>
-      <td>ENSG00000004478.7</td>
+      <td>ENSG00000004478</td>
       <td>FKBP4</td>
       <td>[550369, 550370, 550371, 550372, 550373, 55037...</td>
       <td>ENST00000001008.5</td>
@@ -308,7 +347,7 @@ sg.t_df.head()
     <tr>
       <th>ENST00000001146.6</th>
       <td>CYP26B1-201</td>
-      <td>ENSG00000003137.8</td>
+      <td>ENSG00000003137</td>
       <td>CYP26B1</td>
       <td>[111085, 111086, 111087, 111088, 111078, 11107...</td>
       <td>ENST00000001146.6</td>
@@ -353,6 +392,19 @@ sg.adata.var.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -402,6 +454,19 @@ sg.adata.obs.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -502,6 +567,19 @@ sg.edge_adata.var.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -551,6 +629,19 @@ sg.edge_adata.obs.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -730,6 +821,95 @@ print(sg.tes_adata.layers['pi'][:r, start_c:end_c])
      [  0. 100.   0.   0.   0.]]
 
 
+### Intron chain AnnData
+
+In the case that the transcriptome you added is from [Cerberus](https://github.com/mortazavilab/cerberus/tree/master) or uses Cerberus-style transcript IDs (ie. \<gene_id\>\[1,1,1\]), Swan will also calculate intron chain counts and TPM automatically. These are stored in `SwanGraph.ic_adata`.
+
+
+```python
+sg = swan.read('../tutorials/data/swan_modelad.p')
+sg.ic_adata.var.tail()
+```
+
+    Read in graph from ../tutorials/data/swan_modelad.p
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>gid</th>
+      <th>gname</th>
+      <th>ic_name</th>
+      <th>n_cells</th>
+    </tr>
+    <tr>
+      <th>ic_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>ENSMUSG00000118369_2</th>
+      <td>ENSMUSG00000118369</td>
+      <td>Gm30541</td>
+      <td>Gm30541_2</td>
+      <td>14</td>
+    </tr>
+    <tr>
+      <th>ENSMUSG00000118380_3</th>
+      <td>ENSMUSG00000118380</td>
+      <td>Gm36037</td>
+      <td>Gm36037_3</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>ENSMUSG00000118382_1</th>
+      <td>ENSMUSG00000118382</td>
+      <td>Gm8373</td>
+      <td>Gm8373_1</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>ENSMUSG00000118383_1</th>
+      <td>ENSMUSG00000118383</td>
+      <td>Gm50321</td>
+      <td>Gm50321_1</td>
+      <td>14</td>
+    </tr>
+    <tr>
+      <th>ENSMUSG00000118390_1</th>
+      <td>ENSMUSG00000118390</td>
+      <td>Gm50102</td>
+      <td>Gm50102_1</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
 ##  <a name="pg"></a>Current plotted graph information
 
 To reduce run time for generating gene reports, Swan stores the subgraph that is used to generate plots for any specific gene in `SwanGraph.pg`. This object is very similar to the parent `SwanGraph` object. It has a `loc_df`, `edge_df`, and `t_df` that just consist of the nodes, edges, and transcripts that make up a specific gene. This data structure can be helpful for understanding what is going on in generated plots as the node labels are not consistent with the display labels in Swan plots.
@@ -743,7 +923,7 @@ sg.plot_graph('ADRM1')
 
 
 
-![png](../.gitbook/assets/data_structure_output_41_0.png)
+![png](../.gitbook/assets/Data%20structure_44_0.png)
 
 
 
@@ -758,6 +938,19 @@ sg.pg.loc_df.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -870,6 +1063,19 @@ sg.pg.edge_df.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -975,6 +1181,19 @@ sg.pg.t_df.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
