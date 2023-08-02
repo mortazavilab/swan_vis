@@ -419,6 +419,9 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	df = df.drop_duplicates()
 	df = t_counts.merge(df, how='left', on=['gid', obs_col])
 
+	# before anything, remove stuff w/ 0 gene counts
+	df = df.loc[df.gene_counts > 0]
+
 	df['pi'] = (df.t_counts/df.gene_counts)*100
 	df = df.pivot(columns=obs_col, index=id_col, values='pi')
 
@@ -426,6 +429,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	ids = adata.var.index.tolist()
 	df = df.loc[ids]
 	cols = adata.obs[obs_col].unique().tolist()
+	cols = list(set(cols)&set(df.columns.tolist()))
 	df = df[cols]
 
 	# convert to sparse

@@ -488,8 +488,10 @@ class SwanGraph(Graph):
 		check_file_loc(adata_file, 'AnnData')
 		try:
 			adata = sc.read(adata_file)
+
 		except:
 			raise ValueError('Problem reading AnnData {}'.format(counts_file))
+
 
 		# format tid for var table
 		adata.var['tid'] = adata.var.index
@@ -2851,9 +2853,11 @@ class SwanGraph(Graph):
 			temp.sort_values(by=sorters, inplace=True, ascending=True)
 			temp.drop(sorters, axis=1, inplace=True)
 			columns = temp.dataset.tolist()
+			col_order = temp[groupby].unique().tolist()
 			del temp
 		else:
 			columns = None
+			col_order = None
 
 		# if we've asked for novelty first check to make sure it's there
 		if novelty:
@@ -2916,6 +2920,7 @@ class SwanGraph(Graph):
 		_, tids = sg.order_transcripts_subset(order_df, order=order)
 		tpm_df = tpm_df.loc[tids]
 		t_df = t_df.loc[tids]
+
 	#	 print('finished ordering transcripts')
 		del tpm_df
 
@@ -3022,9 +3027,17 @@ class SwanGraph(Graph):
 			plt.close()
 
 		# merge with sg.t_df to get additional columns
-		datasets = t_df.columns
+		if not col_order:
+			datasets = t_df.columns
 		cols = ['novelty', transcript_col]
 		t_df = t_df.merge(sg.t_df[cols], how='left', left_index=True, right_index=True)
+
+		# order according to input specifications
+		if col_order:
+			col_order = [c for c in col_order if c in t_df.columns]
+			datasets = col_order.copy()
+			col_order+=list(set(t_df.columns)-set(col_order))
+			t_df = t_df[col_order]
 
 		# create report
 		print('Generating report for {}'.format(gid))
@@ -3039,6 +3052,7 @@ class SwanGraph(Graph):
 		else:
 			t_disp = 'Transcript Name'
 
+		print(f'datasets: {datasets}')
 		report = Report(gid_prefix,
 						report_type,
 						sg.adata.obs,
