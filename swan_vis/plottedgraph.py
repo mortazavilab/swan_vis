@@ -413,12 +413,22 @@ class PlottedGraph(Graph):
 	def plot_edges(self):
 		for _, entry in self.edge_df.iterrows():
 			edge = (entry.v1, entry.v2)
-			nx.draw_networkx_edges(self.G, self.pos,
-				edgelist=[edge],
-				width=self.edge_width,
-				edge_color=self.color_dict[entry.color],
-				connectionstyle=entry.curve,
-				style=entry.line)
+			if not entry.curve:
+				nx.draw_networkx_edges(self.G, self.pos,
+					edgelist=[edge],
+					width=self.edge_width,
+					edge_color=self.color_dict[entry.color],
+					connectionstyle='arc3',
+					style=entry.line)
+			else:
+				nx.draw_networkx_edges(self.G, self.pos,
+					edgelist=[edge],
+					width=self.edge_width,
+					edge_color=self.color_dict[entry.color],
+					connectionstyle=entry.curve,
+					style=entry.line)
+			# except:
+			# 	import pdb; pdb.set_trace()
 
 	# plots nodes from loc_df
 	def plot_nodes(self):
