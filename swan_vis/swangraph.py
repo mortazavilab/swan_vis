@@ -3052,7 +3052,6 @@ class SwanGraph(Graph):
 		else:
 			t_disp = 'Transcript Name'
 
-		print(f'datasets: {datasets}')
 		report = Report(gid_prefix,
 						report_type,
 						sg.adata.obs,
