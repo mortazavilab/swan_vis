@@ -303,7 +303,6 @@ class SwanGraph(Graph):
 			raise ValueError('Problem reading expression matrix {}'.format(counts_file))
 
 		# check if abundance matrix is a talon transcript or gene abundance matrix
-		# import pdb; pdb.set_trace()
 		t_cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
 			'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
 			'gene_novelty', 'transcript_novelty', 'ISM_subtype']
@@ -340,11 +339,11 @@ class SwanGraph(Graph):
 		# var
 		var = df.columns.to_frame()
 		var.columns = [id_col]
-		if how == 'gene':
-			var_ind = 'gid'
-		elif how == 'iso':
-			var_ind = 'tid'
-		var.index.name = var_ind
+		# if how == 'gene':
+		# 	var_ind = 'gid'
+		# elif how == 'iso':
+		# 	var_ind = 'tid'
+		var.index.name = id_col
 
 		# obs
 		obs = df.index.to_frame()
