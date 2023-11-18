@@ -340,7 +340,11 @@ class SwanGraph(Graph):
 		# var
 		var = df.columns.to_frame()
 		var.columns = [id_col]
-		var.index.name = 'tid'
+		if how == 'gene':
+			var_ind = 'gid'
+		elif how == 'iso':
+			var_ind = 'tid'
+		var.index.name = var_ind
 
 		# obs
 		obs = df.index.to_frame()
@@ -348,6 +352,7 @@ class SwanGraph(Graph):
 
 		# if we already have transcript abundance and we're adding genes,
 		# copy the obs information there
+		import pdb; pdb.set_trace()
 		if how == 'gene' and self.has_abundance():
 			self.adata.obs = reset_dupe_index(self.adata.obs, 'dataset')
 			obs = obs.merge(self.adata.obs, how='left', on='dataset')
@@ -358,7 +363,6 @@ class SwanGraph(Graph):
 
 		# X
 		X = sparse.csr_matrix(df.to_numpy())
-
 
 		# create transcript-level adata object and filter out unexpressed transcripts
 		adata = anndata.AnnData(var=var, obs=obs, X=X)
@@ -496,6 +500,7 @@ class SwanGraph(Graph):
 
 		# format tid for var table
 		adata.var['tid'] = adata.var.index
+
 		# adata.var.index.name = 'tid'
 		adata.var.index.name = 'tid'
 
@@ -627,6 +632,7 @@ class SwanGraph(Graph):
 			# and set index to dataset
 			adata.obs['index'] = adata.obs.dataset
 			adata.obs.set_index('index', inplace=True)
+			adata.obs.index.name = 'dataset'
 
 	##########################################################################
 	############# Obtaining abundance of edges, locs, and ends ###############
