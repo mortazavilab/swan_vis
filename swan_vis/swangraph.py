@@ -352,7 +352,6 @@ class SwanGraph(Graph):
 
 		# if we already have transcript abundance and we're adding genes,
 		# copy the obs information there
-		import pdb; pdb.set_trace()
 		if how == 'gene' and self.has_abundance():
 			self.adata.obs = reset_dupe_index(self.adata.obs, 'dataset')
 			obs = obs.merge(self.adata.obs, how='left', on='dataset')
