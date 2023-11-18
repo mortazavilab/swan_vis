@@ -423,7 +423,10 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	df = df.loc[df.gene_counts > 0]
 
 	df['pi'] = (df.t_counts/df.gene_counts)*100
+	# try:
 	df = df.pivot(columns=obs_col, index=id_col, values='pi')
+	# except:
+	# 	import pdb; pdb.set_trace()
 
 	# order based on order in adata
 	ids = adata.var.index.tolist()

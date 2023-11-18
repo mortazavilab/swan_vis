@@ -594,7 +594,6 @@ class Graph:
 		returns:
 			subset_sg (swan Graph): Swan Graph subset on the input gene.
 		"""
-
 		# make sure this gid is even in the Graph
 		self.check_gene(gid)
 

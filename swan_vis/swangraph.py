@@ -303,6 +303,7 @@ class SwanGraph(Graph):
 			raise ValueError('Problem reading expression matrix {}'.format(counts_file))
 
 		# check if abundance matrix is a talon transcript or gene abundance matrix
+		# import pdb; pdb.set_trace()
 		t_cols = ['gene_ID', 'transcript_ID', 'annot_gene_id', 'annot_transcript_id',
 			'annot_gene_name', 'annot_transcript_name', 'n_exons', 'length',
 			'gene_novelty', 'transcript_novelty', 'ISM_subtype']
@@ -1192,7 +1193,6 @@ class SwanGraph(Graph):
 		returns:
 			subset_sg (swan Graph): Swan Graph subset on the input gene.
 		"""
-
 		# didn't ask for either
 		if not gid and not datasets:
 			return self
@@ -2853,7 +2853,11 @@ class SwanGraph(Graph):
 			temp.sort_values(by=sorters, inplace=True, ascending=True)
 			temp.drop(sorters, axis=1, inplace=True)
 			columns = temp.dataset.tolist()
-			col_order = temp[groupby].unique().tolist()
+			if groupby:
+				col_order = temp[groupby].unique().tolist()
+			else:
+				columns = temp['dataset'].unique().tolist()
+				col_order = temp['dataset'].unique().tolist()
 			del temp
 		else:
 			columns = None
