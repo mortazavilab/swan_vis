@@ -354,8 +354,9 @@ class SwanGraph(Graph):
 		if how == 'gene' and self.has_abundance():
 			self.adata.obs = reset_dupe_index(self.adata.obs, 'dataset')
 			obs = obs.merge(self.adata.obs, how='left', on='dataset')
-			obs.drop('dataset_back', axis=1, inplace=True)
+			# obs.drop('dataset_back', axis=1, inplace=True)
 			self.adata.obs = set_dupe_index(self.adata.obs, 'dataset')
+			obs = set_dupe_index(obs, 'dataset')
 
 		obs.index.name = 'dataset'
 
