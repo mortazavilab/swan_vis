@@ -757,6 +757,7 @@ class PlottedGraph(Graph):
 
         if colors is not None:
             color = self.color_dict["browser"]
+            colors = [color] * len(exons)
         else:
             try:
                 assert len(colors) == len(exons)
@@ -770,10 +771,10 @@ class PlottedGraph(Graph):
         height = 0.2
         exons = [(v1, v2) for v1, v2 in zip(loc_path[:-1], loc_path[1:])][::2]
         introns = [(v1, v2) for v1, v2 in zip(loc_path[:-1], loc_path[1:])][1::2]
-        for v1, v2 in exons:
+        for exon_color, (v1, v2) in zip(colors, exons):
             x_coord = self.loc_df.loc[v1, "coord"]
             width = self.loc_df.loc[v2, "coord"] - x_coord
-            rect = pch.Rectangle((x_coord, y_coord), width, height, color=color)
+            rect = pch.Rectangle((x_coord, y_coord), width, height, color=exon_color)
             ax.add_patch(rect)
 
         # plot each intron as a line
