@@ -11,27 +11,42 @@ import pandas as pd
 ###########################################################################
 class TestSGAnalysis(object):
 
-# tests find_ir_genes, find_es_genes, get_die_genes, get_die_gene_table, test_gene
+    # tests find_ir_genes, find_es_genes, get_die_genes, get_die_gene_table, test_gene
 
-# TODO - add update_ids() call before running both find_ir/es_genes to make sure
-# the subgraph shit works -
-# TODO - check to make sure this works with + AND - strands because the
-# loc_df locations no longer have strand associated with them from get_ordered_id_map!!!!
+    # TODO - add update_ids() call before running both find_ir/es_genes to make sure
+    # the subgraph shit works -
+    # TODO - check to make sure this works with + AND - strands because the
+    # loc_df locations no longer have strand associated with them from get_ordered_id_map!!!!
 
     # test get_die_gene_table - gene that meets rc
     def test_get_die_table_6(self):
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts']
-        data = [[1, 1, .5, .5, 20, 10, 10],
-                [2, 1, .5, .5, 20, 10, 10]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+        ]
+        data = [[1, 1, 0.5, 0.5, 20, 10, 10], [2, 1, 0.5, 0.5, 20, 10, 10]]
         df = pd.DataFrame(data=data, columns=columns)
-        conditions = ['cond1', 'cond2']
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=15)
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts', 'dpi']
-        data = [[1, 1, .5, .5, 20, 10, 10, 0],
-                [2, 1, .5, .5, 20, 10, 10, 0]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+            "dpi",
+        ]
+        data = [[1, 1, 0.5, 0.5, 20, 10, 10, 0], [2, 1, 0.5, 0.5, 20, 10, 10, 0]]
         ctrl = pd.DataFrame(data=data, columns=columns)
-        ctrl.set_index('tid', inplace=True)
+        ctrl.set_index("tid", inplace=True)
         print(df)
         print(ctrl)
         print(ctrl == df)
@@ -39,18 +54,33 @@ class TestSGAnalysis(object):
 
     # test get_die_gene_table - gene with 11 > n isoforms > 1
     def test_get_die_table_5(self):
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts']
-        data = [[1, 1, .5, .5, 20, 10, 10],
-                [2, 1, .5, .5, 20, 10, 10]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+        ]
+        data = [[1, 1, 0.5, 0.5, 20, 10, 10], [2, 1, 0.5, 0.5, 20, 10, 10]]
         df = pd.DataFrame(data=data, columns=columns)
-        conditions = ['cond1', 'cond2']
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts', 'dpi']
-        data = [[1, 1, .5, .5, 20, 10, 10, 0],
-                [2, 1, .5, .5, 20, 10, 10, 0]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+            "dpi",
+        ]
+        data = [[1, 1, 0.5, 0.5, 20, 10, 10, 0], [2, 1, 0.5, 0.5, 20, 10, 10, 0]]
         ctrl = pd.DataFrame(data=data, columns=columns)
-        ctrl.set_index('tid', inplace=True)
+        ctrl.set_index("tid", inplace=True)
         print(df)
         print(ctrl)
         print(ctrl == df)
@@ -58,23 +88,37 @@ class TestSGAnalysis(object):
 
     # test get_die_gene_table - gene with no expressed isoforms
     def test_get_die_table_4(self):
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts']
-        data = [[1, 1, 0, 0, 0, 0, 0],
-                [2, 1, 0, 0, 0, 0, 0]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+        ]
+        data = [[1, 1, 0, 0, 0, 0, 0], [2, 1, 0, 0, 0, 0, 0]]
         df = pd.DataFrame(data=data, columns=columns)
-        conditions = ['cond1', 'cond2']
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
         assert df == None
 
     # test get_die_gene_table - gene doesn't have enough reads (rc thresh)
     def test_get_die_table_3(self):
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts']
-        data = [[1, 1, .5, .5, 20, 10, 10],
-                [2, 1, .5, .5, 20, 10, 10]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+        ]
+        data = [[1, 1, 0.5, 0.5, 20, 10, 10], [2, 1, 0.5, 0.5, 20, 10, 10]]
         df = pd.DataFrame(data=data, columns=columns)
-        conditions = ['cond1', 'cond2']
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df.set_index("tid", inplace=True)
         df
 
         df, test_result = swan.get_die_gene_table(df, conditions, rc=30)
@@ -82,31 +126,40 @@ class TestSGAnalysis(object):
 
     # test get_die_gene_table - limit to genes with >1 iso
     def test_get_die_table_2(self):
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts', 'dpi']
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+            "dpi",
+        ]
         data = [1, 1, 1, 1, 30, 15, 15, 0]
         df = pd.DataFrame(data=[data], columns=columns)
-        conditions = ['cond1', 'cond2']
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
         assert df == None
 
     # test get_die_gene_table_1 - limit to isoforms with > 0 exp in at least
     # one condition, aggregate last n-11 isos
     def test_get_die_table_1(self):
-        conditions = ['cond1', 'cond2']
-        df = pd.read_csv('files/test_pi_1.tsv', sep='\t')
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df = pd.read_csv("files/test_pi_1.tsv", sep="\t")
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
-        df.index = df.index.astype('str')
+        df.index = df.index.astype("str")
         # df.set_index('tid', inplace=True)
-        ctrl = pd.read_csv('files/test_pi_1_reference.tsv', sep='\t')
-        ctrl.tid = ctrl.tid.astype('str')
-        ctrl.set_index('tid', inplace=True)
+        ctrl = pd.read_csv("files/test_pi_1_reference.tsv", sep="\t")
+        ctrl.tid = ctrl.tid.astype("str")
+        ctrl.set_index("tid", inplace=True)
         print(ctrl)
         print(df)
         ctrl = ctrl[df.columns]
-        ctrl.dpi = ctrl.dpi.astype('float').round()
-        df.dpi = df.dpi.astype('float').round()
+        ctrl.dpi = ctrl.dpi.astype("float").round()
+        df.dpi = df.dpi.astype("float").round()
         print(ctrl)
         print(df)
         print(df.columns)
@@ -117,11 +170,12 @@ class TestSGAnalysis(object):
         assert (ctrl == df).all(axis=0).all()
 
         # still need better way to test this rip
+
     # test test_gene - 2 up 2 down
     def test_test_gene_3(self):
-        conditions = ['cond1', 'cond2']
-        df = pd.read_csv('files/test_pi_1.tsv', sep='\t')
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df = pd.read_csv("files/test_pi_1.tsv", sep="\t")
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
         ctrl_gene_dpi = 0.41
 
@@ -135,9 +189,9 @@ class TestSGAnalysis(object):
 
     # test test_gene - <2 up, <2 down
     def test_test_gene_2(self):
-        conditions = ['cond1', 'cond2']
-        df = pd.read_csv('files/test_pi_1.tsv', sep='\t')
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df = pd.read_csv("files/test_pi_1.tsv", sep="\t")
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
         ctrl_gene_dpi = 0.22
         tids = [3, 1]
@@ -148,12 +202,19 @@ class TestSGAnalysis(object):
 
     # test test_gene - all 0
     def test_test_gene_1(self):
-        columns = ['tid', 'gid', 'cond1', 'cond2', 'total_counts', 'cond1_counts', 'cond2_counts']
-        data = [[1, 1, .5, .5, 20, 10, 10],
-                [2, 1, .5, .5, 20, 10, 10]]
+        columns = [
+            "tid",
+            "gid",
+            "cond1",
+            "cond2",
+            "total_counts",
+            "cond1_counts",
+            "cond2_counts",
+        ]
+        data = [[1, 1, 0.5, 0.5, 20, 10, 10], [2, 1, 0.5, 0.5, 20, 10, 10]]
         df = pd.DataFrame(data=data, columns=columns)
-        conditions = ['cond1', 'cond2']
-        df.set_index('tid', inplace=True)
+        conditions = ["cond1", "cond2"]
+        df.set_index("tid", inplace=True)
         df, test_result = swan.get_die_gene_table(df, conditions, rc=0)
         ctrl_gene_dpi = 0
         entry = swan.test_gene(df, conditions)
@@ -164,29 +225,42 @@ class TestSGAnalysis(object):
     def test_get_die_genes_5(self):
         sg = get_die_test_sg()
         print(sg.adata.obs)
-        obs_col = 'condition'
-        obs_conditions = ['PB65_B017', 'PB65_B018']
-        id_col = 'tid'
+        obs_col = "condition"
+        obs_conditions = ["PB65_B017", "PB65_B018"]
+        id_col = "tid"
         with pytest.raises(Exception) as e:
-            test = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
-        assert 'Metadata column' in str(e.value)
+            test = sg.die_gene_test(
+                obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1
+            )
+        assert "Metadata column" in str(e.value)
 
     # tests get_die_genes - b/w  dataset conditions
     def test_get_die_genes_4(self):
         sg = get_die_test_sg()
-        obs_col = 'dataset'
-        obs_conditions = ['PB65_B017', 'PB65_B018']
-        id_col = 'tid'
-        test, test_result = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
+        obs_col = "dataset"
+        obs_conditions = ["PB65_B017", "PB65_B018"]
+        id_col = "tid"
+        test, test_result = sg.die_gene_test(
+            obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1
+        )
         # don't test p vals cause that's tough
-        drop_cols = ['p_val', 'adj_p_val', 'pos_iso_1', 'pos_iso_2',
-                     'pos_iso_1_dpi', 'pos_iso_2_dpi',
-                     'neg_iso_1', 'neg_iso_2',
-                     'neg_iso_1_dpi', 'neg_iso_2_dpi', 'gname']
+        drop_cols = [
+            "p_val",
+            "adj_p_val",
+            "pos_iso_1",
+            "pos_iso_2",
+            "pos_iso_1_dpi",
+            "pos_iso_2_dpi",
+            "neg_iso_1",
+            "neg_iso_2",
+            "neg_iso_1_dpi",
+            "neg_iso_2_dpi",
+            "gname",
+        ]
         test.drop(drop_cols, axis=1, inplace=True)
-        ctrl = pd.read_csv('files/chr11_and_Tcf3_PB65_B017_B018_dpi.tsv', sep='\t')
-        test.dpi = test.dpi.round().astype('float')
-        ctrl.dpi = ctrl.dpi.round().astype('float')
+        ctrl = pd.read_csv("files/chr11_and_Tcf3_PB65_B017_B018_dpi.tsv", sep="\t")
+        test.dpi = test.dpi.round().astype("float")
+        ctrl.dpi = ctrl.dpi.round().astype("float")
         print(test)
         print(ctrl)
         print(test == ctrl)
@@ -195,8 +269,8 @@ class TestSGAnalysis(object):
     # tests get_die_genes - b/w non dataset conditions
     def test_get_die_genes_3(self):
         sg = get_die_test_sg()
-        obs_col = 'cluster'
-        id_col = 'tid'
+        obs_col = "cluster"
+        id_col = "tid"
         test, test_result = sg.die_gene_test(obs_col=obs_col, rc_thresh=1)
         cols = sg.adata.var.index.tolist()
         rows = sg.adata.obs.cluster.tolist()
@@ -204,12 +278,21 @@ class TestSGAnalysis(object):
         beep = pd.DataFrame(data=data, columns=cols, index=rows)
 
         # don't test p vals cause that's tough
-        drop_cols = ['p_val', 'adj_p_val', 'pos_iso_1', 'pos_iso_2',
-                     'pos_iso_1_dpi', 'pos_iso_2_dpi',
-                     'neg_iso_1', 'neg_iso_2',
-                     'neg_iso_1_dpi', 'neg_iso_2_dpi', 'gname']
+        drop_cols = [
+            "p_val",
+            "adj_p_val",
+            "pos_iso_1",
+            "pos_iso_2",
+            "pos_iso_1_dpi",
+            "pos_iso_2_dpi",
+            "neg_iso_1",
+            "neg_iso_2",
+            "neg_iso_1_dpi",
+            "neg_iso_2_dpi",
+            "gname",
+        ]
         test.drop(drop_cols, axis=1, inplace=True)
-        ctrl = pd.read_csv('files/chr11_and_Tcf3_cluster_dpi.tsv', sep='\t')
+        ctrl = pd.read_csv("files/chr11_and_Tcf3_cluster_dpi.tsv", sep="\t")
         test.dpi = test.dpi.round()
         ctrl.dpi = ctrl.dpi.round()
         print(ctrl)
@@ -221,22 +304,24 @@ class TestSGAnalysis(object):
     # not provided
     def test_get_die_genes_2(self):
         sg = get_die_test_sg()
-        obs_col = 'dataset'
-        id_col = 'tid'
+        obs_col = "dataset"
+        id_col = "tid"
         with pytest.raises(Exception) as e:
             test, test_result = sg.die_gene_test(obs_col=obs_col, rc_thresh=1)
-        assert 'Must provide obs_conditions' in str(e.value)
+        assert "Must provide obs_conditions" in str(e.value)
 
     # tests get_die_genes - obs_col has more than 2 values and obs_conditions
     # does not have 2 values
     def test_get_die_genes_1(self):
         sg = get_die_test_sg()
-        obs_col = 'dataset'
-        id_col = 'tid'
-        obs_conditions = ['D12']
+        obs_col = "dataset"
+        id_col = "tid"
+        obs_conditions = ["D12"]
         with pytest.raises(Exception) as e:
-            test, test_results = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1)
-        assert 'exactly 2 values' in str(e.value)
+            test, test_results = sg.die_gene_test(
+                obs_col=obs_col, obs_conditions=obs_conditions, rc_thresh=1
+            )
+        assert "exactly 2 values" in str(e.value)
 
     # tests find_es_genes - requires edges to be in order
     def test_find_es_genes(self):
@@ -244,28 +329,32 @@ class TestSGAnalysis(object):
         sg.annotation = True
 
         # t_df
-        data = [[0, [0,1,2,3,4], True, 'g1', 't1'],
-                [1, [0,5,4], False, 'g1', 't2']]
-        cols = ['vertex_id', 'path', 'annotation', 'gid', 'tid']
+        data = [
+            [0, [0, 1, 2, 3, 4], True, "g1", "t1"],
+            [1, [0, 5, 4], False, "g1", "t2"],
+        ]
+        cols = ["vertex_id", "path", "annotation", "gid", "tid"]
         sg.t_df = pd.DataFrame(data=data, columns=cols)
 
         # edge
-        data = [[0, 'exon', True, 0, 1],
-                [1, 'intron', True, 1, 2],
-                [2, 'exon', True, 2, 3],
-                [3, 'intron', True, 3, 4],
-                [4, 'exon', True, 4, 5],
-                [5, 'intron', False, 1, 4]]
-        cols = ['edge_id', 'edge_type', 'annotation', 'v1', 'v2']
+        data = [
+            [0, "exon", True, 0, 1],
+            [1, "intron", True, 1, 2],
+            [2, "exon", True, 2, 3],
+            [3, "intron", True, 3, 4],
+            [4, "exon", True, 4, 5],
+            [5, "intron", False, 1, 4],
+        ]
+        cols = ["edge_id", "edge_type", "annotation", "v1", "v2"]
         sg.edge_df = pd.DataFrame(data=data, columns=cols)
 
         # loc
-        data = [0,1,2,3,4,5]
-        cols = ['vertex_id']
+        data = [0, 1, 2, 3, 4, 5]
+        cols = ["vertex_id"]
         sg.loc_df = pd.DataFrame(data=data, columns=cols)
 
-        ctrl_gids = ['g1']
-        ctrl_tids = ['t2']
+        ctrl_gids = ["g1"]
+        ctrl_tids = ["t2"]
         ctrl_edges = [5]
 
         sg.get_loc_path()
@@ -275,24 +364,24 @@ class TestSGAnalysis(object):
         tids = es_df.tid.tolist()
         gids = es_df.gid.tolist()
 
-        print('edges')
-        print('control')
+        print("edges")
+        print("control")
         print(ctrl_edges)
-        print('test')
+        print("test")
         print(edges)
         assert set(ctrl_edges) == set(edges)
 
-        print('transcripts')
-        print('control')
+        print("transcripts")
+        print("control")
         print(ctrl_tids)
-        print('test')
+        print("test")
         print(tids)
         assert set(ctrl_tids) == set(tids)
 
-        print('genes')
-        print('control')
+        print("genes")
+        print("control")
         print(ctrl_gids)
-        print('test')
+        print("test")
         print(gids)
         assert set(ctrl_gids) == set(gids)
 
@@ -303,27 +392,28 @@ class TestSGAnalysis(object):
         sg.annotation = True
 
         # t_df
-        data = [[0, [0,1,2], True, 'g1', 't1'],
-                [1, [3], False, 'g1', 't2']]
-        cols = ['vertex_id', 'path', 'annotation', 'gid', 'tid']
+        data = [[0, [0, 1, 2], True, "g1", "t1"], [1, [3], False, "g1", "t2"]]
+        cols = ["vertex_id", "path", "annotation", "gid", "tid"]
         sg.t_df = pd.DataFrame(data=data, columns=cols)
 
         # edge
-        data = [[0, 'exon', True, 0, 1],
-                [1, 'intron', True, 1, 2],
-                [2, 'exon', True, 2, 3],
-                [3, 'exon', False, 0, 3]]
-        cols = ['edge_id', 'edge_type', 'annotation', 'v1', 'v2']
+        data = [
+            [0, "exon", True, 0, 1],
+            [1, "intron", True, 1, 2],
+            [2, "exon", True, 2, 3],
+            [3, "exon", False, 0, 3],
+        ]
+        cols = ["edge_id", "edge_type", "annotation", "v1", "v2"]
         sg.edge_df = pd.DataFrame(data=data, columns=cols)
 
         # loc
-        data = [0,1,2,3]
-        cols = ['vertex_id']
+        data = [0, 1, 2, 3]
+        cols = ["vertex_id"]
         sg.loc_df = pd.DataFrame(data=data, columns=cols)
 
         ctrl_edges = [3]
-        ctrl_tids = ['t2']
-        ctrl_gids = ['g1']
+        ctrl_tids = ["t2"]
+        ctrl_gids = ["g1"]
 
         sg.get_loc_path()
         sg.create_graph_from_dfs()
@@ -333,35 +423,36 @@ class TestSGAnalysis(object):
         tids = ir_df.tid.tolist()
         gids = ir_df.gid.tolist()
 
-        print('edges')
-        print('control')
+        print("edges")
+        print("control")
         print(ctrl_edges)
-        print('test')
+        print("test")
         print(edges)
         assert set(ctrl_edges) == set(edges)
 
-        print('transcripts')
-        print('control')
+        print("transcripts")
+        print("control")
         print(ctrl_tids)
-        print('test')
+        print("test")
         print(tids)
         assert set(ctrl_tids) == set(tids)
 
-        print('genes')
-        print('control')
+        print("genes")
+        print("control")
         print(ctrl_gids)
-        print('test')
+        print("test")
         print(gids)
         assert set(ctrl_gids) == set(gids)
 
+
 def get_die_test_sg():
     sg = swan.SwanGraph()
-    db = 'files/chr11_and_Tcf3_no_gname.db'
+    db = "files/chr11_and_Tcf3_no_gname.db"
     sg.add_transcriptome(db, include_isms=True)
-    ab = 'files/chr11_and_Tcf3_talon_abundance_PB65.tsv'
+    ab = "files/chr11_and_Tcf3_talon_abundance_PB65.tsv"
     sg.add_abundance(ab)
-    ab = 'files/chr11_and_Tcf3_talon_abundance_D12.tsv'
+    ab = "files/chr11_and_Tcf3_talon_abundance_D12.tsv"
     sg.add_abundance(ab)
-    meta = 'files/chr11_and_Tcf3_metadata.tsv'
+    meta = "files/chr11_and_Tcf3_metadata.tsv"
     sg.add_metadata(meta)
     return sg

@@ -1,17 +1,18 @@
 # Getting started
 import swan_vis as swan
+
 sg = swan.SwanGraph()
-annot_gtf = '/dfs6/pub/freese/mortazavi_lab/ref/gencode.v29/gencode.v29.annotation.gtf'
-data_gtf = 'data/all_talon_observedOnly.gtf'
-ab_file = 'data/all_talon_abundance_filtered.tsv'
-talon_db = 'data/talon.db'
-pass_list = 'data/all_pass_list.csv'
-meta = 'data/metadata.tsv'
+annot_gtf = "/dfs6/pub/freese/mortazavi_lab/ref/gencode.v29/gencode.v29.annotation.gtf"
+data_gtf = "data/all_talon_observedOnly.gtf"
+ab_file = "data/all_talon_abundance_filtered.tsv"
+talon_db = "data/talon.db"
+pass_list = "data/all_pass_list.csv"
+meta = "data/metadata.tsv"
 sg.add_annotation(annot_gtf)
 sg.add_transcriptome(data_gtf)
 sg.add_abundance(ab_file)
-sg.save_graph('swan')
-sg = swan.read('swan.p')
+sg.save_graph("swan")
+sg = swan.read("swan.p")
 sg = swan.SwanGraph()
 
 
@@ -19,12 +20,12 @@ sg.add_annotation(annot_gtf)
 sg.add_transcriptome(talon_db, pass_list=pass_list)
 sg.add_abundance(ab_file)
 sg.add_metadata(meta)
-sg.save_graph('data/swan')
+sg.save_graph("data/swan")
 
 # Analysis
-sg = swan.read('data/swan.p')
-obs_col = 'cell_line'
-obs_conditions = ['hepg2', 'hffc6']
+sg = swan.read("data/swan.p")
+obs_col = "cell_line"
+obs_conditions = ["hepg2", "hffc6"]
 
 # perform a differential gene expression
 # Wald test on the provided metadata column and conditions
@@ -32,19 +33,16 @@ test = sg.de_gene_test(obs_col, obs_conditions=obs_conditions)
 test.head(2)
 
 # deg - differential gene expression
-uns_key = swan.make_uns_key('deg',
-                            obs_col=obs_col,
-                            obs_conditions=obs_conditions)
+uns_key = swan.make_uns_key("deg", obs_col=obs_col, obs_conditions=obs_conditions)
 test = sg.adata.uns[uns_key]
 test.head(2)
 
 # return a table of significantly differentially-expressed genes
 # for a given q val + log2fc threshold
-de_genes = sg.get_de_genes(obs_col, obs_conditions=obs_conditions,
-                           q=0.05, log2fc=1)
+de_genes = sg.get_de_genes(obs_col, obs_conditions=obs_conditions, q=0.05, log2fc=1)
 
-obs_col = 'cell_line'
-obs_conditions = ['hepg2', 'hffc6']
+obs_col = "cell_line"
+obs_conditions = ["hepg2", "hffc6"]
 
 # perform a differential transcript expression
 # Wald test on the provided metadata column and conditions
@@ -55,9 +53,9 @@ test = sg.de_transcript_test(obs_col, obs_conditions=obs_conditions)
 
 
 # save the SwanGraph as a Python pickle file
-sg.save_graph('data/swan')
-sg.save_graph('swan')
-sg.save_graph('data/swan_files_full')
+sg.save_graph("data/swan")
+sg.save_graph("swan")
+sg.save_graph("data/swan_files_full")
 # sg.save_graph('data/swan_back')
 
 
@@ -75,9 +73,7 @@ test.head(2)
 
 
 # det - differential transcript expression
-uns_key = swan.make_uns_key('det',
-                            obs_col=obs_col,
-                            obs_conditions=obs_conditions)
+uns_key = swan.make_uns_key("det", obs_col=obs_col, obs_conditions=obs_conditions)
 test = sg.adata.uns[uns_key]
 test.head(2)
 
@@ -89,8 +85,9 @@ test.head(2)
 
 # return a table of significantly differentially-expressed genes
 # for a given q val + log2fc threshold
-de_transcripts = sg.get_de_transcripts(obs_col, obs_conditions=obs_conditions,
-                           q=0.05, log2fc=1)
+de_transcripts = sg.get_de_transcripts(
+    obs_col, obs_conditions=obs_conditions, q=0.05, log2fc=1
+)
 
 
 # In[11]:
@@ -116,11 +113,11 @@ sg.adata.obs
 
 
 # find genes that exhibit DIE between HFFc6 and HepG2
-obs_col = 'cell_line'
-obs_conditions = ['hepg2', 'hffc6']
-die_table = sg.die_gene_test(obs_col=obs_col,
-                             obs_conditions=obs_conditions,
-                             verbose=True)
+obs_col = "cell_line"
+obs_conditions = ["hepg2", "hffc6"]
+die_table = sg.die_gene_test(
+    obs_col=obs_col, obs_conditions=obs_conditions, verbose=True
+)
 
 
 # The resultant table contains an entry for each gene with the p value (`p_val`), adjusted p value (`adj_p_val`), and change in percent isoform usage for the top two isoforms (`dpi`). Exact details on these calculations can be found in [Joglekar et. al., 2021](https://www.nature.com/articles/s41467-020-20343-5).
@@ -137,9 +134,7 @@ die_table.head()
 
 
 # die_iso - isoform level differential isoform expression test results
-uns_key = swan.make_uns_key('die',
-                            obs_col=obs_col,
-                            obs_conditions=obs_conditions)
+uns_key = swan.make_uns_key("die", obs_col=obs_col, obs_conditions=obs_conditions)
 test = sg.adata.uns[uns_key]
 test.head(2)
 
@@ -149,8 +144,7 @@ test.head(2)
 # In[16]:
 
 
-test = sg.get_die_genes(obs_col=obs_col, obs_conditions=obs_conditions,
-                       p=0.05, dpi=10)
+test = sg.get_die_genes(obs_col=obs_col, obs_conditions=obs_conditions, p=0.05, dpi=10)
 test.head()
 
 
@@ -160,10 +154,9 @@ test.head()
 
 
 # find genes that exhibit DIE for TSSs between HFFc6 and HepG2
-die_table = sg.die_gene_test(kind='tss',
-                             obs_col=obs_col,
-                             obs_conditions=obs_conditions,
-                             verbose=True)
+die_table = sg.die_gene_test(
+    kind="tss", obs_col=obs_col, obs_conditions=obs_conditions, verbose=True
+)
 die_table.head()
 
 
@@ -173,10 +166,9 @@ die_table.head()
 
 
 # die_iso - TSS level differential isoform expression test results
-uns_key = swan.make_uns_key('die',
-                            obs_col=obs_col,
-                            obs_conditions=obs_conditions,
-                            die_kind='tss')
+uns_key = swan.make_uns_key(
+    "die", obs_col=obs_col, obs_conditions=obs_conditions, die_kind="tss"
+)
 test = sg.adata.uns[uns_key]
 test.head(2)
 
@@ -186,9 +178,9 @@ test.head(2)
 # In[19]:
 
 
-test = sg.get_die_genes(kind='tss', obs_col=obs_col,
-                        obs_conditions=obs_conditions,
-                        p=0.05, dpi=10)
+test = sg.get_die_genes(
+    kind="tss", obs_col=obs_col, obs_conditions=obs_conditions, p=0.05, dpi=10
+)
 test.head()
 
 
@@ -198,7 +190,9 @@ test.head()
 
 
 # find genes that exhibit DIE for TESs between HFFc6 and HepG2
-die_table = sg.die_gene_test(kind='tes', obs_col='cell_line', obs_conditions=['hepg2', 'hffc6'])
+die_table = sg.die_gene_test(
+    kind="tes", obs_col="cell_line", obs_conditions=["hepg2", "hffc6"]
+)
 die_table.head()
 
 
@@ -206,10 +200,9 @@ die_table.head()
 
 
 # die_iso - TSS level differential isoform expression test results
-uns_key = swan.make_uns_key('die',
-                            obs_col=obs_col,
-                            obs_conditions=obs_conditions,
-                            die_kind='tes')
+uns_key = swan.make_uns_key(
+    "die", obs_col=obs_col, obs_conditions=obs_conditions, die_kind="tes"
+)
 test = sg.adata.uns[uns_key]
 test.head(2)
 
@@ -217,29 +210,25 @@ test.head(2)
 # In[22]:
 
 
-test = sg.get_die_genes(kind='tes', obs_col=obs_col,
-                        obs_conditions=obs_conditions,
-                        p=0.05, dpi=10)
+test = sg.get_die_genes(
+    kind="tes", obs_col=obs_col, obs_conditions=obs_conditions, p=0.05, dpi=10
+)
 test.head()
-
 
 
 sg.adata.obs.head()
 
-col_name = sg.add_multi_groupby(['cell_line', 'replicate'])
+col_name = sg.add_multi_groupby(["cell_line", "replicate"])
 
 print(col_name)
 print(sg.adata.obs.head())
 
 obs_col = col_name
-obs_conditions = ['hffc6_3', 'hepg2_1']
+obs_conditions = ["hffc6_3", "hepg2_1"]
 
-deg_summary = sg.de_gene_test(obs_col=obs_col,
-                              obs_conditions=obs_conditions)
-det_summary = sg.de_transcript_test(obs_col=obs_col,
-                                    obs_conditions=obs_conditions)
-die_summary = sg.die_gene_test(obs_col=obs_col,
-                               obs_conditions=obs_conditions)
+deg_summary = sg.de_gene_test(obs_col=obs_col, obs_conditions=obs_conditions)
+det_summary = sg.de_transcript_test(obs_col=obs_col, obs_conditions=obs_conditions)
+die_summary = sg.die_gene_test(obs_col=obs_col, obs_conditions=obs_conditions)
 
 
 # returns a DataFrame of genes, transcripts, and specific edges in
@@ -255,10 +244,8 @@ es_df.head()
 ir_df = sg.find_ir_genes(verbose=True)
 
 
-
-
 # save the SwanGraph as a Python pickle file
-sg.save_graph('data/swan')
+sg.save_graph("data/swan")
 
 ir_df.head()
 
@@ -271,11 +258,11 @@ ir_df.head()
 # In[26]:
 
 
-#get_ipython().run_line_magic('matplotlib', 'inline')
+# get_ipython().run_line_magic('matplotlib', 'inline')
 import swan_vis as swan
 
 # code to download this data is in the Getting started tutorial
-sg = swan.read('data/swan.p')
+sg = swan.read("data/swan.p")
 
 
 # ## <a name="gene_summary"></a>Gene summary graphs
@@ -285,7 +272,7 @@ sg = swan.read('data/swan.p')
 
 
 # plot a gene summary graph for the given gene
-sg.plot_graph('ADRM1')
+sg.plot_graph("ADRM1")
 
 
 # Gene summary graphs are a type of graph plot and therefore have plotting options that allow the user to highlight nodes and edges that are either not present in the annotation with the `indicate_novel=True` option.
@@ -297,7 +284,7 @@ sg.plot_graph('ADRM1')
 
 # plot a gene summary graph with novel splice sites and
 # splice junctions plotted as outlined nodes and dashed edges respectively
-sg.plot_graph('ADRM1', indicate_novel=True)
+sg.plot_graph("ADRM1", indicate_novel=True)
 
 
 # <!-- Similarly, you can highlight the nodes that come from a specific dataset. Outlined nodes and dashed edges are those that are present in the queried dataset. -->
@@ -319,7 +306,7 @@ sg.plot_graph('ADRM1', indicate_novel=True)
 
 # plot the path of a specific transcript through its parent gene
 # summary graph for a given transcript
-sg.plot_transcript_path('TALONT000301961')
+sg.plot_transcript_path("TALONT000301961")
 
 
 # You can use the `indicate_novel=True` option for transcript path Swan graphs too.
@@ -331,7 +318,7 @@ sg.plot_transcript_path('TALONT000301961')
 # graph for a given transcript
 # plot novel splice sites as outlined nodes
 # plot novel splice junctions as dashed edges
-sg.plot_transcript_path('TALONT000301961', indicate_novel=True)
+sg.plot_transcript_path("TALONT000301961", indicate_novel=True)
 
 
 # In[32]:
@@ -351,7 +338,7 @@ sg.plot_transcript_path('TALONT000301961', indicate_novel=True)
 
 # plot the traditional browser-style representation
 # for a given transcript
-sg.plot_transcript_path('TALONT000301961', browser=True)
+sg.plot_transcript_path("TALONT000301961", browser=True)
 
 
 # ## <a name="change_colors"></a>Changing colors
@@ -363,7 +350,7 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 # In[34]:
 
 
-cmap = {'intron': 'purple'}
+cmap = {"intron": "purple"}
 sg.set_plotting_colors(cmap)
 
 
@@ -372,7 +359,7 @@ sg.set_plotting_colors(cmap)
 
 # plot the path of a specific transcript through its parent gene
 # summary graph for a given transcript
-sg.plot_transcript_path('TALONT000301961')
+sg.plot_transcript_path("TALONT000301961")
 
 
 # Of course, you can also change all of the colors too! Beware that Swan will automatically compute a grayed-out version of the color. Try to choose colors that all have similar low "lightness" in HSL space so that the grayed-out components in the transcript path plots are still distinguishable from one another.
@@ -380,12 +367,17 @@ sg.plot_transcript_path('TALONT000301961')
 # In[36]:
 
 
-cmap = {'intron': 'rebeccapurple', 'exon': 'chartreuse', 'tss': 'dodgerblue',
-        'tes': 'salmon', 'internal': 'goldenrod'}
+cmap = {
+    "intron": "rebeccapurple",
+    "exon": "chartreuse",
+    "tss": "dodgerblue",
+    "tes": "salmon",
+    "internal": "goldenrod",
+}
 sg.set_plotting_colors(cmap=cmap)
 # plot the path of a specific transcript through its parent gene
 # summary graph for a given transcript
-sg.plot_transcript_path('TALONT000301961')
+sg.plot_transcript_path("TALONT000301961")
 
 
 # You can also change the color of plotted browser figures at the same time by adding a `browser` color to your colormap.
@@ -393,10 +385,10 @@ sg.plot_transcript_path('TALONT000301961')
 # In[37]:
 
 
-cmap = {'browser': 'palevioletred'}
+cmap = {"browser": "palevioletred"}
 sg.set_plotting_colors(cmap=cmap)
 # plot the path of a specific transcript in browser format
-sg.plot_transcript_path('TALONT000301961', browser=True)
+sg.plot_transcript_path("TALONT000301961", browser=True)
 
 
 # If at any point you want to revert to the default color settings, you can run the following.
@@ -405,8 +397,8 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 
 
 sg.set_plotting_colors(default=True)
-sg.plot_transcript_path('TALONT000301961')
-sg.plot_transcript_path('TALONT000301961', browser=True)
+sg.plot_transcript_path("TALONT000301961")
+sg.plot_transcript_path("TALONT000301961", browser=True)
 
 
 # ## <a name="save_fig"></a>Saving a figure
@@ -419,10 +411,10 @@ sg.plot_transcript_path('TALONT000301961', browser=True)
 
 
 # plot gene summary graph for a given gene
-sg.plot_graph('ADRM1')
+sg.plot_graph("ADRM1")
 
 # save the currently-plotted figure with the given filename and location
-swan.save_fig('figures/my_gene_summary.png')
+swan.save_fig("figures/my_gene_summary.png")
 
 
 # In[40]:
@@ -439,7 +431,7 @@ swan.save_fig('figures/my_gene_summary.png')
 # plot a gene summary graph with novel splice sites and junctions
 # outlined and dashed respectively
 # save the figure with the given prefix
-sg.plot_graph('ADRM1', indicate_novel=True, prefix='figures/adrm1')
+sg.plot_graph("ADRM1", indicate_novel=True, prefix="figures/adrm1")
 
 
 # In[42]:
@@ -464,10 +456,7 @@ sg.plot_graph('ADRM1', indicate_novel=True, prefix='figures/adrm1')
 # display the novelty category associated with the transcript
 # display novel splice sites and junctions
 #     as outlined nodes and dashed edges respectively
-sg.gen_report('ADRM1',
-              prefix='figures/adrm1_paper',
-              novelty=True,
-              indicate_novel=True)
+sg.gen_report("ADRM1", prefix="figures/adrm1_paper", novelty=True, indicate_novel=True)
 
 
 # In[44]:
@@ -491,13 +480,15 @@ sg.gen_report('ADRM1',
 # include the qvals from differential transcript expression test
 # differential transcript expression test metadata variable: cell_line
 # differential transcript expression test categories to compare: hepg2, hffc6
-sg.gen_report('ADRM1',
-              prefix='figures/adrm1_paper',
-              novelty=True,
-              indicate_novel=True,
-              include_qvals=True,
-              qval_obs_col='cell_line',
-              qval_obs_conditions=['hepg2', 'hffc6'])
+sg.gen_report(
+    "ADRM1",
+    prefix="figures/adrm1_paper",
+    novelty=True,
+    indicate_novel=True,
+    include_qvals=True,
+    qval_obs_col="cell_line",
+    qval_obs_conditions=["hepg2", "hffc6"],
+)
 
 
 # In[46]:
@@ -521,13 +512,15 @@ sg.gen_report('ADRM1',
 # display the novelty category associated with the transcript
 # display novel splice sites and junctions
 #     as outlined nodes and dashed edges respectively
-sg.gen_report('NIPAL3',
-              prefix='figures/nipal3',
-              layer='pi',
-              cmap='magma',
-              display_numbers=True,
-              novelty=True,
-              indicate_novel=True)
+sg.gen_report(
+    "NIPAL3",
+    prefix="figures/nipal3",
+    layer="pi",
+    cmap="magma",
+    display_numbers=True,
+    novelty=True,
+    indicate_novel=True,
+)
 
 
 # In[48]:
@@ -550,15 +543,17 @@ sg.gen_report('NIPAL3',
 # display novel splice sites and junctions
 #     as outlined nodes and dashed edges respectively
 # group datasets based on the 'cell_line' metadata column
-sg.gen_report('NIPAL3',
-              prefix='figures/nipal3',
-              layer='pi',
-              cmap='magma',
-              display_numbers=True,
-              novelty=True,
-              indicate_novel=True,
-              groupby='cell_line',
-              transcript_name=True)
+sg.gen_report(
+    "NIPAL3",
+    prefix="figures/nipal3",
+    layer="pi",
+    cmap="magma",
+    display_numbers=True,
+    novelty=True,
+    indicate_novel=True,
+    groupby="cell_line",
+    transcript_name=True,
+)
 
 
 # Using this strategy, the basis of the isoform switch is a little clearer. The longer isoform, NIPAL3-204, is proportionally higher-expressed in HFFc6, wherease NIPAL3-202 is proportionally higher-expressed in HepG2.
@@ -576,7 +571,7 @@ sg.gen_report('NIPAL3',
 # In[51]:
 
 
-sg.set_metadata_colors('cell_line', {'hepg2': 'gold', 'hffc6': '#ba55d3'})
+sg.set_metadata_colors("cell_line", {"hepg2": "gold", "hffc6": "#ba55d3"})
 
 
 # Then use the `metadata_cols` option to indicate what colored metadata categories you'd like to plot at the top of the gene report. Here I'm also demonstrating the option to plot the browser-style transcript representation using the `browser=True` option.
@@ -598,19 +593,21 @@ sg.set_metadata_colors('cell_line', {'hepg2': 'gold', 'hffc6': '#ba55d3'})
 # include the qvals from differential transcript expression test
 # differential transcript expression test metadata variable: cell_line
 # differential transcript expression test categories to compare: hepg2, hffc6
-sg.gen_report('ADRM1',
-              prefix='figures/adrm1',
-              layer='pi',
-              cmap='magma',
-              display_numbers=True,
-              novelty=True,
-              groupby='cell_line',
-              transcript_name=True,
-              metadata_cols=['cell_line'],
-              browser=True,
-              include_qvals=True,
-              qval_obs_col='cell_line',
-              qval_obs_conditions=['hepg2', 'hffc6'])
+sg.gen_report(
+    "ADRM1",
+    prefix="figures/adrm1",
+    layer="pi",
+    cmap="magma",
+    display_numbers=True,
+    novelty=True,
+    groupby="cell_line",
+    transcript_name=True,
+    metadata_cols=["cell_line"],
+    browser=True,
+    include_qvals=True,
+    qval_obs_col="cell_line",
+    qval_obs_conditions=["hepg2", "hffc6"],
+)
 
 
 # In[53]:
@@ -625,9 +622,7 @@ sg.gen_report('ADRM1',
 
 
 # from lighter to darker blue
-sg.set_metadata_colors('replicate', {'1': '#bef4ff',
-                                     '2': '#73a8b2',
-                                     '3': '#263133'})
+sg.set_metadata_colors("replicate", {"1": "#bef4ff", "2": "#73a8b2", "3": "#263133"})
 
 
 # In[55]:
@@ -640,14 +635,16 @@ sg.set_metadata_colors('replicate', {'1': '#bef4ff',
 # display the novelty category associated with the transcript
 # color cell lines and replicates by metadata colors
 # plot the genome browser representation of the transcript models
-sg.gen_report('ADRM1',
-              prefix='figures/adrm1',
-              cmap='viridis',
-              display_numbers=True,
-              novelty=True,
-              transcript_name=True,
-              metadata_cols=['cell_line', 'replicate'],
-              browser=True)
+sg.gen_report(
+    "ADRM1",
+    prefix="figures/adrm1",
+    cmap="viridis",
+    display_numbers=True,
+    novelty=True,
+    transcript_name=True,
+    metadata_cols=["cell_line", "replicate"],
+    browser=True,
+)
 
 
 # In[56]:
@@ -659,7 +656,6 @@ sg.gen_report('ADRM1',
 # Note that if I try to use the `groupby='cell_line'` option with `metadata_cols=['cell_line', 'replicate']`, Swan will throw an error because there are multiple distinct replicates that belong to each cell line which makes the groupby impossible.
 
 # In[57]:
-
 
 
 # In[66]:
@@ -681,12 +677,14 @@ sg.gen_report('ADRM1',
 # color cell lines by metadata colors
 # restrict data shown to just the hffc6 cell line and replicates 3 and 2
 # order transcripts based on genomic location of TSS
-sg.gen_report('NIPAL3',
-              prefix='figures/nipal3',
-              cmap='viridis',
-              metadata_cols=['cell_line', 'replicate'],
-              datasets={'cell_line': 'hffc6', 'replicate': ['3', '2']},
-              order='tss')
+sg.gen_report(
+    "NIPAL3",
+    prefix="figures/nipal3",
+    cmap="viridis",
+    metadata_cols=["cell_line", "replicate"],
+    datasets={"cell_line": "hffc6", "replicate": ["3", "2"]},
+    order="tss",
+)
 
 
 # As you can see here, the data displayed is limited to those belonging to hffc6 replicates 2 and 3, and we display replicates 3 and 2 in a specific order.
@@ -709,13 +707,15 @@ sg.gen_report('NIPAL3',
 # restrict data shown to just the hffc6 datasets
 # order transcripts based on genomic location of TES
 # use browser-style representation
-sg.gen_report('NIPAL3',
-              prefix='figures/nipal3',
-              cmap='viridis',
-              metadata_cols=['cell_line', 'replicate'],
-              datasets={'cell_line': 'hffc6'},
-              order='tes',
-              browser=True)
+sg.gen_report(
+    "NIPAL3",
+    prefix="figures/nipal3",
+    cmap="viridis",
+    metadata_cols=["cell_line", "replicate"],
+    datasets={"cell_line": "hffc6"},
+    order="tes",
+    browser=True,
+)
 
 
 # In[70]:
