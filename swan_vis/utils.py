@@ -105,12 +105,12 @@ def get_fields(fields):
 		attributes (dict): Dictionary created from fields.
 	"""
 
-    PATTERN = re.compile(r'''((?:[^;"']|"[^"]*"|'[^']*')+)''')
-    fields = PATTERN.split(fields.rstrip('\n'))[1::2]
-    attributes = dict(map(lambda x: x.rstrip('\n')\
-                                     .lstrip(' ')\
-                                     .replace('"', '')\
-                                     .split(' ', 1), fields))
+	PATTERN = re.compile(r'''((?:[^;"']|"[^"]*"|'[^']*')+)''')
+	fields = PATTERN.split(fields.rstrip('\n'))[1::2]
+	attributes = dict(map(lambda x: x.rstrip('\n')\
+									 .lstrip(' ')\
+									 .replace('"', '')\
+									 .split(' ', 1), fields))
 
 	# put in placeholders for important attributes (such as gene_id) if they
 	# are absent
