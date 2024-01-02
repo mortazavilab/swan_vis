@@ -7,6 +7,7 @@ from statsmodels.stats.multitest import multipletests
 import scipy.stats as st
 import matplotlib.pyplot as plt
 import os
+import re
 import copy
 from collections import defaultdict
 from tqdm import tqdm
@@ -104,16 +105,12 @@ def get_fields(fields):
 		attributes (dict): Dictionary created from fields.
 	"""
 
-	attributes = {}
-
-	description = fields.strip()
-	description = [x.strip() for x in description.split(";")]
-	for pair in description:
-		if pair == "": continue
-
-		pair = pair.replace('"', '')
-		key, val = pair.split()
-		attributes[key] = val
+    PATTERN = re.compile(r'''((?:[^;"']|"[^"]*"|'[^']*')+)''')
+    fields = PATTERN.split(fields.rstrip('\n'))[1::2]
+    attributes = dict(map(lambda x: x.rstrip('\n')\
+                                     .lstrip(' ')\
+                                     .replace('"', '')\
+                                     .split(' ', 1), fields))
 
 	# put in placeholders for important attributes (such as gene_id) if they
 	# are absent
