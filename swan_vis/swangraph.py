@@ -133,7 +133,6 @@ class SwanGraph(Graph):
     def add_transcriptome(
         self, fname, pass_list=None, include_isms=False, verbose=False
     ):
-
         """
         Adds a whole transcriptome from a set of samples.
 
@@ -258,7 +257,6 @@ class SwanGraph(Graph):
         come from ISM transcripts.
         """
         if "novelty" in self.t_df.columns:
-
             # transcripts
             self.t_df = self.t_df.loc[self.t_df.novelty != "ISM"]
 
@@ -418,7 +416,6 @@ class SwanGraph(Graph):
         # if there is preexisting abundance data in the SwanGraph, concatenate
         # otherwise, adata is the new transcript level adata
         if not ab_bool:
-
             # create transcript-level adata object
             sg_adata = adata
 
@@ -435,7 +432,6 @@ class SwanGraph(Graph):
                     calc_pi(sg_adata, self.t_df)[0].to_numpy()
                 )
         else:
-
             # first set current layer to be counts
             sg_adata.X = sg_adata.layers["counts"]
 
@@ -623,7 +619,6 @@ class SwanGraph(Graph):
 
         # for each anndata
         for adata in adatas:
-
             # merge df with adata obs table
             adata.obs = reset_dupe_index(adata.obs, "dataset")
             adata.obs = adata.obs.merge(df, how="left", on="dataset")
@@ -906,7 +901,6 @@ class SwanGraph(Graph):
         """
 
         if not self.is_empty():
-
             # number of edges currently
             n = self.edge_df.edge_id.max()
 
@@ -1132,7 +1126,6 @@ class SwanGraph(Graph):
             t_exons = reorder_exons(t_exons)
 
             for i, exon_id in enumerate(t_exons):
-
                 # pull some information from exon dict
                 exon = exons[exon_id]
                 chrom = exon["chrom"]
@@ -1443,14 +1436,12 @@ class SwanGraph(Graph):
 
         # order by expression
         elif order == "expression":
-
             # make sure there are counts in the graph at all
             if not self.abundance:
                 raise Exception(
                     "Cannot order by expression because " "there is no expression data."
                 )
             else:
-
                 # find max expressed transcripts
                 data = self.adata.layers["tpm"].sum(axis=0)
                 cols = self.adata.var.index.tolist()
@@ -1560,7 +1551,6 @@ class SwanGraph(Graph):
             sub_edges = sub_edges.loc[sub_edges.edge_type == "intron"]
 
             if len(sub_edges.index) > 0:
-
                 # transcripts that contain the exon-skipping edge
                 cand_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
 
@@ -1677,7 +1667,6 @@ class SwanGraph(Graph):
             sub_edges = sub_edges.loc[sub_edges.edge_type == "exon"]
 
             if len(sub_edges.index) > 0:
-
                 # transcripts that contain the candidate exon-skipping edge
                 skip_t_df = nt_df[[eid in path for path in nt_df.path.values.tolist()]]
 
@@ -2656,6 +2645,9 @@ class SwanGraph(Graph):
         indicate_novel=False,
         browser=False,
         prefix=None,
+        colors=None,
+        ax=None,
+        **kwargs,
     ):
         # display=True):
         """
@@ -2693,7 +2685,7 @@ class SwanGraph(Graph):
             indicate_novel=indicate_novel,
             browser=browser,
         )
-        self.pg.plot_graph()
+        self.pg.plot_graph(colors=colors, ax=ax, **kwargs)
 
         # # display the plot if option is given
         # if display:
@@ -3088,7 +3080,6 @@ class SwanGraph(Graph):
 
         # plot colorbar for either tpm or pi
         if layer == "tpm":
-
             # take log2(tpm) (add pseudocounts)
             t_df = np.log2(t_df + 1)
 
@@ -3124,7 +3115,6 @@ class SwanGraph(Graph):
             plt.close()
 
         elif layer == "pi":
-
             # min and max pi vals
             g_max = 100
             g_min = 0
@@ -3264,7 +3254,6 @@ class SwanGraph(Graph):
     # make sure that the set of arguments work with each other
     # before we start plotting
     def check_plotting_args(self, indicate_dataset, indicate_novel, browser=False):
-
         # can only do one or another
         if indicate_dataset and indicate_novel:
             raise Exception(

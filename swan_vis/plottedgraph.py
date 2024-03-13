@@ -9,6 +9,7 @@ import matplotlib.patches as pch
 from swan_vis.utils import *
 from swan_vis.graph import *
 import time
+import seaborn as sns
 
 
 class PlottedGraph(Graph):
@@ -382,13 +383,13 @@ class PlottedGraph(Graph):
     ###############################################################################
 
     # plots input plotted graph according to user's choices
-    def plot_graph(self):
+    def plot_graph(self, colors=None, ax=None, **kwargs):
         # swan graph
         if not self.browser:
-            self.plot_swan_graph()
+            self.plot_swan_graph(colors=colors, ax=ax, **kwargs)
         # browser track
         else:
-            self.plot_browser_path()
+            self.plot_browser_path(colors=colors, ax=ax, **kwargs)
 
     ###############################################################################
     ############################ Swan graph plotting ##############################
@@ -729,7 +730,7 @@ class PlottedGraph(Graph):
         return ax
 
     # plots the browser track representation of the transcript from self.path
-    def plot_browser_path(self, colors=None, ax=None):
+    def plot_browser_path(self, colors=None, ax=None, verbose=False, **kwargs):
         # which gene does this transcript come from?
         # what are the min/max coords in the gene?
         gid = self.gid
@@ -749,14 +750,21 @@ class PlottedGraph(Graph):
         if ax is None:
             plt.figure(1, figsize=(14, 2.8), frameon=False)
             # plt.xlim(x_min, x_max)
-            plt.xlim(g_min, g_max)
-            plt.ylim(-1.05, 1.05)
             ax = plt.gca()
-        else:
-            plt.sca(ax)
 
-        if colors is not None:
-            color = self.color_dict["browser"]
+        ax.set_xlim(g_min, g_max)
+        ax.set_ylim(-1.05, 1.05)
+
+        # plot each exon as a rectangle
+        y_coord = -0.1
+        height = 0.2
+        exons = [(v1, v2) for v1, v2 in zip(loc_path[:-1], loc_path[1:])][::2]
+        introns = [(v1, v2) for v1, v2 in zip(loc_path[:-1], loc_path[1:])][1::2]
+        if verbose:
+            print(f"ax._position: {ax._position}")
+        color = self.color_dict["browser"]
+
+        if colors is None:
             colors = [color] * len(exons)
         else:
             try:
@@ -766,27 +774,35 @@ class PlottedGraph(Graph):
                     "Number of colors must be the same as the number of exons"
                 )
 
-        # plot each exon as a rectangle
-        y_coord = -0.1
-        height = 0.2
-        exons = [(v1, v2) for v1, v2 in zip(loc_path[:-1], loc_path[1:])][::2]
-        introns = [(v1, v2) for v1, v2 in zip(loc_path[:-1], loc_path[1:])][1::2]
-        for exon_color, (v1, v2) in zip(colors, exons):
+        for i, (exon_color, (v1, v2)) in enumerate(zip(colors, exons)):
+            exon_number = i + 1
+            if verbose:
+                print(
+                    f"SwanGraph.PlottedGraph.plot_browser_path -- Plotting exon #{exon_number} -- {v1}-{v2}"
+                )
             x_coord = self.loc_df.loc[v1, "coord"]
             width = self.loc_df.loc[v2, "coord"] - x_coord
-            rect = pch.Rectangle((x_coord, y_coord), width, height, color=exon_color)
+            rect = pch.Rectangle(
+                (x_coord, y_coord),
+                width,
+                height,
+                facecolor=exon_color,
+                zorder=10,
+                edgecolor=sns.desaturate(exon_color, 0.5),
+                linewidth=1,
+            )
             ax.add_patch(rect)
 
         # plot each intron as a line
         dist = 0.001 * g_len
-        plt.plot([t_min + dist, t_max - dist], [0, 0], color=color)
+        ax.plot([t_min + dist, t_max - dist], [0, 0], color=color, zorder=-1)
 
         # reverse plot if we're on the minus strand
         if strand == "-":
-            plt.gca().invert_xaxis()
+            ax.invert_xaxis()
 
         # remove axis
-        plt.axis("off")
+        ax.axis("off")
 
         def get_tick_coords(loc_df, gene_len, exons, g_min, g_max, strand):
             tick_coords = list(np.linspace(g_min, g_max, 40))
@@ -832,9 +848,12 @@ class PlottedGraph(Graph):
         tick_coords = get_tick_coords(
             self.loc_df, g_len, exons, g_min, g_max, self.strand
         )
-        plt.plot(
+        ax.plot(
             tick_coords, [0 for i in range(len(tick_coords))], color=color, marker="4"
         )
+        # import pdb
+
+        # pdb.set_trace()
 
     # plots the scale of a browser style graph
     def plot_browser_scale(self):
