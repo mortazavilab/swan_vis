@@ -426,7 +426,7 @@ def calc_pi(adata, t_df, obs_col='dataset'):
 	# 	import pdb; pdb.set_trace()
 
 	# order based on order in adata
-	ids = adata.var.index.tolist()
+	ids = [i for i in adata.var.index if i in df.index]
 	df = df.loc[ids]
 	cols = adata.obs[obs_col].unique().tolist()
 	cols = list(set(cols)&set(df.columns.tolist()))

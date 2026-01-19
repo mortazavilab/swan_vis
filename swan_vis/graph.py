@@ -541,6 +541,20 @@ class Graph:
 
 		return int(min(coords)), int(max(coords))
 
+	def get_transcript_chrom(self, tid):
+		"""
+		Get the chromosome of an input transcript.
+
+		Parameters:
+			tid (str): Transcript ID to obtain chrom for
+		"""
+
+		# get chromosome of one location in this transcript
+		loc = self.t_df.loc[tid, 'loc_path'][0]
+		chrom = self.loc_df.loc[1].chrom
+
+		return chrom
+
 	# returns the min and max coordinates of an input transcript
 	def get_transcript_min_max(self, tid):
 		"""
